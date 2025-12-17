@@ -39,7 +39,11 @@ class DriverController extends Controller
         $route = $bus->routes->first();
         $stops = $route ? $route->getOrderedStops() : collect();
 
-        return view('driver.map', compact('bus', 'route', 'stops'));
+        $currentTrip = Trip::where('driver_id', auth()->id())
+            ->where('status', 'in_progress')
+            ->first();
+
+        return view('driver.map', compact('bus', 'route', 'stops', 'currentTrip'));
     }
 
     public function startTrip(Request $request)

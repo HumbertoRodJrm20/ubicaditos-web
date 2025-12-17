@@ -12,7 +12,9 @@
       "Bash(dir:*)",
       "Bash(mkdir:*)",
       "Bash(copy \"C:\\Users\\humbe\\Downloads\\parada-de-autobus.svg\" \"C:\\Users\\humbe\\ubicaditos-web\\public\\images\\parada-de-autobus.svg\")",
-      "Bash(copy \"C:\\Users\\humbe\\Downloads\\autobusfblanco.svg\" \"C:\\Users\\humbe\\ubicaditos-web\\public\\images\\autobusfblanco.svg\")"
+      "Bash(copy \"C:\\Users\\humbe\\Downloads\\autobusfblanco.svg\" \"C:\\Users\\humbe\\ubicaditos-web\\public\\images\\autobusfblanco.svg\")",
+      "Bash(copy:*)",
+      "Bash(ls:*)"
     ]
   }
 }

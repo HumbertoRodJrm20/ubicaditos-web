@@ -56,18 +56,10 @@
                 <canvas id="tripsChart" height="80"></canvas>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Top 5 Rutas -->
-                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
-                    <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-100 mb-4">Rutas Más Utilizadas</h3>
-                    <canvas id="routesChart"></canvas>
-                </div>
-
-                <!-- Emergencias por Tipo -->
-                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
-                    <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-100 mb-4">Emergencias por Tipo</h3>
-                    <canvas id="emergenciesChart"></canvas>
-                </div>
+            <!-- Top 5 Rutas -->
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
+                <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-100 mb-4">Rutas Más Utilizadas</h3>
+                <canvas id="routesChart"></canvas>
             </div>
 
             <!-- Top 10 Autobuses Más Usados -->
@@ -191,43 +183,6 @@
                 responsive: true,
                 plugins: { legend: { display: false } },
                 scales: { y: { beginAtZero: true } }
-            }
-        });
-
-        // Gráfica de Emergencias
-        const emergenciesCtx = document.getElementById('emergenciesChart').getContext('2d');
-        const emergencyTypes = @json(array_keys($emergenciesByType));
-        const emergencyCounts = @json(array_values($emergenciesByType));
-
-        new Chart(emergenciesCtx, {
-            type: 'doughnut',
-            data: {
-                labels: emergencyTypes.map(type => {
-                    const types = {
-                        'accident': 'Accidente',
-                        'breakdown': 'Avería',
-                        'medical': 'Médica',
-                        'security': 'Seguridad',
-                        'other': 'Otro'
-                    };
-                    return types[type] || type;
-                }),
-                datasets: [{
-                    data: emergencyCounts,
-                    backgroundColor: [
-                        '#EF4444',
-                        '#F59E0B',
-                        '#10B981',
-                        '#06B6D4',
-                        '#A855F7'
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { position: 'bottom' }
-                }
             }
         });
     </script>

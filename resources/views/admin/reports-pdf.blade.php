@@ -16,7 +16,10 @@
     </style>
 </head>
 <body>
-    <h1>Reporte de Ubicaditos</h1>
+    <div style="text-align: center; margin-bottom: 20px;">
+        <img src="{{ public_path('images/autobus.svg') }}" alt="Ubicaditos Logo" style="width: 60px; height: 60px; display: inline-block;">
+        <h1 style="display: inline-block; margin: 0 0 0 10px; vertical-align: middle;">Reporte de Ubicaditos</h1>
+    </div>
     <p style="text-align: center; color: #666;">Generado el {{ now()->format('d/m/Y H:i') }}</p>
 
     <h2>Estadísticas Generales</h2>

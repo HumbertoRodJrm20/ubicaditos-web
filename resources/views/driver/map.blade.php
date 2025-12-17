@@ -7,28 +7,75 @@
 
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            @if(session('success'))
+                <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
+                    <span class="block sm:inline">{{ session('success') }}</span>
+                </div>
+            @endif
+
             @if(session('error'))
                 <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
                     <span class="block sm:inline">{{ session('error') }}</span>
                 </div>
             @endif
 
-            <!-- Información de la Ruta -->
+            <!-- Información de la Ruta y Control de Viaje -->
             @if($route)
                 <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-4">
                     <div class="p-4">
-                        <div class="flex justify-between items-center">
+                        <div class="flex justify-between items-center mb-4">
                             <div>
                                 <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $route->name }}</h3>
                                 <p class="text-sm text-gray-500 dark:text-gray-400">{{ $route->description }}</p>
                             </div>
-                            <div class="flex items-center space-x-4">
-                                <div class="text-right">
-                                    <p class="text-sm text-gray-500 dark:text-gray-400">Pasajeros</p>
-                                    <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ $bus->current_passengers }}/{{ $bus->capacity }}</p>
-                                </div>
-                                <div id="gps-status" class="w-4 h-4 rounded-full bg-green-500"></div>
-                            </div>
+                        </div>
+
+                        <!-- Botones de Control de Viaje -->
+                        <div class="flex gap-3">
+                            @if($currentTrip)
+                                <form method="POST" action="{{ route('driver.end-trip') }}" class="flex-1" onsubmit="return confirm('¿Estás seguro de finalizar este viaje?')">
+                                    @csrf
+                                    <button type="submit"
+                                            class="w-full px-6 py-3 bg-danger-600 text-white text-sm font-medium rounded-md hover:bg-danger-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-danger-500 flex items-center justify-center gap-2">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path>
+                                        </svg>
+                                        Finalizar Viaje
+                                    </button>
+                                </form>
+                            @else
+                                @if(auth()->user()->is_active && $bus->status === 'active')
+                                    <form method="POST" action="{{ route('driver.start-trip') }}" class="flex-1">
+                                        @csrf
+                                        <button type="submit"
+                                                class="w-full px-6 py-3 bg-success-600 text-white text-sm font-medium rounded-md hover:bg-success-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-success-500 flex items-center justify-center gap-2">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                            Iniciar Viaje
+                                        </button>
+                                    </form>
+                                @else
+                                    <div class="flex-1">
+                                        <button type="button" disabled
+                                                class="w-full px-6 py-3 bg-gray-400 text-white text-sm font-medium rounded-md cursor-not-allowed opacity-60 flex items-center justify-center gap-2">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                                            </svg>
+                                            Iniciar Viaje
+                                        </button>
+                                        <p class="mt-2 text-sm text-red-600 dark:text-red-400 text-center">
+                                            @if(!auth()->user()->is_active)
+                                                Debes estar activo para iniciar un viaje. Contacta al administrador.
+                                            @elseif($bus->status !== 'active')
+                                                El autobús debe estar en estado activo para iniciar un viaje.
+                                            @endif
+                                        </p>
+                                    </div>
+                                @endif
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -39,11 +86,29 @@
                 <div id="map" class="w-full h-96 lg:h-[600px] relative">
                     <!-- Overlay de información -->
                     <div class="absolute top-4 right-4 z-[1000] bg-white dark:bg-gray-800 rounded-lg shadow-lg p-3 max-w-xs">
-                        <div class="text-sm space-y-1">
-                            <div class="flex items-center">
-                                <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
-                                <span class="text-gray-700 dark:text-gray-300">GPS Activo</span>
+                        <div class="text-sm space-y-2">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <span id="gps-indicator" class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+                                    <span id="gps-text" class="text-gray-700 dark:text-gray-300">GPS Activo</span>
+                                </div>
                             </div>
+
+                            <!-- Toggle de Ubicación Simulada -->
+                            <div class="border-t border-gray-200 dark:border-gray-600 pt-2">
+                                <label class="flex items-center cursor-pointer" id="simulated-location-label">
+                                    <input type="checkbox" id="simulated-location-toggle" class="sr-only peer">
+                                    <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                                    <span class="ml-3 text-xs font-medium text-gray-700 dark:text-gray-300">Ubicación Simulada</span>
+                                </label>
+                                <p id="simulated-hint" class="text-xs text-gray-500 dark:text-gray-400 mt-1 hidden">
+                                    Haz clic en el mapa para establecer tu posición
+                                </p>
+                                <p id="trip-active-warning" class="text-xs text-amber-600 dark:text-amber-400 mt-1 hidden">
+                                    ⚠️ No puedes cambiar la ubicación durante un viaje
+                                </p>
+                            </div>
+
                             <div class="text-xs text-gray-500 dark:text-gray-400">
                                 Última actualización: <span id="last-update">Iniciando...</span>
                             </div>
@@ -148,8 +213,11 @@
         let watchId = null;
         let lastPosition = null;
         let simulatedLocationInterval = null;
+        let isSimulatedMode = false;
+        let customSimulatedLocation = null;
+        const hasTripActive = {{ isset($currentTrip) && $currentTrip ? 'true' : 'false' }};
 
-        // Ubicación simulada (Oaxaca, México)
+        // Ubicación simulada por defecto (Oaxaca, México)
         const SIMULATED_LOCATION = {
             lat: 17.076323,
             lng: -96.744676,
@@ -297,43 +365,51 @@
 
         // Función para usar ubicación simulada
         function useSimulatedLocationDriver() {
-            console.log('🎯 Usando ubicación GPS simulada para conductor:', SIMULATED_LOCATION);
+            const location = customSimulatedLocation || SIMULATED_LOCATION;
+            console.log('🎯 Usando ubicación GPS simulada para conductor:', location);
 
-            // Función para actualizar la ubicación simulada
-            function updateSimulatedLocation() {
-                const lat = SIMULATED_LOCATION.lat;
-                const lng = SIMULATED_LOCATION.lng;
-                const timestamp = Date.now();
+            const lat = location.lat;
+            const lng = location.lng;
+            const timestamp = Date.now();
 
-                // Actualizar marcador en el mapa
-                if (busMarker) {
-                    busMarker.setLatLng([lat, lng]);
-                } else {
-                    createBusMarker(lat, lng);
-                }
-
-                // Centrar mapa suavemente
-                map.panTo([lat, lng]);
-
-                // Actualizar UI
-                document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
-                document.getElementById('current-speed').textContent = '0';
-                document.getElementById('gps-status').className = 'w-4 h-4 rounded-full bg-blue-500 animate-pulse';
-
-                // Guardar última posición
-                lastPosition = { lat, lng, timestamp };
-
-                // Verificar proximidad a paradas
-                checkProximityToStops(lat, lng);
+            // Actualizar marcador en el mapa
+            if (busMarker) {
+                busMarker.setLatLng([lat, lng]);
+            } else {
+                createBusMarker(lat, lng);
             }
 
-            // Actualizar inmediatamente
-            updateSimulatedLocation();
+            // Centrar mapa suavemente
+            map.panTo([lat, lng]);
 
-            // Actualizar cada 2 segundos
-            simulatedLocationInterval = setInterval(updateSimulatedLocation, 2000);
+            // Actualizar UI
+            document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+            document.getElementById('current-speed').textContent = '0';
 
-            console.log('✅ Ubicación GPS simulada activa para conductor');
+            // Guardar última posición
+            lastPosition = { lat, lng, timestamp };
+
+            // Enviar ubicación al servidor una sola vez
+            fetch('{{ route("driver.update-location") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ latitude: lat, longitude: lng })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Ubicación simulada actualizada en servidor');
+            })
+            .catch(error => {
+                console.error('Error al actualizar ubicación:', error);
+            });
+
+            // Verificar proximidad a paradas
+            checkProximityToStops(lat, lng);
+
+            console.log('✅ Ubicación GPS simulada establecida (sin actualización automática)');
         }
 
         // Actualizar ubicación en tiempo real
@@ -347,6 +423,12 @@
             if (navigator.geolocation) {
                 watchId = navigator.geolocation.watchPosition(
                     function(position) {
+                        // Si hay viaje activo y está en modo simulado, ignorar actualizaciones de GPS
+                        if (hasTripActive && isSimulatedMode) {
+                            console.log('🔒 Viaje activo: ignorando actualizaciones de GPS en modo simulado');
+                            return;
+                        }
+
                         const lat = position.coords.latitude;
                         const lng = position.coords.longitude;
                         const timestamp = Date.now();
@@ -460,6 +542,107 @@
             Promise.resolve(createBusMarker(busData.latitude, busData.longitude))  // Crear marcador
         ]).then(() => {
             console.log('✅ Mapa inicializado y listo');
+        });
+
+        // Toggle de ubicación simulada
+        const simulatedToggle = document.getElementById('simulated-location-toggle');
+        const simulatedHint = document.getElementById('simulated-hint');
+        const gpsIndicator = document.getElementById('gps-indicator');
+        const gpsText = document.getElementById('gps-text');
+        const tripActiveWarning = document.getElementById('trip-active-warning');
+        const simulatedLabel = document.getElementById('simulated-location-label');
+
+        // Bloquear toggle si hay viaje activo
+        if (hasTripActive) {
+            simulatedToggle.disabled = true;
+            simulatedLabel.classList.add('opacity-50', 'cursor-not-allowed');
+            simulatedLabel.classList.remove('cursor-pointer');
+            tripActiveWarning.classList.remove('hidden');
+            simulatedHint.classList.add('hidden');
+        }
+
+        simulatedToggle.addEventListener('change', function() {
+            // Bloquear cambios si hay viaje activo
+            if (hasTripActive) {
+                this.checked = isSimulatedMode; // Revertir el cambio
+                alert('No puedes cambiar el modo de ubicación mientras hay un viaje activo');
+                return;
+            }
+
+            isSimulatedMode = this.checked;
+
+            if (isSimulatedMode) {
+                // Activar modo simulado
+                simulatedHint.classList.remove('hidden');
+                gpsIndicator.className = 'w-2 h-2 bg-blue-500 rounded-full mr-2 animate-pulse';
+                gpsText.textContent = 'Modo Simulado';
+
+                // Detener geolocalización real si está activa
+                if (watchId) {
+                    navigator.geolocation.clearWatch(watchId);
+                    watchId = null;
+                }
+
+                // Si ya hay una ubicación personalizada, usarla
+                if (customSimulatedLocation) {
+                    useSimulatedLocationDriver();
+                } else {
+                    alert('Haz clic en el mapa para establecer tu ubicación simulada');
+                }
+            } else {
+                // Desactivar modo simulado
+                simulatedHint.classList.add('hidden');
+                gpsIndicator.className = 'w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse';
+                gpsText.textContent = 'GPS Activo';
+                customSimulatedLocation = null;
+
+                // Detener intervalo de simulación
+                if (simulatedLocationInterval) {
+                    clearInterval(simulatedLocationInterval);
+                    simulatedLocationInterval = null;
+                }
+
+                // Reiniciar geolocalización real
+                updateLocation();
+            }
+        });
+
+        // Event listener para clics en el mapa (ubicación simulada)
+        map.on('click', function(e) {
+            if (isSimulatedMode) {
+                // Bloquear cambios de ubicación si hay viaje activo
+                if (hasTripActive) {
+                    alert('No puedes cambiar la ubicación mientras hay un viaje activo');
+                    return;
+                }
+
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+
+                // Guardar ubicación personalizada
+                customSimulatedLocation = { lat, lng, accuracy: 20 };
+
+                console.log('📍 Nueva ubicación simulada establecida:', customSimulatedLocation);
+
+                // Detener intervalo anterior si existe
+                if (simulatedLocationInterval) {
+                    clearInterval(simulatedLocationInterval);
+                    simulatedLocationInterval = null;
+                }
+
+                // Iniciar con la nueva ubicación
+                useSimulatedLocationDriver();
+
+                // Agregar un marcador temporal para mostrar dónde se hizo clic
+                L.circleMarker([lat, lng], {
+                    radius: 8,
+                    fillColor: '#3b82f6',
+                    color: '#fff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map).bindPopup('Ubicación simulada establecida').openPopup();
+            }
         });
 
         // Iniciar geolocalización en paralelo (no bloquea)

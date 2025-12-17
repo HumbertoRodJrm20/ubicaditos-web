@@ -49,7 +49,7 @@
 
             <!-- Mapa -->
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                <div id="map" class="w-full h-96 lg:h-[600px] relative">
+                <div id="map" class="w-full h-[500px] lg:h-[700px] relative">
                     <!-- Overlay de información GPS -->
                     <div id="gps-overlay" class="absolute top-4 right-4 z-[1000] bg-white dark:bg-gray-800 rounded-lg shadow-lg p-3 max-w-xs">
                         <div class="text-sm space-y-1">
@@ -86,39 +86,13 @@
                 </div>
             </div>
 
-            <!-- Leyenda y Tiempos de Llegada -->
-            <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <!-- Leyenda -->
+            <!-- Tiempos de Llegada -->
+            <div class="mt-4">
                 <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-4">
-                        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Leyenda</h3>
-                        <div class="grid grid-cols-2 gap-4 text-sm">
-                            <div class="flex items-center">
-                                <div class="text-2xl mr-2">🚌</div>
-                                <span class="text-gray-700 dark:text-gray-300">Autobús</span>
-                            </div>
-                            <div class="flex items-center">
-                                <div class="w-3 h-3 bg-red-600 rounded-full mr-2"></div>
-                                <span class="text-gray-700 dark:text-gray-300">Parada</span>
-                            </div>
-                            <div class="flex items-center">
-                                <div class="w-3 h-3 bg-purple-600 rounded-full mr-2"></div>
-                                <span class="text-gray-700 dark:text-gray-300">Ruta del autobús</span>
-                            </div>
-                            <div class="flex items-center">
-                                <div class="text-2xl mr-2">📍</div>
-                                <span class="text-gray-700 dark:text-gray-300">Tu ubicación</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tiempos de Llegada -->
-                <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-4">
-                        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Tiempos de Llegada Estimados</h3>
-                        <div id="arrival-times" class="space-y-2 max-h-40 overflow-y-auto">
-                            <p class="text-xs text-gray-500 dark:text-gray-400 italic">Haz clic en una parada para ver los tiempos de llegada</p>
+                    <div class="p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Tiempos de Llegada Estimados</h3>
+                        <div id="arrival-times" class="space-y-2 max-h-96 overflow-y-auto">
+                            <p class="text-sm text-gray-500 dark:text-gray-400 italic">Haz clic en una parada para ver los tiempos de llegada</p>
                         </div>
                     </div>
                 </div>
@@ -211,6 +185,7 @@
         const routes = @json($routes);
         const stops = @json($stops);
         const buses = @json($buses);
+        const favoriteStopIds = @json(Auth::user()->favoriteStops->pluck('id'));
 
         console.log('Autobuses cargados:', buses.length);
         console.log('Rutas cargadas:', routes.length);
@@ -864,6 +839,19 @@
         function drawStops() {
             stops.forEach(stop => {
                 if (!stopMarkers[stop.id]) {
+                    const isFavorite = favoriteStopIds.includes(stop.id);
+                    const favoriteButton = isFavorite
+                        ? `<button onclick="removeFromFavorites(${stop.id})"
+                                class="mt-2 px-3 py-1 bg-gray-400 text-white text-xs rounded hover:bg-gray-500"
+                                id="favorite-btn-${stop.id}">
+                                ✓ En favoritos
+                            </button>`
+                        : `<button onclick="addToFavorites(${stop.id}, '${stop.name.replace(/'/g, "\\'")}')"
+                                class="mt-2 px-3 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600"
+                                id="favorite-btn-${stop.id}">
+                                ⭐ Agregar a favoritos
+                            </button>`;
+
                     const marker = L.marker([stop.latitude, stop.longitude], { icon: stopIcon })
                         .addTo(map)
                         .bindPopup(`
@@ -873,10 +861,7 @@
                                     class="mt-2 mr-1 px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">
                                 🕐 Ver tiempos de llegada
                             </button>
-                            <button onclick="addToFavorites(${stop.id}, '${stop.name.replace(/'/g, "\\'")}')"
-                                    class="mt-2 px-3 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600">
-                                ⭐ Agregar a favoritos
-                            </button>
+                            ${favoriteButton}
                         `);
                     stopMarkers[stop.id] = marker;
                 }
@@ -1095,7 +1080,7 @@
         };
 
         // Agregar a favoritos
-        function addToFavorites(stopId, stopName) {
+        window.addToFavorites = function(stopId, stopName) {
             const nickname = prompt('Dale un nombre a esta parada favorita:', stopName);
             if (nickname) {
                 fetch(`/passenger/favorites/${stopId}`, {
@@ -1116,13 +1101,77 @@
                 })
                 .then(data => {
                     if (data.success) {
-                        alert('✓ Parada agregada a favoritos correctamente');
+                        // Agregar al array de favoritos
+                        if (!favoriteStopIds.includes(stopId)) {
+                            favoriteStopIds.push(stopId);
+                        }
+                        // Actualizar el popup del marcador
+                        updateStopPopup(stopId);
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
                     alert('✗ Error: ' + (error.error || error.message || 'No se pudo agregar a favoritos'));
                 });
+            }
+        };
+
+        // Remover de favoritos
+        window.removeFromFavorites = function(stopId) {
+            if (confirm('¿Quitar esta parada de favoritos?')) {
+                fetch(`/passenger/favorites/${stopId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Remover del array de favoritos
+                        const index = favoriteStopIds.indexOf(stopId);
+                        if (index > -1) {
+                            favoriteStopIds.splice(index, 1);
+                        }
+                        // Actualizar el popup del marcador
+                        updateStopPopup(stopId);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('✗ Error: No se pudo eliminar de favoritos');
+                });
+            }
+        };
+
+        // Actualizar el popup de una parada
+        function updateStopPopup(stopId) {
+            const stop = stops.find(s => s.id === stopId);
+            if (stop && stopMarkers[stopId]) {
+                const isFavorite = favoriteStopIds.includes(stopId);
+                const favoriteButton = isFavorite
+                    ? `<button onclick="removeFromFavorites(${stopId})"
+                            class="mt-2 px-3 py-1 bg-gray-400 text-white text-xs rounded hover:bg-gray-500"
+                            id="favorite-btn-${stopId}">
+                            ✓ En favoritos
+                        </button>`
+                    : `<button onclick="addToFavorites(${stopId}, '${stop.name.replace(/'/g, "\\'")}')"
+                            class="mt-2 px-3 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600"
+                            id="favorite-btn-${stopId}">
+                            ⭐ Agregar a favoritos
+                        </button>`;
+
+                stopMarkers[stopId].setPopupContent(`
+                    <div class="font-semibold">${stop.name}</div>
+                    <div class="text-sm text-gray-600">${stop.address || ''}</div>
+                    <button onclick="showArrivalTimesForStop(${stopId})"
+                            class="mt-2 mr-1 px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">
+                        🕐 Ver tiempos de llegada
+                    </button>
+                    ${favoriteButton}
+                `);
             }
         }
 

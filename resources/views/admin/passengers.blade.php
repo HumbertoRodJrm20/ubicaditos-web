@@ -6,7 +6,7 @@
     </x-slot>
 
     <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div class="max-w-[1400px] mx-auto sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6">
                     <div class="flex justify-between items-center mb-4">
@@ -37,7 +37,7 @@
                             <label class="text-sm text-gray-600 dark:text-gray-400">Mostrar:</label>
                             <select name="per_page"
                                     onchange="this.form.submit()"
-                                    class="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                                    class="px-6 py-2 pr-10 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 min-w-[90px]">
                                 <option value="10" {{ request('per_page') == 10 ? 'selected' : '' }}>10</option>
                                 <option value="20" {{ request('per_page') == 20 ? 'selected' : '' }}>20</option>
                                 <option value="50" {{ request('per_page') == 50 ? 'selected' : '' }}>50</option>

@@ -66,42 +66,11 @@
                             </div>
                         </div>
 
-                        <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="mt-6">
                             <a href="{{ route('driver.map') }}"
-                               class="w-full px-6 py-3 bg-primary-500 text-white text-sm font-medium rounded-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 text-center">
-                                Ver Mapa
+                               class="w-full px-6 py-3 bg-primary-500 text-white text-sm font-medium rounded-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 text-center inline-block">
+                                🗺️ Ver Mapa y Navegación
                             </a>
-
-                            @if($currentTrip)
-                                <form method="POST" action="{{ route('driver.end-trip') }}" class="w-full" onsubmit="return confirm('¿Estás seguro de finalizar este viaje?')">
-                                    @csrf
-                                    <button type="submit"
-                                            class="w-full px-6 py-3 bg-danger-600 text-white text-sm font-medium rounded-md hover:bg-danger-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-danger-500 text-center">
-                                        Finalizar Viaje
-                                    </button>
-                                </form>
-
-                            @else
-                                @if(auth()->user()->is_active)
-                                    <form method="POST" action="{{ route('driver.start-trip') }}" class="w-full">
-                                        @csrf
-                                        <button type="submit"
-                                                class="w-full px-6 py-3 bg-success-600 text-white text-sm font-medium rounded-md hover:bg-success-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-success-500 text-center">
-                                            Iniciar Viaje
-                                        </button>
-                                    </form>
-                                @else
-                                    <div class="w-full">
-                                        <button type="button" disabled
-                                                class="w-full px-6 py-3 bg-gray-400 text-white text-sm font-medium rounded-md cursor-not-allowed text-center opacity-60">
-                                            Iniciar Viaje
-                                        </button>
-                                        <p class="mt-2 text-sm text-red-600 dark:text-red-400 text-center">
-                                            Debes estar activo para iniciar un viaje. Contacta al administrador.
-                                        </p>
-                                    </div>
-                                @endif
-                            @endif
                         </div>
                     @else
                         <div class="text-center py-8">

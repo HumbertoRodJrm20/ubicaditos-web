@@ -63,10 +63,10 @@
                                 <label for="capacity" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Capacidad <span class="text-red-500">*</span>
                                 </label>
-                                <input type="number" name="capacity" id="capacity" value="{{ old('capacity') }}" min="30" max="50" required
+                                <input type="number" name="capacity" id="capacity" value="{{ old('capacity') }}" min="30" max="50" maxlength="2" required
                                     x-model="capacity"
                                     @input="validateCapacity"
-                                    @blur="touchedFields.capacity = true"
+                                    @blur="touchedFields.capacity = true; validateCapacity()"
                                     placeholder="Entre 30 y 50 pasajeros"
                                     class="mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-gray-300"
                                     :class="touchedFields.capacity && errors.capacity ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'">
@@ -114,13 +114,15 @@
                             <!-- Routes -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Rutas Asignadas
+                                    Rutas Asignadas <span class="text-red-500">*</span>
                                 </label>
-                                <div class="space-y-2 max-h-48 overflow-y-auto p-3 border border-gray-300 dark:border-gray-700 rounded-md">
+                                <div class="space-y-2 max-h-48 overflow-y-auto p-3 border rounded-md"
+                                     :class="touchedFields.routes && errors.routes ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'">
                                     @foreach($routes as $route)
                                         <div class="flex items-center">
                                             <input type="checkbox" name="routes[]" value="{{ $route->id }}" id="route_{{ $route->id }}"
                                                 {{ in_array($route->id, old('routes', [])) ? 'checked' : '' }}
+                                                @change="validateRoutes"
                                                 class="mr-2 rounded border-gray-300 text-primary-600 focus:ring-primary-500">
                                             <label for="route_{{ $route->id }}" class="text-sm text-gray-700 dark:text-gray-300">
                                                 {{ $route->name }} ({{ $route->code }})
@@ -128,6 +130,7 @@
                                         </div>
                                     @endforeach
                                 </div>
+                                <p x-show="touchedFields.routes && errors.routes" x-text="errors.routes" class="mt-1 text-sm text-red-600"></p>
                                 @error('routes')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
@@ -182,9 +185,16 @@
                 },
 
                 validateCapacity() {
+                    this.touchedFields.capacity = true;
+
+                    // Limitar a 2 dígitos
+                    if (this.capacity && this.capacity.toString().length > 2) {
+                        this.capacity = this.capacity.toString().slice(0, 2);
+                    }
+
                     const cap = parseInt(this.capacity);
                     if (!this.capacity || this.capacity === '') {
-                        this.errors.capacity = 'La capacidad es obligatoria';
+                        this.errors.capacity = 'El número de pasajeros es obligatorio';
                     } else if (isNaN(cap)) {
                         this.errors.capacity = 'La capacidad debe ser un número';
                     } else if (cap < 30) {
@@ -193,6 +203,16 @@
                         this.errors.capacity = 'La capacidad máxima es de 50 pasajeros';
                     } else {
                         delete this.errors.capacity;
+                    }
+                },
+
+                validateRoutes() {
+                    this.touchedFields.routes = true;
+                    const checkedRoutes = document.querySelectorAll('input[name="routes[]"]:checked');
+                    if (checkedRoutes.length === 0) {
+                        this.errors.routes = 'Debes seleccionar al menos una ruta';
+                    } else {
+                        delete this.errors.routes;
                     }
                 }
             }
