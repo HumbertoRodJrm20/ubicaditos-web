@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Bus Stop Post -->
+  <g id="bus-stop">
+    <path fill="#8B93B8" d="M20 50 C20 50, 40 45, 50 50 L50 420 C50 425, 45 430, 40 430 L30 430 C25 430, 20 425, 20 420 Z"/>
+    <path fill="#6B7399" d="M42 50 C42 50, 50 48, 52 50 L52 420 C52 422, 50 425, 48 425 L44 425 C42 425, 42 422, 42 420 Z"/>
+    <!-- Sign -->
+    <path fill="#6B7399" d="M50 50 C50 50, 200 50, 210 55 L460 55 C465 55, 470 60, 470 65 L470 85 C470 90, 465 95, 460 95 L210 95 C200 100, 50 100, 50 100 Z" stroke="#000" stroke-width="6"/>
+    <path fill="#8B93B8" d="M220 60 L450 60 L450 90 L220 90 Z"/>
+    <!-- Base -->
+    <ellipse cx="35" cy="435" rx="55" ry="15" fill="#6B7399"/>
+    <ellipse cx="35" cy="430" rx="50" ry="12" fill="#8B93B8"/>
+  </g>
+
+  <!-- Bus -->
+  <g id="bus">
+    <!-- Bus Body -->
+    <rect x="230" y="190" width="260" height="180" rx="15" fill="#FFA500" stroke="#000" stroke-width="6"/>
+    <rect x="235" y="195" width="250" height="80" rx="8" fill="#E8F0FF" stroke="#000" stroke-width="4"/>
+
+    <!-- Windows -->
+    <rect x="245" y="205" width="110" height="60" rx="4" fill="#C8E0FF" stroke="#000" stroke-width="3"/>
+    <rect x="365" y="205" width="110" height="60" rx="4" fill="#FFF" stroke="#000" stroke-width="3"/>
+
+    <!-- Front Bumper -->
+    <rect x="235" y="285" width="50" height="30" rx="5" fill="#CC8400" stroke="#000" stroke-width="3"/>
+    <rect x="435" y="285" width="50" height="30" rx="5" fill="#CC8400" stroke="#000" stroke-width="3"/>
+
+    <!-- Grille Lines -->
+    <line x1="245" y1="325" x2="345" y2="325" stroke="#000" stroke-width="4"/>
+    <line x1="250" y1="340" x2="340" y2="340" stroke="#000" stroke-width="4"/>
+    <line x1="255" y1="355" x2="335" y2="355" stroke="#000" stroke-width="4"/>
+
+    <!-- Headlights -->
+    <rect x="245" y="295" width="35" height="15" rx="3" fill="#FFF9E6" stroke="#000" stroke-width="2"/>
+    <rect x="445" y="295" width="35" height="15" rx="3" fill="#FFF9E6" stroke="#000" stroke-width="2"/>
+
+    <!-- Door -->
+    <rect x="360" y="285" width="70" height="80" rx="5" fill="#CC8400" stroke="#000" stroke-width="3"/>
+    <line x1="395" y1="290" x2="395" y2="360" stroke="#000" stroke-width="3"/>
+
+    <!-- Side Mirrors -->
+    <ellipse cx="215" cy="240" rx="15" ry="10" fill="#CC8400" stroke="#000" stroke-width="3"/>
+    <ellipse cx="495" cy="240" rx="15" ry="10" fill="#CC8400" stroke="#000" stroke-width="3"/>
+
+    <!-- Wheels -->
+    <circle cx="280" cy="380" r="30" fill="#2C3E50" stroke="#000" stroke-width="5"/>
+    <circle cx="280" cy="380" r="18" fill="#5A6C7D"/>
+    <circle cx="440" cy="380" r="30" fill="#2C3E50" stroke="#000" stroke-width="5"/>
+    <circle cx="440" cy="380" r="18" fill="#5A6C7D"/>
+
+    <!-- Wheel Details -->
+    <circle cx="280" cy="380" r="8" fill="#2C3E50"/>
+    <circle cx="440" cy="380" r="8" fill="#2C3E50"/>
+  </g>
+
+  <!-- Top stripe on bus -->
+  <rect x="235" y="175" width="250" height="20" rx="8" fill="#CC8400"/>
+</svg>

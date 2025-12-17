@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(php artisan db:seed:*)",
+      "Bash(php artisan tinker:*)",
+      "Bash(php artisan:*)",
+      "Bash(composer require:*)",
+      "Bash(composer dump-autoload:*)",
+      "Bash(composer install:*)",
+      "Bash(composer remove:*)",
+      "Bash(dir:*)",
+      "Bash(mkdir:*)",
+      "Bash(copy \"C:\\Users\\humbe\\Downloads\\parada-de-autobus.svg\" \"C:\\Users\\humbe\\ubicaditos-web\\public\\images\\parada-de-autobus.svg\")",
+      "Bash(copy \"C:\\Users\\humbe\\Downloads\\autobusfblanco.svg\" \"C:\\Users\\humbe\\ubicaditos-web\\public\\images\\autobusfblanco.svg\")"
+    ]
+  }
+}
