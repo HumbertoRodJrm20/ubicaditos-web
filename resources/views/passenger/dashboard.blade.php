@@ -26,14 +26,15 @@
                             <label for="show-stops" class="text-sm text-gray-700 dark:text-gray-300">Mostrar paradas</label>
                         </div>
 
-                        <div>
-                            <button id="nearest-routes-btn" onclick="showNearestRoutes()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors flex items-center gap-2">
+                        <div class="flex items-center">
+                            <input type="checkbox" id="show-nearest-routes" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
+                            <label for="show-nearest-routes" class="ml-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer flex items-center gap-2">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                 </svg>
-                                <span>Rutas más cercanas</span>
-                            </button>
+                                Mostrar solo rutas cercanas
+                            </label>
                         </div>
 
                         <div class="ml-auto flex items-center">
@@ -65,6 +66,22 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contenedor de Rutas Cercanas -->
+            <div id="nearest-routes-container" class="mt-4 bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hidden">
+                <div class="p-4">
+                    <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        Rutas más cercanas a tu ubicación
+                    </h3>
+                    <div id="nearest-routes-list" class="space-y-2">
+                        <!-- Las rutas cercanas se mostrarán aquí dinámicamente -->
                     </div>
                 </div>
             </div>
@@ -400,7 +417,62 @@
             return R * c; // Distancia en km
         }
 
-        // Función para calcular tiempo estimado de llegada
+        // Calcular distancia real a lo largo de la ruta entre dos puntos
+        function calculateDistanceAlongRoute(routePath, fromIndex, toPosition) {
+            let distance = 0;
+            let minDistToStop = Infinity;
+            let closestIndex = fromIndex;
+
+            // Encontrar el punto de la ruta más cercano a la parada
+            for (let i = 0; i < routePath.length; i++) {
+                const dist = calculateDistance(
+                    routePath[i][0],
+                    routePath[i][1],
+                    toPosition.lat,
+                    toPosition.lng
+                );
+                if (dist < minDistToStop) {
+                    minDistToStop = dist;
+                    closestIndex = i;
+                }
+            }
+
+            // Si el autobús ya pasó la parada, calcular la vuelta completa
+            const currentIdx = Math.floor(fromIndex);
+            if (closestIndex < currentIdx) {
+                // El autobús tiene que completar la ruta y volver
+                for (let i = currentIdx; i < routePath.length - 1; i++) {
+                    distance += calculateDistance(
+                        routePath[i][0],
+                        routePath[i][1],
+                        routePath[i + 1][0],
+                        routePath[i + 1][1]
+                    );
+                }
+                for (let i = 0; i < closestIndex; i++) {
+                    distance += calculateDistance(
+                        routePath[i][0],
+                        routePath[i][1],
+                        routePath[i + 1][0],
+                        routePath[i + 1][1]
+                    );
+                }
+            } else {
+                // Calcular distancia desde posición actual hasta la parada
+                for (let i = currentIdx; i < closestIndex; i++) {
+                    distance += calculateDistance(
+                        routePath[i][0],
+                        routePath[i][1],
+                        routePath[i + 1][0],
+                        routePath[i + 1][1]
+                    );
+                }
+            }
+
+            return distance;
+        }
+
+        // Función para calcular tiempo estimado de llegada REALISTA
         function calculateArrivalTime(stop) {
             const arrivalTimes = [];
 
@@ -409,27 +481,30 @@
                 const busRoute = bus.route;
                 const stopInRoute = busRoute.stops && busRoute.stops.find(s => s.id === stop.id);
 
-                if (stopInRoute) {
-                    // Calcular distancia desde posición actual del autobús a la parada
-                    const distance = calculateDistance(
-                        bus.currentPosition.lat,
-                        bus.currentPosition.lng,
-                        stop.latitude,
-                        stop.longitude
+                if (stopInRoute && bus.routePath) {
+                    // Calcular distancia REAL a lo largo de la ruta
+                    const distanceAlongRoute = calculateDistanceAlongRoute(
+                        bus.routePath,
+                        bus.pathIndex,
+                        { lat: stop.latitude, lng: stop.longitude }
                     );
 
-                    // Velocidad promedio del autobús (km/h) - basado en la simulación
-                    // La simulación se mueve a 0.08 por intervalo de 200ms
-                    // Aproximadamente 20 km/h en ciudad
-                    const avgSpeed = 20;
+                    // Usar la velocidad real del autobús
+                    const avgSpeed = bus.avgSpeedKmh || 20;
 
-                    // Calcular tiempo en minutos
-                    const timeInMinutes = (distance / avgSpeed) * 60;
+                    // Calcular tiempo en minutos de forma realista
+                    const timeInMinutes = (distanceAlongRoute / avgSpeed) * 60;
+
+                    // Agregar tiempo de paradas (asumimos 30 segundos por parada)
+                    const stopsUntilDestination = Math.floor(distanceAlongRoute * 2); // Aproximación
+                    const stopTimeMinutes = (stopsUntilDestination * 0.5); // 30 segundos por parada
+
+                    const totalTime = timeInMinutes + stopTimeMinutes;
 
                     arrivalTimes.push({
                         bus: bus,
-                        distance: distance,
-                        time: Math.ceil(timeInMinutes),
+                        distance: distanceAlongRoute,
+                        time: Math.ceil(totalTime),
                         route: busRoute
                     });
                 }
@@ -481,6 +556,108 @@
             arrivalTimesDiv.innerHTML = html;
         }
 
+        // Función para mostrar información de una ruta completa
+        function showRouteInfo(route) {
+            const arrivalTimesDiv = document.getElementById('arrival-times');
+
+            // Encontrar todos los autobuses en esta ruta
+            const routeBuses = simulatedBuses.filter(bus => bus.route.id === route.id);
+
+            if (routeBuses.length === 0) {
+                arrivalTimesDiv.innerHTML = `
+                    <div class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Ruta: ${route.name}
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 italic">
+                        No hay autobuses activos en esta ruta
+                    </p>
+                `;
+                return;
+            }
+
+            // Obtener todas las paradas de esta ruta ordenadas
+            const routeStops = route.stops ? route.stops.sort((a, b) => {
+                const aOrder = a.pivot?.order || 0;
+                const bOrder = b.pivot?.order || 0;
+                return aOrder - bOrder;
+            }) : [];
+
+            let html = `
+                <div class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 rounded-full" style="background-color: ${route.color || '#8b5cf6'}"></div>
+                        <span>Ruta: ${route.name}</span>
+                    </div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">${route.code}</div>
+                </div>
+            `;
+
+            // Para cada autobús en la ruta, mostrar su próxima parada
+            routeBuses.forEach((bus, index) => {
+                // Encontrar la próxima parada del autobús
+                let nextStop = null;
+                let minDistance = Infinity;
+
+                routeStops.forEach(stop => {
+                    if (bus.routePath) {
+                        const distanceAlongRoute = calculateDistanceAlongRoute(
+                            bus.routePath,
+                            bus.pathIndex,
+                            { lat: stop.latitude, lng: stop.longitude }
+                        );
+
+                        if (distanceAlongRoute < minDistance && distanceAlongRoute > 0.05) {
+                            minDistance = distanceAlongRoute;
+                            nextStop = stop;
+                        }
+                    }
+                });
+
+                if (nextStop) {
+                    const avgSpeed = bus.avgSpeedKmh || 20;
+                    const timeInMinutes = (minDistance / avgSpeed) * 60;
+                    const stopsUntilDestination = Math.floor(minDistance * 2);
+                    const stopTimeMinutes = (stopsUntilDestination * 0.5);
+                    const totalTime = Math.ceil(timeInMinutes + stopTimeMinutes);
+
+                    const timeText = totalTime < 1 ? 'Menos de 1 min' :
+                                    totalTime === 1 ? '1 minuto' :
+                                    `${totalTime} minutos`;
+
+                    html += `
+                        <div class="mb-3 p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                            <div class="flex items-center justify-between mb-1">
+                                <div class="flex items-center space-x-2">
+                                    <span class="font-medium text-gray-900 dark:text-gray-100 text-xs">🚌 ${bus.license_plate}</span>
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">${bus.model}</span>
+                                </div>
+                            </div>
+                            <div class="text-xs text-gray-600 dark:text-gray-300">
+                                Próxima parada: <span class="font-semibold">${nextStop.name}</span>
+                            </div>
+                            <div class="text-xs text-blue-600 dark:text-blue-400 font-semibold">
+                                Llegada estimada: ${timeText}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="mb-3 p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                            <div class="flex items-center space-x-2">
+                                <span class="font-medium text-gray-900 dark:text-gray-100 text-xs">🚌 ${bus.license_plate}</span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">${bus.model}</span>
+                            </div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400 italic">
+                                Calculando próxima parada...
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            arrivalTimesDiv.innerHTML = html;
+        }
+
         // Simulated bus data
         let simulatedBuses = [];
 
@@ -525,44 +702,60 @@
                 `${stop.longitude},${stop.latitude}`
             ).join(';');
 
-            try {
-                // Consultar OSRM con timeout de 3 segundos
-                const response = await fetchWithTimeout(
-                    `https://router.project-osrm.org/route/v1/driving/${waypoints}?overview=full&geometries=geojson`,
-                    3000
-                );
-                const data = await response.json();
+            // SOLO usar OSRM - sin fallback de líneas rectas
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    console.log(`[${route.name}] Intento ${attempt}/3 de cargar ruta sobre calles...`);
 
-                if (data.code === 'Ok' && data.routes && data.routes[0]) {
-                    // Convertir coordenadas de OSRM a formato Leaflet [lat, lng]
-                    const pathCoords = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                    const response = await fetchWithTimeout(
+                        `https://router.project-osrm.org/route/v1/driving/${waypoints}?overview=full&geometries=geojson`,
+                        15000  // 15 segundos de timeout
+                    );
+                    const data = await response.json();
 
-                    // Guardar las coordenadas OSRM para que los autobuses las usen
-                    routePathsOSRM[route.id] = pathCoords;
+                    if (data.code === 'Ok' && data.routes && data.routes[0]) {
+                        // Convertir coordenadas de OSRM a formato Leaflet [lat, lng]
+                        const pathCoords = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
 
-                    const polyline = L.polyline(pathCoords, {
-                        color: route.color || '#8b5cf6',
-                        weight: 4,
-                        opacity: 0.7
-                    }).addTo(map);
+                        // Guardar las coordenadas OSRM para que los autobuses las usen
+                        routePathsOSRM[route.id] = pathCoords;
 
-                    polyline.bindPopup(`
-                        <div class="font-semibold">${route.name}</div>
-                        <div class="text-sm text-gray-600">${route.code}</div>
-                        <div class="text-xs mt-1">${route.description}</div>
-                    `);
+                        const polyline = L.polyline(pathCoords, {
+                            color: route.color || '#8b5cf6',
+                            weight: 4,
+                            opacity: 0.7
+                        }).addTo(map);
 
-                    routePolylines[route.id] = polyline;
-                    routesLoaded[route.id] = true;
-                    console.log('✓ Ruta cargada:', route.name);
-                } else {
-                    console.error('Error OSRM para ruta:', route.name, data);
-                    drawRouteFallback(route, routeStops);
+                        polyline.bindPopup(`
+                            <div class="font-semibold">${route.name}</div>
+                            <div class="text-sm text-gray-600">${route.code}</div>
+                            <div class="text-xs mt-1">${route.description}</div>
+                        `);
+
+                        // Agregar evento click para mostrar información de la ruta
+                        polyline.on('click', function() {
+                            showRouteInfo(route);
+                        });
+
+                        routePolylines[route.id] = polyline;
+                        routesLoaded[route.id] = true;
+                        console.log(`✅ [${route.name}] Ruta cargada sobre calles correctamente`);
+                        return; // Éxito - salir de la función
+                    } else {
+                        console.warn(`⚠ [${route.name}] OSRM retornó: ${data.code}`);
+                    }
+                } catch (error) {
+                    console.warn(`⚠ [${route.name}] Error en intento ${attempt}:`, error.message);
                 }
-            } catch (error) {
-                console.error('Error al consultar OSRM para ruta:', route.name, error);
-                drawRouteFallback(route, routeStops);
+
+                // Esperar antes del siguiente intento (excepto en el último)
+                if (attempt < 3) {
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
             }
+
+            // Si llegamos aquí, todos los intentos fallaron
+            console.error(`❌ [${route.name}] No se pudo cargar sobre calles después de 3 intentos - LA RUTA NO SE MOSTRARÁ`);
         }
 
         // Cargar solo las rutas de los autobuses visibles
@@ -585,29 +778,19 @@
             }
         }
 
-        // Fallback: dibujar ruta con líneas rectas si OSRM falla
-        function drawRouteFallback(route, routeStops) {
-            const pathCoords = routeStops.map(stop => [stop.latitude, stop.longitude]);
+        // Función de fallback ELIMINADA - Solo rutas sobre calles con OSRM
 
-            // Guardar coordenadas fallback para autobuses
-            routePathsOSRM[route.id] = pathCoords;
-
-            const polyline = L.polyline(pathCoords, {
-                color: route.color || '#8b5cf6',
-                weight: 4,
-                opacity: 0.5,
-                dashArray: '5, 10' // Línea punteada para indicar que no sigue calles
-            }).addTo(map);
-
-            polyline.bindPopup(`
-                <div class="font-semibold">${route.name}</div>
-                <div class="text-sm text-gray-600">${route.code}</div>
-                <div class="text-xs mt-1">${route.description}</div>
-                <div class="text-xs text-red-600 mt-1">⚠ Ruta aproximada</div>
-            `);
-
-            routePolylines[route.id] = polyline;
-            routesLoaded[route.id] = true;
+        // Calcular distancia total de una ruta en kilómetros
+        function calculateRouteDistance(routePath) {
+            let totalDistance = 0;
+            for (let i = 0; i < routePath.length - 1; i++) {
+                const lat1 = routePath[i][0];
+                const lng1 = routePath[i][1];
+                const lat2 = routePath[i + 1][0];
+                const lng2 = routePath[i + 1][1];
+                totalDistance += calculateDistance(lat1, lng1, lat2, lng2);
+            }
+            return totalDistance;
         }
 
         // Inicializar autobuses simulados usando las rutas OSRM reales
@@ -633,10 +816,27 @@
                     return null;
                 }
 
+                // Calcular distancia total de la ruta
+                const routeDistanceKm = calculateRouteDistance(routePath);
+
+                // Velocidad promedio de autobús urbano: 20 km/h
+                const avgSpeedKmh = 20;
+
+                // Tiempo de actualización: 200ms = 0.2 segundos
+                const updateIntervalSeconds = 0.2;
+
+                // Distancia que avanza en cada actualización (en km)
+                const distancePerUpdate = (avgSpeedKmh * updateIntervalSeconds) / 3600; // km
+
+                // Calcular incremento del índice basado en la distancia de la ruta
+                const speedIncrement = (distancePerUpdate / routeDistanceKm) * routePath.length;
+
                 // Iniciar cada autobús en una posición diferente de la ruta OSRM
                 const startProgress = (index * 0.3) % 1; // Distribuir autobuses
                 const pathIndex = Math.floor(routePath.length * startProgress);
                 const startPoint = routePath[pathIndex];
+
+                console.log(`Autobús ${bus.license_plate}: Ruta ${routeDistanceKm.toFixed(2)}km, Velocidad: ${avgSpeedKmh}km/h, Incremento: ${speedIncrement.toFixed(4)}`);
 
                 return {
                     id: bus.id,
@@ -644,7 +844,10 @@
                     model: bus.model,
                     capacity: bus.capacity,
                     route: fullRoute,
-                    routePath: routePath, // Usar ruta OSRM real
+                    routePath: routePath,
+                    routeDistanceKm: routeDistanceKm,
+                    speedIncrement: speedIncrement, // Velocidad calculada de forma realista
+                    avgSpeedKmh: avgSpeedKmh,
                     currentPosition: {
                         lat: startPoint[0],
                         lng: startPoint[1]
@@ -654,7 +857,7 @@
                 };
             }).filter(bus => bus !== null);
 
-            console.log('Autobuses simulados inicializados sobre rutas OSRM:', simulatedBuses.length);
+            console.log('✅ Autobuses simulados inicializados con velocidades realistas:', simulatedBuses.length);
         }
 
         // Dibujar paradas
@@ -715,12 +918,13 @@
             });
         }
 
-        // Mover autobús a lo largo de su ruta
+        // Mover autobús a lo largo de su ruta con velocidad realista
         function moveBus(bus) {
             if (!bus.routePath || bus.routePath.length === 0) return;
 
-            // Incrementar índice según dirección
-            bus.pathIndex += bus.direction * 0.08; // Velocidad de movimiento aumentada
+            // Usar velocidad calculada de forma realista (basada en 20 km/h)
+            const speed = bus.speedIncrement || 0.02; // Fallback a valor pequeño
+            bus.pathIndex += bus.direction * speed;
 
             // Cambiar dirección al llegar a los extremos
             if (bus.pathIndex >= bus.routePath.length - 1) {
@@ -931,6 +1135,163 @@
                     map.removeLayer(marker);
                 }
             });
+        });
+
+        // Variable global para rutas cercanas
+        let currentNearestRoutes = [];
+
+        // Calcular rutas más cercanas
+        function calculateNearestRoutes() {
+            if (!userLocationMarker) {
+                console.warn('⚠ Ubicación del usuario no disponible');
+                return [];
+            }
+
+            const userPos = userLocationMarker.getLatLng();
+            const userLat = userPos.lat;
+            const userLng = userPos.lng;
+
+            const routeDistances = [];
+
+            routes.forEach(route => {
+                if (!route.stops || route.stops.length === 0) return;
+
+                let minDistance = Infinity;
+                let closestStop = null;
+
+                route.stops.forEach(stop => {
+                    const distance = calculateDistance(
+                        userLat,
+                        userLng,
+                        stop.latitude,
+                        stop.longitude
+                    );
+
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestStop = stop;
+                    }
+                });
+
+                routeDistances.push({
+                    route: route,
+                    distance: minDistance,
+                    closestStop: closestStop
+                });
+            });
+
+            routeDistances.sort((a, b) => a.distance - b.distance);
+            return routeDistances.filter(r => r.distance <= 5).slice(0, 3);
+        }
+
+        // Mostrar rutas cercanas en el contenedor
+        function showNearestRoutesInContainer(nearestRoutes) {
+            const container = document.getElementById('nearest-routes-container');
+            const listDiv = document.getElementById('nearest-routes-list');
+
+            if (nearestRoutes.length === 0) {
+                listDiv.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">No se encontraron rutas cercanas (dentro de 5km).</p>';
+                container.classList.remove('hidden');
+                return;
+            }
+
+            let html = '';
+            nearestRoutes.forEach((item, index) => {
+                const distanceKm = item.distance.toFixed(2);
+                const distanceM = Math.round(item.distance * 1000);
+                const distanceText = item.distance < 1 ? `${distanceM}m` : `${distanceKm}km`;
+                const routeColor = item.route.color || '#8b5cf6';
+
+                html += `
+                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div class="flex items-center gap-3">
+                            <div class="w-1 h-12 rounded-full" style="background-color: ${routeColor}"></div>
+                            <div>
+                                <div class="font-semibold text-gray-900 dark:text-gray-100">${item.route.name}</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400">${item.route.code}</div>
+                                <div class="text-xs text-gray-600 dark:text-gray-300 mt-1">
+                                    🚏 ${item.closestStop.name}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-lg font-bold text-blue-600 dark:text-blue-400">${distanceText}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">distancia</div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            listDiv.innerHTML = html;
+            container.classList.remove('hidden');
+        }
+
+        // Filtrar mapa para mostrar solo rutas cercanas
+        async function filterNearestRoutes(show) {
+            if (!show) {
+                // Restaurar todas las rutas y autobuses
+                Object.values(routePolylines).forEach(polyline => polyline.addTo(map));
+                simulatedBuses.forEach(bus => {
+                    if (busMarkers[bus.id]) {
+                        busMarkers[bus.id].addTo(map);
+                    }
+                });
+                document.getElementById('nearest-routes-container').classList.add('hidden');
+                currentNearestRoutes = [];
+                return;
+            }
+
+            const nearestRoutes = calculateNearestRoutes();
+            currentNearestRoutes = nearestRoutes;
+
+            if (nearestRoutes.length === 0) {
+                showNearestRoutesInContainer([]);
+                return;
+            }
+
+            showNearestRoutesInContainer(nearestRoutes);
+
+            const nearestRouteIds = nearestRoutes.map(r => r.route.id);
+
+            // Cargar rutas cercanas en paralelo
+            const routePromises = nearestRouteIds.map(async routeId => {
+                const route = routes.find(r => r.id === routeId);
+                if (route && !routesLoaded[routeId]) {
+                    await drawRoute(route);
+                }
+            });
+            await Promise.all(routePromises);
+
+            // Filtrar rutas en el mapa
+            Object.keys(routePolylines).forEach(key => {
+                const rId = parseInt(key);
+                if (nearestRouteIds.includes(rId)) {
+                    routePolylines[key].addTo(map);
+                } else {
+                    map.removeLayer(routePolylines[key]);
+                }
+            });
+
+            // Filtrar autobuses
+            simulatedBuses.forEach(bus => {
+                const shouldShow = nearestRouteIds.includes(bus.route.id);
+                if (shouldShow) {
+                    if (busMarkers[bus.id]) {
+                        busMarkers[bus.id].addTo(map);
+                    }
+                } else {
+                    if (busMarkers[bus.id]) {
+                        map.removeLayer(busMarkers[bus.id]);
+                    }
+                }
+            });
+
+            console.log('✅ Mostrando solo rutas cercanas:', nearestRouteIds);
+        }
+
+        // Toggle para mostrar solo rutas cercanas
+        document.getElementById('show-nearest-routes').addEventListener('change', function(e) {
+            filterNearestRoutes(e.target.checked);
         });
 
         // Filtro de ruta (con lazy loading)

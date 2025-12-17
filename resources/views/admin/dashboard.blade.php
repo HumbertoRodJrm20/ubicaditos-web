@@ -427,43 +427,59 @@
                 `${stop.longitude},${stop.latitude}`
             ).join(';');
 
-            try {
-                // Consultar OSRM para obtener ruta que sigue las calles
-                const response = await fetch(
-                    `https://router.project-osrm.org/route/v1/driving/${waypoints}?overview=full&geometries=geojson`
-                );
-                const data = await response.json();
+            // SOLO usar OSRM - sin fallback de líneas rectas
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    console.log(`[Admin - ${route.name}] Intento ${attempt}/3 de cargar ruta sobre calles...`);
 
-                if (data.code === 'Ok' && data.routes && data.routes[0]) {
-                    // Convertir coordenadas de OSRM a formato Leaflet [lat, lng]
-                    const pathCoords = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-                    // Guardar las coordenadas OSRM para que los autobuses las usen
-                    routePathsOSRM[route.id] = pathCoords;
+                    const response = await fetch(
+                        `https://router.project-osrm.org/route/v1/driving/${waypoints}?overview=full&geometries=geojson`,
+                        { signal: controller.signal }
+                    );
+                    clearTimeout(timeoutId);
+                    const data = await response.json();
 
-                    const polyline = L.polyline(pathCoords, {
-                        color: route.color || '#8b5cf6',
-                        weight: 4,
-                        opacity: 0.7
-                    }).addTo(adminMap);
+                    if (data.code === 'Ok' && data.routes && data.routes[0]) {
+                        // Convertir coordenadas de OSRM a formato Leaflet [lat, lng]
+                        const pathCoords = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
 
-                    polyline.bindPopup(`
-                        <div class="font-semibold">${route.name}</div>
-                        <div class="text-sm text-gray-600">${route.code}</div>
-                        <div class="text-xs mt-1">${route.description}</div>
-                    `);
+                        // Guardar las coordenadas OSRM para que los autobuses las usen
+                        routePathsOSRM[route.id] = pathCoords;
 
-                    routePolylines[route.id] = polyline;
-                    routesLoaded[route.id] = true;
-                    console.log('✓ Ruta cargada:', route.name);
-                } else {
-                    console.error('Error OSRM para ruta:', route.name, data);
-                    drawRouteFallback(route, routeStops);
+                        const polyline = L.polyline(pathCoords, {
+                            color: route.color || '#8b5cf6',
+                            weight: 4,
+                            opacity: 0.7
+                        }).addTo(adminMap);
+
+                        polyline.bindPopup(`
+                            <div class="font-semibold">${route.name}</div>
+                            <div class="text-sm text-gray-600">${route.code}</div>
+                            <div class="text-xs mt-1">${route.description}</div>
+                        `);
+
+                        routePolylines[route.id] = polyline;
+                        routesLoaded[route.id] = true;
+                        console.log(`✅ [Admin - ${route.name}] Ruta cargada sobre calles correctamente`);
+                        return; // Éxito - salir
+                    } else {
+                        console.warn(`⚠ [Admin - ${route.name}] OSRM retornó: ${data.code}`);
+                    }
+                } catch (error) {
+                    console.warn(`⚠ [Admin - ${route.name}] Error en intento ${attempt}:`, error.message);
                 }
-            } catch (error) {
-                console.error('Error al consultar OSRM para ruta:', route.name, error);
-                drawRouteFallback(route, routeStops);
+
+                // Esperar antes del siguiente intento (excepto en el último)
+                if (attempt < 3) {
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
             }
+
+            // Si llegamos aquí, todos los intentos fallaron
+            console.error(`❌ [Admin - ${route.name}] No se pudo cargar sobre calles después de 3 intentos - LA RUTA NO SE MOSTRARÁ`);
         }
 
         // Cargar solo las rutas de los autobuses visibles
@@ -486,8 +502,10 @@
             }
         }
 
-        // Fallback: dibujar ruta con líneas rectas si OSRM falla
-        function drawRouteFallback(route, routeStops) {
+        // Función de fallback ELIMINADA - Solo rutas sobre calles con OSRM
+
+        // NOTA: Función drawRouteFallback eliminada - ahora solo usamos OSRM
+        function drawRouteFallback_DISABLED(route, routeStops) {
             const pathCoords = routeStops.map(stop => [stop.latitude, stop.longitude]);
 
             // Guardar coordenadas fallback para autobuses
