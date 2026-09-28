@@ -10,14 +10,9 @@ class PassengerController extends Controller
 {
     public function index()
     {
-        $routes = Route::with('stops')->where('is_active', true)->get();
-        $activeBuses = Bus::with(['driver', 'routes'])
-            ->where('status', 'active')
-            ->get();
-
         $favoriteStops = auth()->user()->favoriteStops;
 
-        return view('passenger.menu', compact('routes', 'activeBuses', 'favoriteStops'));
+        return view('passenger.menu', compact('favoriteStops'));
     }
 
     public function map()

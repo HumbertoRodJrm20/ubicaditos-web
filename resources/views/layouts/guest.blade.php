@@ -16,10 +16,9 @@
     </head>
     <body class="font-sans text-gray-900 antialiased">
         <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100 dark:bg-gray-900">
-            <div class="text-center">
-                <a href="/" class="inline-block">
-                    <img src="{{ asset('images/parada-de-autobus.svg') }}" alt="Ubicaditos" class="w-40 h-40 mx-auto" />
-                    <h1 class="mt-2 text-2xl font-bold text-gray-800 dark:text-gray-200">Ubicaditos</h1>
+            <div>
+                <a href="/">
+                    <x-application-logo class="w-20 h-20 fill-current text-gray-500" />
                 </a>
             </div>
 

@@ -13,152 +13,104 @@
                 </div>
             @endif
 
-            <!-- Filtros y Búsqueda -->
-            <div class="mb-6 bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-4">
-                    <div class="flex flex-wrap items-center gap-4">
-                        <!-- Búsqueda -->
-                        <div class="flex-1 min-w-[250px]">
+            <!-- Autobuses Activos en Servicio -->
+            <div class="mb-6 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 overflow-hidden shadow-sm sm:rounded-lg border-2 border-green-200 dark:border-green-800">
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-100">🚌 Autobuses en Servicio Ahora</h3>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Autobuses activos y disponibles</p>
+                        </div>
+                        <span class="px-3 py-1 text-sm font-semibold rounded-full bg-success-100 text-success-800 dark:bg-success-900 dark:text-success-200">
+                            {{ $buses->where('status', 'active')->count() }} activos
+                        </span>
+                    </div>
+
+                    @php
+                        $activeBuses = $buses->where('status', 'active');
+                        $routes = \App\Models\Route::where('is_active', true)->get();
+                    @endphp
+
+                    @if($activeBuses->count() > 0)
+                        <!-- Filtros para Autobuses Activos -->
+                        <div class="mb-4 space-y-3">
                             <div class="relative">
                                 <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                    <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                                     </svg>
                                 </div>
-                                <input type="text" id="bus-search"
-                                       class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                       placeholder="Buscar por placa, modelo, ruta o conductor..."
-                                       onkeyup="filterBuses()">
+                                <input type="text" id="active-bus-search"
+                                       class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                                       placeholder="Buscar por placa, modelo o conductor..."
+                                       onkeyup="filterActiveBuses()">
+                            </div>
+                            <div>
+                                <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mr-2">Filtrar por Ruta:</label>
+                                <select id="route-filter-active" class="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                        onchange="filterActiveBuses()">
+                                    <option value="">Todas las rutas</option>
+                                    @foreach($routes as $route)
+                                        <option value="{{ strtolower($route->name) }}">{{ $route->name }}</option>
+                                    @endforeach
+                                </select>
                             </div>
                         </div>
 
-                        <!-- Filtro de Estado -->
-                        <div>
-                            <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mr-2">Estado:</label>
-                            <select id="status-filter" class="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md text-sm"
-                                    onchange="filterBuses()">
-                                <option value="">Todos</option>
-                                <option value="active">Activos</option>
-                                <option value="inactive">Inactivos</option>
-                            </select>
+                        <div id="active-buses-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                            @foreach($activeBuses as $bus)
+                                <div class="active-bus-card border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow bg-white dark:bg-gray-800"
+                                     data-plate="{{ strtolower($bus->license_plate) }}"
+                                     data-model="{{ strtolower($bus->model) }}"
+                                     data-driver="{{ strtolower($bus->driver->name ?? '') }}"
+                                     data-route="{{ strtolower($bus->routes->first()->name ?? '') }}">
+                                    <div class="flex justify-between items-start mb-3">
+                                        <div>
+                                            <div class="font-semibold text-gray-700 dark:text-gray-100">{{ $bus->license_plate }}</div>
+                                            <div class="text-sm text-gray-500 dark:text-gray-400">{{ $bus->model }}</div>
+                                        </div>
+                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-success-100 text-success-800 dark:bg-success-900 dark:text-success-200">
+                                            Activo
+                                        </span>
+                                    </div>
+
+                                    @if($bus->routes->first())
+                                        <div class="mb-2 flex items-center">
+                                            <div class="w-3 h-3 rounded-full mr-2" style="background-color: {{ $bus->routes->first()->color ?? '#3388ff' }}"></div>
+                                            <span class="text-sm font-medium text-gray-700 dark:text-gray-100">{{ $bus->routes->first()->name }}</span>
+                                        </div>
+                                    @endif
+
+                                    <div class="space-y-1 text-sm mb-3">
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600 dark:text-gray-400">Conductor:</span>
+                                            <span class="text-gray-700 dark:text-gray-100">{{ $bus->driver->name ?? 'Sin asignar' }}</span>
+                                        </div>
+                                    </div>
+
+                                    <a href="{{ route('passenger.dashboard', ['bus_id' => $bus->id]) }}"
+                                       class="w-full inline-flex justify-center items-center px-3 py-2 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium rounded-md transition-colors">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        </svg>
+                                        Ver en Mapa
+                                    </a>
+                                </div>
+                            @endforeach
                         </div>
-                    </div>
+
+                        <div id="no-active-buses-message" class="hidden text-center py-8">
+                            <p class="text-gray-500 dark:text-gray-400">No se encontraron autobuses activos con los filtros seleccionados.</p>
+                        </div>
+                    @else
+                        <div class="text-center py-8">
+                            <p class="text-gray-500 dark:text-gray-400">No hay autobuses activos en este momento.</p>
+                        </div>
+                    @endif
                 </div>
             </div>
 
-            <!-- Lista de Autobuses -->
-            @if($buses->count() > 0)
-                <div id="buses-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    @foreach($buses as $bus)
-                        <div class="bus-card bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-lg transition-shadow"
-                             data-status="{{ $bus->status }}"
-                             data-availability="{{ $bus->available_seats > 0 ? 'available' : 'full' }}"
-                             data-plate="{{ strtolower($bus->license_plate) }}"
-                             data-model="{{ strtolower($bus->model) }}"
-                             data-route="{{ strtolower($bus->routes->first()->name ?? '') }}"
-                             data-driver="{{ strtolower($bus->driver->name ?? '') }}">
-                            <div class="p-6">
-                                <!-- Encabezado del Autobús -->
-                                <div class="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">{{ $bus->license_plate }}</h3>
-                                        <p class="text-sm text-gray-500 dark:text-gray-400">{{ $bus->model }}</p>
-                                    </div>
-                                    <span class="px-3 py-1 text-xs font-semibold rounded-full
-                                        {{ $bus->status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                                           ($bus->status === 'emergency' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
-                                           'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300') }}">
-                                        {{ $bus->status === 'active' ? 'Activo' :
-                                           ($bus->status === 'emergency' ? 'Emergencia' : 'Inactivo') }}
-                                    </span>
-                                </div>
-
-                                <!-- Ruta Asignada -->
-                                @if($bus->routes && $bus->routes->count() > 0)
-                                    @php $route = $bus->routes->first(); @endphp
-                                    <div class="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                                        <div class="flex items-center">
-                                            <div class="w-4 h-4 rounded-full mr-2 flex-shrink-0" style="background-color: {{ $route->color ?? '#3388ff' }}"></div>
-                                            <div class="flex-1">
-                                                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $route->name }}</p>
-                                                @if($route->code)
-                                                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ $route->code }}</p>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    </div>
-                                @else
-                                    <div class="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                                        <p class="text-sm text-gray-500 dark:text-gray-400 italic">Sin ruta asignada</p>
-                                    </div>
-                                @endif
-
-                                <!-- Información del Conductor -->
-                                <div class="mb-4 space-y-2 text-sm">
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-600 dark:text-gray-400">Conductor:</span>
-                                        <span class="font-medium text-gray-900 dark:text-gray-100">
-                                            {{ $bus->driver->name ?? 'Sin asignar' }}
-                                        </span>
-                                    </div>
-                                    @if($bus->driver && $bus->driver->average_rating)
-                                        <div class="flex justify-between">
-                                            <span class="text-gray-600 dark:text-gray-400">Calificación:</span>
-                                            <span class="font-medium text-gray-900 dark:text-gray-100">
-                                                ⭐ {{ number_format($bus->driver->average_rating, 1) }}
-                                            </span>
-                                        </div>
-                                    @endif
-                                </div>
-
-
-                                <!-- Última Actualización -->
-                                @if($bus->last_location_update)
-                                    <div class="mb-4 text-xs text-gray-500 dark:text-gray-400">
-                                        <span class="flex items-center">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                            </svg>
-                                            Actualizado {{ $bus->last_location_update->diffForHumans() }}
-                                        </span>
-                                    </div>
-                                @endif
-
-                                <!-- Acciones -->
-                                <div class="flex gap-2">
-                                    @if($bus->status === 'active' && $bus->current_latitude && $bus->current_longitude)
-                                        <a href="{{ route('passenger.dashboard', ['route_id' => $bus->routes->first()?->id, 'bus_id' => $bus->id]) }}"
-                                           class="flex-1 inline-flex justify-center items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                            </svg>
-                                            Ver en Mapa
-                                        </a>
-                                    @endif
-
-                                    @if($bus->driver && $bus->status === 'active')
-                                        <button onclick="showRatingModal({{ $bus->driver->id }}, '{{ $bus->driver->name }}')"
-                                                class="px-4 py-2 bg-yellow-500 text-white text-sm font-medium rounded-md hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
-                                            ⭐ Calificar
-                                        </button>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            @else
-                <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-12 text-center">
-                        <svg class="mx-auto h-16 w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
-                        </svg>
-                        <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-gray-100">No hay autobuses registrados</h3>
-                        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Los autobuses aparecerán aquí una vez que el administrador los agregue.</p>
-                    </div>
-                </div>
-            @endif
         </div>
     </div>
 
@@ -214,23 +166,23 @@
     </div>
 
     <script>
-        // Filtrar autobuses
-        function filterBuses() {
-            const searchTerm = document.getElementById('bus-search').value.toLowerCase();
-            const statusFilter = document.getElementById('status-filter').value;
-            const busCards = document.querySelectorAll('.bus-card');
+        // Filtrar autobuses activos
+        function filterActiveBuses() {
+            const searchTerm = document.getElementById('active-bus-search').value.toLowerCase();
+            const routeFilter = document.getElementById('route-filter-active').value;
+            const busCards = document.querySelectorAll('.active-bus-card');
+            let visibleCount = 0;
 
             busCards.forEach(card => {
-                const status = card.dataset.status;
                 const plate = card.dataset.plate;
                 const model = card.dataset.model;
-                const route = card.dataset.route;
                 const driver = card.dataset.driver;
+                const route = card.dataset.route;
 
                 let showCard = true;
 
-                // Filtro de estado
-                if (statusFilter && status !== statusFilter) {
+                // Filtro de ruta
+                if (routeFilter && route !== routeFilter) {
                     showCard = false;
                 }
 
@@ -238,16 +190,29 @@
                 if (searchTerm && showCard) {
                     const matchesSearch = plate.includes(searchTerm) ||
                                         model.includes(searchTerm) ||
-                                        route.includes(searchTerm) ||
-                                        driver.includes(searchTerm);
+                                        driver.includes(searchTerm) ||
+                                        route.includes(searchTerm);
                     if (!matchesSearch) {
                         showCard = false;
                     }
                 }
 
                 card.style.display = showCard ? 'block' : 'none';
+                if (showCard) visibleCount++;
             });
+
+            // Mostrar/ocultar mensaje de "no encontrado"
+            const noResultsMsg = document.getElementById('no-active-buses-message');
+            const busesGrid = document.getElementById('active-buses-grid');
+            if (visibleCount === 0 && busCards.length > 0) {
+                busesGrid.style.display = 'none';
+                noResultsMsg.classList.remove('hidden');
+            } else {
+                busesGrid.style.display = 'grid';
+                noResultsMsg.classList.add('hidden');
+            }
         }
+
 
         // Modal de calificación
         function showRatingModal(driverId, driverName) {

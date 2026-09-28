@@ -174,7 +174,8 @@ class DriverController extends Controller
             'status' => 'in_progress',
         ]);
 
-        $bus->update(['status' => 'active']);
+        // El estado del autobús solo puede ser cambiado por el administrador
+        // No se modifica al iniciar el viaje
 
         return back()->with('success',
             'Viaje iniciado correctamente. Parada inicial: ' . $closestStop->name
@@ -196,7 +197,8 @@ class DriverController extends Controller
             'status' => 'completed',
         ]);
 
-        $trip->bus->update(['status' => 'inactive']);
+        // El estado del autobús solo puede ser cambiado por el administrador
+        // No se modifica al finalizar el viaje
 
         return back()->with('success', 'Viaje finalizado correctamente');
     }

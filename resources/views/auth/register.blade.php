@@ -10,7 +10,7 @@
                     :value="old('first_name')" required autofocus autocomplete="given-name"
                     x-model="first_name"
                     @input="validateFirstName"
-                    @blur="touchedFields.first_name = true"
+                    @blur="touchedFields.first_name = true; validateFirstName()"
                     maxlength="35"
                     ::class="touchedFields.first_name && errors.first_name ? 'border-red-500' : ''" />
                 <p x-show="touchedFields.first_name && errors.first_name" x-text="errors.first_name" class="mt-1 text-sm text-red-600"></p>
@@ -24,7 +24,7 @@
                     :value="old('last_name')" required autocomplete="family-name"
                     x-model="last_name"
                     @input="validateLastName"
-                    @blur="touchedFields.last_name = true"
+                    @blur="touchedFields.last_name = true; validateLastName()"
                     maxlength="35"
                     ::class="touchedFields.last_name && errors.last_name ? 'border-red-500' : ''" />
                 <p x-show="touchedFields.last_name && errors.last_name" x-text="errors.last_name" class="mt-1 text-sm text-red-600"></p>
@@ -38,7 +38,7 @@
                     :value="old('maternal_last_name')" required
                     x-model="maternal_last_name"
                     @input="validateMaternalLastName"
-                    @blur="touchedFields.maternal_last_name = true"
+                    @blur="touchedFields.maternal_last_name = true; validateMaternalLastName()"
                     maxlength="35"
                     ::class="touchedFields.maternal_last_name && errors.maternal_last_name ? 'border-red-500' : ''" />
                 <p x-show="touchedFields.maternal_last_name && errors.maternal_last_name" x-text="errors.maternal_last_name" class="mt-1 text-sm text-red-600"></p>
@@ -52,7 +52,7 @@
                     :value="old('phone')" required
                     x-model="phone"
                     @input="validatePhone"
-                    @blur="touchedFields.phone = true"
+                    @blur="touchedFields.phone = true; validatePhone()"
                     maxlength="10"
                     placeholder="10 dígitos"
                     ::class="touchedFields.phone && errors.phone ? 'border-red-500' : ''" />
@@ -67,7 +67,7 @@
                     :value="old('email')" required autocomplete="username"
                     x-model="email"
                     @input="validateEmail"
-                    @blur="touchedFields.email = true"
+                    @blur="touchedFields.email = true; validateEmail()"
                     ::class="touchedFields.email && errors.email ? 'border-red-500' : ''" />
                 <p x-show="touchedFields.email && errors.email" x-text="errors.email" class="mt-1 text-sm text-red-600"></p>
                 <x-input-error :messages="$errors->get('email')" class="mt-2" />
@@ -82,7 +82,7 @@
                                 required autocomplete="new-password"
                                 x-model="password"
                                 @input="validatePassword"
-                                @blur="touchedFields.password = true"
+                                @blur="touchedFields.password = true; validatePassword()"
                                 ::class="touchedFields.password && errors.password ? 'border-red-500' : ''" />
                 <p x-show="touchedFields.password && errors.password" x-text="errors.password" class="mt-1 text-sm text-red-600"></p>
                 <x-input-error :messages="$errors->get('password')" class="mt-2" />
@@ -97,7 +97,7 @@
                                 required autocomplete="new-password"
                                 x-model="password_confirmation"
                                 @input="validatePasswordConfirmation"
-                                @blur="touchedFields.password_confirmation = true"
+                                @blur="touchedFields.password_confirmation = true; validatePasswordConfirmation()"
                                 ::class="touchedFields.password_confirmation && errors.password_confirmation ? 'border-red-500' : ''" />
                 <p x-show="touchedFields.password_confirmation && errors.password_confirmation" x-text="errors.password_confirmation" class="mt-1 text-sm text-red-600"></p>
                 <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />

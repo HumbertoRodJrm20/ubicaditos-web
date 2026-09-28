@@ -58,79 +58,96 @@
                 </a>
             </div>
 
-            <!-- Autobuses Activos -->
+            <!-- Historial de Viajes -->
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6">
-                    <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-100 mb-4">Autobuses en Servicio</h3>
-                    @if($activeBuses->count() > 0)
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            @foreach($activeBuses as $bus)
-                                <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow">
-                                    <div class="flex justify-between items-start mb-3">
-                                        <div>
-                                            <div class="font-semibold text-gray-700 dark:text-gray-100">{{ $bus->license_plate }}</div>
-                                            <div class="text-sm text-gray-500 dark:text-gray-400">{{ $bus->model }}</div>
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-100">📜 Historial de Viajes</h3>
+                        <span class="text-sm text-gray-500 dark:text-gray-400">Últimos 10 viajes</span>
+                    </div>
+
+                    @php
+                        // Obtener los últimos viajes del pasajero (simulado por ahora basado en ratings)
+                        $recentRatings = auth()->user()->ratingsGiven()->with(['driver', 'trip.bus', 'trip.route'])->latest()->take(10)->get();
+                    @endphp
+
+                    @if($recentRatings->count() > 0)
+                        <div class="space-y-3">
+                            @foreach($recentRatings as $rating)
+                                @php
+                                    $trip = $rating->trip;
+                                    $bus = $trip?->bus;
+                                    $route = $trip?->route;
+                                    $driver = $rating->driver;
+                                @endphp
+                                <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                    <div class="flex items-start justify-between">
+                                        <div class="flex-1">
+                                            <div class="flex items-center mb-2">
+                                                @if($route)
+                                                    <div class="w-3 h-3 rounded-full mr-2" style="background-color: {{ $route->color ?? '#3388ff' }}"></div>
+                                                    <span class="font-semibold text-gray-700 dark:text-gray-100">{{ $route->name }}</span>
+                                                @else
+                                                    <span class="font-semibold text-gray-700 dark:text-gray-100">Viaje sin ruta</span>
+                                                @endif
+                                            </div>
+
+                                            <div class="grid grid-cols-2 gap-2 text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                                @if($bus)
+                                                    <div>
+                                                        <span class="font-medium">Autobús:</span> {{ $bus->license_plate }}
+                                                    </div>
+                                                @endif
+                                                <div>
+                                                    <span class="font-medium">Conductor:</span> {{ $driver->name ?? 'N/A' }}
+                                                </div>
+                                            </div>
+
+                                            @if($trip)
+                                                <div class="text-xs text-gray-500 dark:text-gray-400">
+                                                    📅 {{ $trip->started_at->format('d/m/Y H:i') }}
+                                                    @if($trip->completed_at)
+                                                        - {{ $trip->completed_at->format('H:i') }}
+                                                    @endif
+                                                </div>
+                                            @else
+                                                <div class="text-xs text-gray-500 dark:text-gray-400">
+                                                    📅 {{ $rating->created_at->format('d/m/Y H:i') }}
+                                                </div>
+                                            @endif
                                         </div>
-                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-success-100 text-success-800 dark:bg-success-900 dark:text-success-200">
-                                            Activo
-                                        </span>
+
+                                        <div class="flex flex-col items-end ml-4">
+                                            <div class="flex items-center mb-1">
+                                                @for($i = 1; $i <= 5; $i++)
+                                                    <svg class="w-4 h-4 {{ $i <= $rating->rating ? 'text-yellow-400' : 'text-gray-300' }}" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                                                    </svg>
+                                                @endfor
+                                            </div>
+                                            <span class="text-xs text-gray-500 dark:text-gray-400">Tu calificación</span>
+                                        </div>
                                     </div>
 
-                                    @if($bus->routes->first())
-                                        <div class="mb-2 flex items-center">
-                                            <div class="w-3 h-3 rounded-full mr-2" style="background-color: {{ $bus->routes->first()->color ?? '#3388ff' }}"></div>
-                                            <span class="text-sm font-medium text-gray-700 dark:text-gray-100">{{ $bus->routes->first()->name }}</span>
+                                    @if($rating->comment)
+                                        <div class="mt-2 text-sm text-gray-600 dark:text-gray-400 italic border-l-2 border-gray-300 dark:border-gray-600 pl-3">
+                                            "{{ $rating->comment }}"
                                         </div>
                                     @endif
-
-                                    <div class="space-y-1 text-sm">
-                                        <div class="flex justify-between">
-                                            <span class="text-gray-600 dark:text-gray-400">Conductor:</span>
-                                            <span class="text-gray-700 dark:text-gray-100">{{ $bus->driver->name ?? 'Sin asignar' }}</span>
-                                        </div>
-                                    </div>
                                 </div>
                             @endforeach
                         </div>
                     @else
-                        <div class="text-center py-8">
-                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+                        <div class="text-center py-12 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                            <svg class="mx-auto h-16 w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
-                            <p class="mt-2 text-gray-500 dark:text-gray-400">No hay autobuses en servicio en este momento.</p>
+                            <p class="mt-4 text-lg font-medium text-gray-700 dark:text-gray-300">No tienes historial de viajes todavía</p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">Tus viajes recientes aparecerán aquí</p>
+                            <a href="{{ route('passenger.dashboard') }}" class="inline-block mt-4 px-6 py-2 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium rounded-md transition-colors">
+                                Ver mapa de rutas
+                            </a>
                         </div>
-                    @endif
-                </div>
-            </div>
-
-            <!-- Rutas Disponibles -->
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6">
-                    <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-100 mb-4">Rutas Disponibles</h3>
-                    @if($routes->count() > 0)
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            @foreach($routes as $route)
-                                <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                                    <div class="flex items-start">
-                                        <div class="w-4 h-4 rounded-full mt-1 mr-3 flex-shrink-0" style="background-color: {{ $route->color ?? '#3388ff' }}"></div>
-                                        <div class="flex-1">
-                                            <h4 class="font-semibold text-gray-700 dark:text-gray-100">{{ $route->name }}</h4>
-                                            <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">{{ $route->description }}</p>
-                                            <div class="flex items-center justify-between text-sm">
-                                                <span class="text-gray-600 dark:text-gray-400">
-                                                    {{ $route->stops->count() }} paradas
-                                                </span>
-                                                <span class="text-gray-600 dark:text-gray-400">
-                                                    ~{{ $route->estimated_duration }} min
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    @else
-                        <p class="text-gray-500 dark:text-gray-400">No hay rutas disponibles.</p>
                     @endif
                 </div>
             </div>
@@ -213,4 +230,5 @@
             </div>
         </div>
     </div>
+
 </x-app-layout>
