@@ -23,19 +23,22 @@ composer run test
 | `tests/Feature/Auth/PasswordConfirmationTest.php` | Confirmación de contraseña. |
 | `tests/Feature/Auth/EmailVerificationTest.php` | Verificación de correo. |
 | `tests/Feature/ProfileTest.php` | Edición y eliminación del perfil. |
+| `tests/Feature/RoleAccessTest.php` | Acceso por rol (admin/driver/passenger), redirección del dashboard y redirección de invitados. |
+| `tests/Feature/EndpointProtectionTest.php` | Protección con sesión de Breeze de los endpoints web y JSON, y restricción de acciones de conductor. |
+| `tests/Feature/DatabaseConfigurationTest.php` | SQLite en desarrollo/pruebas y PostgreSQL configurado solo para producción y staging. |
 | `tests/Feature/ExampleTest.php` | Respuesta de la ruta `/`. |
 | `tests/Unit/ExampleTest.php` | Ejemplo unitario. |
 
-Son las pruebas generadas por Breeze y Laravel. **Actualmente fallan 21 de 25** porque no se actualizaron tras los cambios del proyecto:
+**Estado actual:** la suite completa está **en verde (40 pruebas, 172 aserciones)** tras la iteración 1. El desglose por archivo aparece en [API Swagger — Iteración 1](12-swagger-api.md) y en el [_devlog](_devlog.md).
 
-| Causa | Pruebas afectadas | Solución |
-|-------|-------------------|----------|
-| `UserFactory` genera el campo `name`, que ya no existe en `users`. | Todas las que crean usuarios. | Actualizar la factory con `first_name`, `last_name`, `maternal_last_name`, `phone` y `role`. |
-| El registro exige campos nuevos (apellidos, teléfono, contraseña fuerte) y redirige a `passenger.menu`. | `RegistrationTest`. | Enviar los campos requeridos y ajustar la redirección esperada. |
-| `/` redirige a `/login` (302) en lugar de responder 200. | `ExampleTest`. | Esperar `assertRedirect(route('login'))`. |
-| `ProfileUpdateRequest` valida `name`. | `ProfileTest`. | Validar los campos de nombre separados. |
+Las pruebas generadas por Breeze habían quedado desincronizadas con el esquema real de `users` en la iteración 0; se corrigieron en la iteración 1:
 
-Ejemplo de factory actualizada:
+| Corrección | Detalle |
+|------------|---------|
+| `UserFactory` | Ahora genera `first_name`, `last_name`, `maternal_last_name`, `phone` y `role` en lugar del campo eliminado `name`. |
+| Registro | Envía los campos requeridos por `RegisteredUserController` (nombre, apellidos, teléfono, contraseña fuerte), verifica que el usuario nuevo nace con rol `passenger` y que redirige a `passenger.menu`; además valida datos inválidos. |
+| `/` | `ExampleTest` espera la redirección 302 a `route('login')`. |
+| Perfil | `ProfileUpdateRequest` valida los tres campos de nombre (regex de letras y espacios) y la vista del perfil los envía junto con el teléfono. |
 
 ```php
 public function definition(): array
@@ -55,7 +58,7 @@ public function definition(): array
 }
 ```
 
-No existen pruebas para la lógica propia del proyecto (roles, CRUD de administración, inicio de viajes, favoritos, reportes).
+La lógica propia del proyecto (roles, protección de endpoints, configuración de base de datos por ambiente) ya tiene cobertura propia en `RoleAccessTest`, `EndpointProtectionTest` y `DatabaseConfigurationTest`; el resto (CRUD de administración, inicio de viajes, favoritos, reportes) aún no.
 
 ## Observaciones técnicas
 
@@ -66,8 +69,8 @@ Hallazgos del análisis del código, ordenados por impacto.
 | # | Ubicación | Descripción |
 |---|-----------|-------------|
 | 1 | `app/Models/Bus.php` | `current_passengers` no está en `$fillable`, así que `DriverController@updatePassengers` y `buses:simulate` no guardan el número de pasajeros. |
-| 2 | `ProfileUpdateRequest` y `profile/partials/update-profile-information-form` | Validan y envían `name`, pero la tabla usa `first_name`, `last_name` y `maternal_last_name`; la actualización del perfil no puede funcionar correctamente. |
-| 3 | `ReportController@index` | La consulta de ocupación por hora usa `strftime()`, exclusiva de SQLite; falla en MySQL o PostgreSQL. |
+| 2 | `ProfileUpdateRequest` y `profile/partials/update-profile-information-form` | **Resuelto en la iteración 1:** ya validan y envían `first_name`, `last_name`, `maternal_last_name` y `phone`. |
+| 3 | `ReportController@index` | La consulta de ocupación por hora usa `strftime()`, exclusiva de SQLite; falla en PostgreSQL (producción/staging). Sustituir por `EXTRACT(HOUR FROM started_at)`. |
 | 4 | `Admin\StopController` | Registrado como recurso pero sin implementar; no hay forma de gestionar paradas desde la interfaz. |
 | 5 | `resources/views/admin/emergencies.blade.php` | Usa `route('admin.emergencies.resolve')`, que no existe; tampoco hay ruta ni controlador que muestre la vista. Las emergencias reportadas solo aparecen como conteos en los reportes. |
 | 6 | `Route::resource` en `routes/web.php` | Se registran `show` (y `index` de usuarios) sin métodos en los controladores. Conviene usar `->except(['show'])` o `->only([...])`. |

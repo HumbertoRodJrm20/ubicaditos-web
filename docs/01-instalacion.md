@@ -9,7 +9,7 @@ Esta sección describe cómo preparar un entorno local de Ubicaditos, las variab
 | PHP | 8.2 | Ejecución de Laravel 12 |
 | Composer | 2.x | Dependencias de PHP |
 | Node.js | 20.19+ (requerido por Vite 7) | Compilación de assets |
-| npm o Bun | npm 10+ / Bun 1.x | Gestor de paquetes JS (el repositorio incluye `bun.lock`) |
+| Bun | 1.x | Gestor de paquetes JS. El repositorio incluye `bun.lock`; bun reemplaza a npm en todos los scripts. |
 | SQLite | 3.x | Base de datos por defecto |
 
 Extensiones de PHP necesarias: `pdo_sqlite`, `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `fileinfo`, `dom` y `gd` (esta última la usa DomPDF para imágenes en los reportes).
@@ -21,7 +21,7 @@ Extensiones de PHP necesarias: `pdo_sqlite`, `mbstring`, `openssl`, `tokenizer`,
 ```bash
 # Dependencias
 composer install
-npm install                 # alternativa: bun install
+bun install
 
 # Archivo de entorno y clave de la aplicación
 cp .env.example .env
@@ -34,7 +34,7 @@ php artisan migrate
 # Datos de prueba (rutas reales de Oaxaca, 54 autobuses, 700 usuarios, viajes y calificaciones)
 php artisan db:seed
 
-# Compilar assets para producción (o usar "npm run dev" en desarrollo)
+# Compilar assets para producción (o usar "bun run dev" en desarrollo)
 bun run build
 ```
 
@@ -46,7 +46,7 @@ El `composer.json` define un script que ejecuta la instalación completa (sin se
 composer run setup
 ```
 
-Equivale a: `composer install` → copiar `.env` → `key:generate` → `migrate --force` → `npm install` → `npm run build`.
+Equivale a: `composer install` → copiar `.env` → `key:generate` → `migrate --force` → `bun install` → `bun run build`.
 
 ### Reiniciar la base de datos
 
@@ -68,13 +68,13 @@ Lanza en paralelo, mediante `concurrently`, tres procesos:
 | -------- | ------------------------------------ | -------------------------------------------- |
 | `server` | `php artisan serve`                  | Servidor HTTP en `http://localhost:8000`     |
 | `queue`  | `php artisan queue:listen --tries=1` | Procesa trabajos en cola (driver `database`) |
-| `vite`   | `npm run dev`                        | Servidor de Vite con recarga en caliente     |
+| `vite`   | `bun run dev`                        | Servidor de Vite con recarga en caliente     |
 
 Si prefieres levantarlos por separado:
 
 ```bash
 php artisan serve
-npm run dev
+bun run dev
 ```
 
 ### Simular movimiento de autobuses
@@ -100,8 +100,8 @@ Consulta el servicio público OSRM y guarda la geometría de cada ruta en `route
 | Composer | `composer run setup` | Instalación completa del proyecto |
 | Composer | `composer run dev` | Servidor, cola y Vite en paralelo |
 | Composer | `composer run test` | Limpia la caché de configuración y ejecuta las pruebas |
-| npm | `npm run dev` | Servidor de desarrollo de Vite |
-| npm | `npm run build` | Compila y minifica assets en `public/build` |
+| bun | `bun run dev` | Servidor de desarrollo de Vite |
+| bun | `bun run build` | Compila y minifica assets en `public/build` |
 
 ## Variables de entorno
 
@@ -115,24 +115,36 @@ El archivo `.env.example` contiene la configuración base de Laravel. Las variab
 | `APP_URL` | `http://localhost:8000` | URL base de la aplicación. |
 | `APP_LOCALE` | `es` | Idioma. Existe `lang/es.json` con traducciones de las vistas de perfil. |
 | `APP_FAKER_LOCALE` | `es_MX` | Idioma de los datos generados por Faker. |
-| `DB_CONNECTION` | `sqlite` | Motor de base de datos. Ver nota sobre MySQL más abajo. |
+| `DB_CONNECTION` | `sqlite` | Motor de base de datos en desarrollo. En producción y staging se usa PostgreSQL (ver abajo). |
 | `SESSION_DRIVER` | `database` | Las sesiones se guardan en la tabla `sessions`. |
 | `QUEUE_CONNECTION` | `database` | Las colas usan la tabla `jobs`. |
 | `CACHE_STORE` | `database` | La caché usa la tabla `cache`. |
 | `MAIL_MAILER` | `log` | Los correos (recuperación de contraseña, verificación) se escriben en `storage/logs/laravel.log`. |
 
-### Usar MySQL o MariaDB
+### PostgreSQL en producción y staging (no en desarrollo)
+
+**Política de la iteración 1:** en desarrollo (rama `develop`, `APP_ENV=local`) siempre se usa **SQLite**; las ramas `main` (producción) y `staging` usan **PostgreSQL**. El repositorio incluye archivos de ejemplo listos para copiar a `.env` en esos ambientes:
+
+| Ambiente | Rama | Archivo a copiar a `.env` | Motor |
+|----------|------|---------------------------|-------|
+| Producción | `main` | `.env.production.example` | PostgreSQL |
+| Staging | `staging` | `.env.staging.example` | PostgreSQL |
+| Desarrollo | `develop` | `.env.example` | SQLite |
+
+El bloque relevante de `.env.production.example` / `.env.staging.example`:
 
 ```dotenv
-DB_CONNECTION=mysql
+DB_CONNECTION=pgsql
 DB_HOST=127.0.0.1
-DB_PORT=3306
+DB_PORT=5432
 DB_DATABASE=ubicaditos
-DB_USERNAME=root
+DB_USERNAME=ubicaditos
 DB_PASSWORD=secret
 ```
 
-> **Importante:** el reporte de "ocupación promedio por hora" en `ReportController@index` usa la función `strftime()`, exclusiva de SQLite. Al migrar a MySQL debe sustituirse por `HOUR(started_at)`. Ver [Pruebas y estado del proyecto](10-pruebas-y-estado.md).
+El conector `pgsql` ya viene registrado en `config/database.php` con el puerto estándar 5432, y el entorno actual dispone de la extensión `pdo_pgsql`. `.env.example` conserva `DB_CONNECTION=sqlite` y solo documenta el bloque de PostgreSQL como referencia comentada.
+
+> **Nota:** el reporte de "ocupación promedio por hora" en `ReportController@index` usa la función `strftime()`, exclusiva de SQLite. Al migrar a PostgreSQL debe sustituirse por `EXTRACT(HOUR FROM started_at)` en la consulta nativa. Ver [Pruebas y estado del proyecto](10-pruebas-y-estado.md).
 
 ## Servicios externos
 
@@ -154,7 +166,7 @@ La geolocalización del navegador (`navigator.geolocation`) solo funciona en **c
 
 ```bash
 composer install --no-dev --optimize-autoloader
-npm ci && npm run build
+bun install && bun run build
 
 php artisan migrate --force
 php artisan config:cache
@@ -165,7 +177,7 @@ php artisan storage:link
 
 Recomendaciones:
 
-- Establecer `APP_ENV=production` y `APP_DEBUG=false`.
+- Copiar `.env.production.example` a `.env` y establecer `APP_ENV=production`, `APP_DEBUG=false` y las credenciales reales de PostgreSQL.
 - Servir la aplicación desde el directorio `public/` (incluye `.htaccess` para Apache).
 - Asegurar permisos de escritura para el servidor web en `storage/` y `bootstrap/cache/`.
 - Usar HTTPS, indispensable para la geolocalización en dispositivos de conductores y pasajeros.

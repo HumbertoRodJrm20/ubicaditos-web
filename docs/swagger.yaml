@@ -1,0 +1,1037 @@
+openapi: 3.0.3
+
+info:
+  title: "Ubicaditos API"
+  description: |
+    API de la plataforma de monitoreo del transporte público urbano de
+    Oaxaca, México. Documentación de la **primera iteración**: autenticación
+    y sesión con Laravel Breeze, control de acceso por roles
+    (admin / driver / passenger), datos de transporte en tiempo real
+    (autobuses activos, ubicaciones y ocupación) y acciones de conductor.
+
+    La aplicación usa autenticación **por sesión (cookie)** en toda la
+    aplicación, incluida la API JSON: no hay tokens; el navegador envía la
+    cookie `laravel_session` (y la cabecera `X-XSRF-TOKEN` con la cookie
+    `XSRF-TOKEN` para los métodos que mutan estado).
+
+    Repositorio: `ubicaditos-web` · Laravel 12 · Rama de producción: `main`
+    (PostgreSQL) · Staging: `staging` (PostgreSQL) · Desarrollo: `develop`
+    (SQLite).
+  version: 1.0.0
+  contact:
+    name: Equipo Ubicaditos
+  license:
+    name: Propietario
+
+servers:
+  - url: http://localhost:8000
+    description: Desarrollo local (Laravel + SQLite)
+  - url: https://staging.ubicaditos.example.com
+    description: Staging (PostgreSQL)
+  - url: https://ubicaditos.example.com
+    description: Producción (PostgreSQL)
+
+tags:
+  - name: Autenticación
+    description: Registro, inicio y cierre de sesión, recuperación de contraseña.
+  - name: API en tiempo real
+    description: Autobuses activos, ubicaciones y autobuses por ruta (JSON, requiere sesión).
+  - name: Conductor
+    description: Viajes, ubicación, pasajeros y emergencias (rol driver).
+  - name: Pasajero
+    description: Rutas, paradas favoritas y calificaciones (rol passenger).
+  - name: Administración
+    description: Panel de administración, estadísticas y reportes (rol admin).
+  - name: Perfil
+    description: Actualización y baja de la cuenta.
+
+security:
+  - SessionAuth: []
+
+paths:
+  /login:
+    get:
+      tags: [Autenticación]
+      summary: Muestra el formulario de inicio de sesión.
+      security: []
+      responses:
+        '200':
+          description: Formulario de login (HTML).
+    post:
+      tags: [Autenticación]
+      summary: Inicia sesión con correo y contraseña.
+      description: Valida credenciales con throttling (5 intentos por minuto) y crea la sesión.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '302':
+          description: Redirige a `/dashboard`; el dashboard deriva al panel según el rol.
+        '422':
+          description: Credenciales inválidas o demasiados intentos (login rate limited).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /logout:
+    post:
+      tags: [Autenticación]
+      summary: Cierra la sesión actual.
+      responses:
+        '302':
+          description: Redirige a `/login`.
+
+  /register:
+    get:
+      tags: [Autenticación]
+      summary: Muestra el formulario de registro.
+      security: []
+      responses:
+        '200':
+          description: Formulario de registro (HTML).
+    post:
+      tags: [Autenticación]
+      summary: Registra un nuevo pasajero.
+      description: Crea el usuario con rol `passenger` por defecto e inicia sesión automáticamente.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '302':
+          description: Redirige a `/passenger/menu`.
+        '422':
+          description: Errores de validación (datos inválidos).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /check-email:
+    post:
+      tags: [Autenticación]
+      summary: Verifica la disponibilidad de un correo.
+      description: Usado por el formulario de registro para validar en tiempo real si el correo ya está registrado.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Disponibilidad (true si está disponible).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  available:
+                    type: boolean
+
+  /forgot-password:
+    post:
+      tags: [Autenticación]
+      summary: Envía por correo el enlace de recuperación de contraseña.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '302':
+          description: Redirige con mensaje de confirmación.
+        '422':
+          description: Correo no encontrado o demasiados envíos.
+
+  /reset-password:
+    post:
+      tags: [Autenticación]
+      summary: Restablece la contraseña con el token enviado por correo.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '302':
+          description: Redirige a `/login` con sesión iniciada.
+        '422':
+          description: Token inválido o errores de validación.
+
+  /profile:
+    get:
+      tags: [Perfil]
+      summary: Muestra el perfil del usuario autenticado.
+      responses:
+        '200':
+          description: Vista de perfil (HTML).
+    patch:
+      tags: [Perfil]
+      summary: Actualiza la información del perfil.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdateRequest'
+      responses:
+        '302':
+          description: Redirige a `/profile`.
+        '422':
+          description: Errores de validación.
+    delete:
+      tags: [Perfil]
+      summary: Elimina la cuenta del usuario.
+      description: Requiere la contraseña actual.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password:
+                  type: string
+                  format: password
+      responses:
+        '302':
+          description: Redirige a `/` (sesión cerrada) o de vuelta a `/profile` con errores.
+
+  /dashboard:
+    get:
+      tags: [Autenticación]
+      summary: Punto de entrada post-login; redirige al panel del rol.
+      description: |
+        Autenticado redirige a `/admin`, `/driver` o `/passenger` según
+        `user.role`. Requiere correo verificado (middleware `verified`).
+      responses:
+        '302':
+          description: Redirige al panel correspondiente al rol.
+        '401':
+          description: Sin sesión activa (redirige a `/login`).
+
+  /admin:
+    get:
+      tags: [Administración]
+      summary: Panel principal de administración.
+      responses:
+        '200':
+          description: Resumen con métricas de la flota.
+        '403':
+          description: El rol autenticado no es admin.
+        '401':
+          description: Sin sesión.
+
+  /admin/statistics:
+    get:
+      tags: [Administración]
+      summary: Estadísticas generales.
+      responses:
+        '200':
+          description: Métricas agregadas por fecha y ruta.
+        '403':
+          description: No autorizado (rol distinto de admin).
+
+  /admin/reports:
+    get:
+      tags: [Administración]
+      summary: Reportes operativos.
+      responses:
+        '200':
+          description: Reportes de ocupación, emergencias y actividad por hora/día/conductor.
+        '403':
+          description: No autorizado.
+
+  /api/buses/active:
+    get:
+      tags: [API en tiempo real]
+      summary: Lista los autobuses activos con ubicación.
+      description: Devuelve el arreglo JSON que consumen los mapas de pasajeros, conductores y administradores.
+      responses:
+        '200':
+          description: Autobuses activos (puede ser un arreglo vacío).
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Bus'
+        '401':
+          description: Sin sesión; redirige a `/login`.
+
+  /api/buses/{bus}/location:
+    get:
+      tags: [API en tiempo real]
+      summary: Obtiene la ubicación actual de un autobús.
+      parameters:
+        - in: path
+          name: bus
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: ID del autobús.
+      responses:
+        '200':
+          description: Ubicación del autobús.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusLocation'
+        '404':
+          description: Autobús no encontrado.
+
+  /api/routes/{route}/buses:
+    get:
+      tags: [API en tiempo real]
+      summary: Lista los autobuses asignados a una ruta.
+      description: Cada autobús incluye las relaciones `driver` y `route`, y el tiempo desde su última actualización.
+      parameters:
+        - in: path
+          name: route
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: ID de la ruta.
+      responses:
+        '200':
+          description: Autobuses de la ruta (puede ser un arreglo vacío).
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Bus'
+        '404':
+          description: Ruta no encontrada.
+
+  /driver:
+    get:
+      tags: [Conductor]
+      summary: Panel del conductor.
+      responses:
+        '200':
+          description: Vista del conductor con su posición, viajes y autobús asignado.
+        '403':
+          description: No autorizado (rol distinto de driver).
+
+  /driver/update-location:
+    post:
+      tags: [Conductor]
+      summary: Actualiza la ubicación del autobús asignado al conductor.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLocationRequest'
+      responses:
+        '200':
+          description: Ubicación actualizada.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '400':
+          description: El conductor no tiene un autobús asignado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: No autorizado.
+
+  /driver/update-passengers:
+    post:
+      tags: [Conductor]
+      summary: Actualiza el número de pasajeros a bordo.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_passengers]
+              properties:
+                current_passengers:
+                  type: integer
+                  minimum: 0
+      responses:
+        '200':
+          description: Conteo actualizado.
+        '422':
+          description: El conteo excede la capacidad del autobús o no es válido.
+
+  /driver/start-trip:
+    post:
+      tags: [Conductor]
+      summary: Inicia un viaje.
+      description: Requiere turno activo (`work_shift`) y que el conductor esté a menos de 500 m del inicio de la ruta (distancia de Haversine).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartTripRequest'
+      responses:
+        '302':
+          description: Redirige al panel del conductor.
+        '422':
+          description: Reglas de negocio/validación (sin turno, fuera de zona, sin ruta o autobús).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: No autorizado.
+
+  /driver/end-trip:
+    post:
+      tags: [Conductor]
+      summary: Finaliza el viaje activo.
+      responses:
+        '302':
+          description: Redirige al panel del conductor.
+        '422':
+          description: No hay un viaje activo.
+
+  /driver/emergency:
+    post:
+      tags: [Conductor]
+      summary: Reporta una emergencia.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmergencyRequest'
+      responses:
+        '302':
+          description: Emergencia registrada; redirige al panel del conductor.
+        '422':
+          description: Errores de validación.
+        '403':
+          description: No autorizado.
+
+  /passenger:
+    get:
+      tags: [Pasajero]
+      summary: Mapa principal del pasajero con autobuses y rutas en tiempo real.
+      responses:
+        '200':
+          description: Vista del mapa (HTML).
+        '403':
+          description: No autorizado (rol distinto de passenger).
+
+  /passenger/menu:
+    get:
+      tags: [Pasajero]
+      summary: Menú de opciones del pasajero.
+      responses:
+        '200':
+          description: Menú (HTML).
+
+  /passenger/routes:
+    get:
+      tags: [Pasajero]
+      summary: Lista de rutas disponibles.
+      responses:
+        '200':
+          description: Vista de rutas (HTML).
+
+  /passenger/buses:
+    get:
+      tags: [Pasajero]
+      summary: Lista de autobuses activos.
+      responses:
+        '200':
+          description: Vista de autobuses (HTML).
+
+  /passenger/favorites/{stop}:
+    post:
+      tags: [Pasajero]
+      summary: Agrega una parada a favoritos.
+      parameters:
+        - in: path
+          name: stop
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: ID de la parada.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nickname:
+                  type: string
+                  description: Apodo opcional para la parada favorita.
+                  maxLength: 255
+      responses:
+        '200':
+          description: Parada agregada (JSON).
+        '422':
+          description: La parada no existe o es inválida.
+        '403':
+          description: No autorizado.
+    delete:
+      tags: [Pasajero]
+      summary: Elimina una parada de favoritos.
+      parameters:
+        - in: path
+          name: stop
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: ID de la parada.
+      responses:
+        '200':
+          description: Parada eliminada (JSON).
+        '403':
+          description: No autorizado.
+
+  /passenger/rate/{driver}:
+    post:
+      tags: [Pasajero]
+      summary: Califica a un conductor.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RateRequest'
+      parameters:
+        - in: path
+          name: driver
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: ID del conductor a calificar.
+      responses:
+        '200':
+          description: Calificación registrada.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '422':
+          description: Calificación fuera del rango (1-5).
+        '403':
+          description: No autorizado.
+
+components:
+  securitySchemes:
+    SessionAuth:
+      type: apiKey
+      in: cookie
+      name: laravel_session
+      description: Sesión de Laravel Breeze (cookie). Los endpoints mutables también requieren la cabecera `X-XSRF-TOKEN`.
+
+  schemas:
+    User:
+      type: object
+      description: Usuario con rol (passenger, driver o admin).
+      properties:
+        id:
+          type: integer
+          example: 1
+        first_name:
+          type: string
+          example: Juan
+        last_name:
+          type: string
+          example: Pérez
+        maternal_last_name:
+          type: string
+          example: López
+        name:
+          type: string
+          description: "Nombre completo (accessor: concatena los tres campos)."
+          example: Juan Pérez López
+        email:
+          type: string
+          format: email
+          example: pasajero1@ubicaditos.com
+        phone:
+          type: string
+          example: '9511234567'
+        role:
+          type: string
+          enum: [passenger, driver, admin]
+          example: passenger
+        work_shift:
+          type: string
+          nullable: true
+          enum: [morning, afternoon, night]
+          description: Solo aplica a conductores.
+        avatar:
+          type: string
+          nullable: true
+        is_active:
+          type: boolean
+          example: true
+        current_latitude:
+          type: number
+          format: float
+          nullable: true
+        current_longitude:
+          type: number
+          format: float
+          nullable: true
+        last_location_update:
+          type: string
+          format: date-time
+          nullable: true
+        email_verified_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    Bus:
+      type: object
+      description: Autobús de la flota.
+      properties:
+        id:
+          type: integer
+          example: 1
+        license_plate:
+          type: string
+          example: 12-345-ABC
+        model:
+          type: string
+          nullable: true
+          example: Toyota Coaster
+        capacity:
+          type: integer
+          example: 40
+        status:
+          type: string
+          enum: [active, inactive, maintenance, emergency]
+          example: active
+        current_latitude:
+          type: number
+          format: float
+          nullable: true
+          example: 17.061319
+        current_longitude:
+          type: number
+          format: float
+          nullable: true
+          example: -96.725226
+        current_passengers:
+          type: integer
+          nullable: true
+          description: Columnas existente en BD (aún de alta parcial en el modelo de la iteración 0).
+        last_location_update:
+          type: string
+          format: date-time
+          nullable: true
+        driver_id:
+          type: integer
+          nullable: true
+        is_active:
+          type: boolean
+          example: true
+        driver:
+          $ref: '#/components/schemas/User'
+        routes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Route'
+
+    Route:
+      type: object
+      description: Ruta de transporte.
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Ruta 1 - Central de Abastos
+        code:
+          type: string
+          example: R1
+        description:
+          type: string
+          nullable: true
+        color:
+          type: string
+          example: '#3B82F6'
+        estimated_duration:
+          type: integer
+          nullable: true
+          description: Duración estimada en minutos.
+        path_coordinates:
+          type: array
+          items:
+            type: array
+            items:
+              type: number
+            minItems: 2
+            maxItems: 2
+          description: Polilínea de la ruta [lat, lng].
+        is_active:
+          type: boolean
+          example: true
+        stops:
+          type: array
+          items:
+            $ref: '#/components/schemas/Stop'
+        buses:
+          type: array
+          items:
+            $ref: '#/components/schemas/Bus'
+
+    Stop:
+      type: object
+      description: Parada o punto de interés de una ruta.
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Central de Abastos
+        address:
+          type: string
+          nullable: true
+        latitude:
+          type: number
+          format: float
+          example: 17.0736
+        longitude:
+          type: number
+          format: float
+          example: -96.7315
+        description:
+          type: string
+          nullable: true
+        is_active:
+          type: boolean
+          example: true
+
+    BusLocation:
+      type: object
+      description: Ubicación en vivo de un autobús.
+      properties:
+        id:
+          type: integer
+        license_plate:
+          type: string
+        latitude:
+          type: number
+          format: float
+        longitude:
+          type: number
+          format: float
+        speed:
+          type: number
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+
+    Trip:
+      type: object
+      description: Viaje registrado por un conductor.
+      properties:
+        id:
+          type: integer
+        bus_id:
+          type: integer
+        driver_id:
+          type: integer
+        route_id:
+          type: integer
+          nullable: true
+        started_at:
+          type: string
+          format: date-time
+        ended_at:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [active, completed, cancelled]
+        passenger_count:
+          type: integer
+          description: Número de pasajeros al iniciar el viaje.
+        duration_minutes:
+          type: integer
+          nullable: true
+          description: Duración calculada (accessor).
+        work_shift:
+          type: string
+          nullable: true
+          enum: [morning, afternoon, night]
+
+    Rating:
+      type: object
+      description: Calificación de un pasajero a un conductor.
+      properties:
+        id:
+          type: integer
+        passenger_id:
+          type: integer
+        driver_id:
+          type: integer
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+          nullable: true
+        trip_id:
+          type: integer
+          nullable: true
+
+    EmergencyReport:
+      type: object
+      description: Emergencia reportada por un conductor.
+      properties:
+        id:
+          type: integer
+        bus_id:
+          type: integer
+          nullable: true
+        reporter_id:
+          type: integer
+        type:
+          type: string
+          enum: [accident, breakdown, security, medical, other]
+        description:
+          type: string
+          nullable: true
+        latitude:
+          type: number
+          format: float
+          nullable: true
+        longitude:
+          type: number
+          format: float
+          nullable: true
+        status:
+          type: string
+          enum: [pending, resolved]
+          example: pending
+        resolved_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    Message:
+      type: object
+      description: Mensaje entre usuarios (conductor-empresa).
+      properties:
+        id:
+          type: integer
+        sender_id:
+          type: integer
+        receiver_id:
+          type: integer
+          content:
+            type: string
+        read_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    FavoriteStop:
+      type: object
+      description: Parada favorita de un pasajero.
+      properties:
+        user_id:
+          type: integer
+        stop_id:
+          type: integer
+        nickname:
+          type: string
+          nullable: true
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    RegisterRequest:
+      type: object
+      required: [first_name, last_name, maternal_last_name, phone, email, password, password_confirmation]
+      properties:
+        first_name:
+          type: string
+          maxLength: 35
+          pattern: "^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\\s]+$"
+        last_name:
+          type: string
+          maxLength: 35
+          pattern: "^[a-zA-ZáéíóúÁÉÍÓÚñÑüÚ\\s]+$"
+        maternal_last_name:
+          type: string
+          maxLength: 35
+        phone:
+          type: string
+          pattern: "^\\d{10}$"
+          description: 10 dígitos (área 951 para Oaxaca).
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 50
+          pattern: "^(?=.*[a-zA-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]+$"
+          description: Mínimo 8 caracteres, con letras, un número y un símbolo @$!%*?&.
+        password_confirmation:
+          type: string
+          format: password
+
+    ResetPasswordRequest:
+      type: object
+      required: [token, email, password, password_confirmation]
+      properties:
+        token:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        password_confirmation:
+          type: string
+          format: password
+
+    ProfileUpdateRequest:
+      type: object
+      required: [first_name, last_name, maternal_last_name, email]
+      properties:
+        first_name:
+          type: string
+          maxLength: 35
+        last_name:
+          type: string
+          maxLength: 35
+        maternal_last_name:
+          type: string
+          maxLength: 35
+        phone:
+          type: string
+          maxLength: 10
+        email:
+          type: string
+          format: email
+
+    UpdateLocationRequest:
+      type: object
+      required: [latitude, longitude]
+      properties:
+        latitude:
+          type: number
+          format: float
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          format: float
+          minimum: -180
+          maximum: 180
+
+    StartTripRequest:
+      type: object
+      required: [route_id]
+      properties:
+        route_id:
+          type: integer
+          minimum: 1
+
+    EmergencyRequest:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [accident, breakdown, security, medical, other]
+        description:
+          type: string
+          maxLength: 500
+
+    RateRequest:
+      type: object
+      required: [rating]
+      properties:
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+          maxLength: 500
+          nullable: true
+
+    ErrorResponse:
+      type: object
+      description: Respuesta de error (422, 400, etc.).
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string

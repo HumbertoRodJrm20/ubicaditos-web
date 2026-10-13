@@ -13,7 +13,7 @@ cd ubicaditos-web
 
 # 2. Instalar dependencias de PHP y JavaScript
 composer install
-npm install            # o: bun install
+bun install
 
 # 3. Configurar el entorno
 cp .env.example .env
@@ -52,6 +52,8 @@ Abre `http://localhost:8000` e inicia sesión con alguna de las cuentas de prueb
 | 9 | [Comandos de consola](09-comandos.md) | Comandos Artisan personalizados y utilidades. |
 | 10 | [Pruebas y estado del proyecto](10-pruebas-y-estado.md) | Suite de pruebas, observaciones técnicas y mejoras sugeridas. |
 | 11 | [Diagramas y diccionario de datos](11-diagramas.md) | Diagramas de clases, de objetos, E-R y relacional, y diccionario de datos. |
+| 12 | [API Swagger — Iteración 1](12-swagger-api.md) | Especificación OpenAPI, modelos, seguridad y informe de pruebas de la iteración 1. |
+| 13 | [Registro técnico de desarrollo (_devlog)](_devlog.md) | Bitácora técnica de lo realizado en cada iteración. |
 
 ## Resumen funcional
 
