@@ -1,0 +1,260 @@
+{
+  "cascadeColors": true,
+  "colorBackground": true,
+  "palette": [
+    {
+      "id": "LXY8DSb_aKAJSDZQx_tze",
+      "name": "TokyoNight(0)",
+      "value": "#1f2335"
+    },
+    {
+      "id": "p969ipQ5fwowPHRzp1Iob",
+      "name": "TokyoNight(1)",
+      "value": "#24283b"
+    },
+    {
+      "id": "yB6ZFKFOdr5pSqkvXO-NT",
+      "name": "TokyoNight(2)",
+      "value": "#292e42"
+    },
+    {
+      "id": "FB6NfQ5kZvwjLH31rqJCi",
+      "name": "TokyoNight(3)",
+      "value": "#3b4261"
+    },
+    {
+      "id": "WwHhVnSl8z-uXV5WmY2NL",
+      "name": "TokyoNight(4)",
+      "value": "#414868"
+    },
+    {
+      "id": "9UWrG67A-xjvgc_R8S8DB",
+      "name": "TokyoNight(5)",
+      "value": "#545c7e"
+    },
+    {
+      "id": "3p_eoW0rai1y2w5pt9gYh",
+      "name": "TokyoNight(6)",
+      "value": "#565f89"
+    },
+    {
+      "id": "JO87vzjJkJXs0ahykRw5C",
+      "name": "TokyoNight(7)",
+      "value": "#737aa2"
+    },
+    {
+      "id": "1CasA1eBVde8R-2IIiJIV",
+      "name": "TokyoNight(8)",
+      "value": "#a9b1d6"
+    },
+    {
+      "id": "gzx97gN-gHtlVnz5Ttxef",
+      "name": "TokyoNight(9)",
+      "value": "#394b70"
+    },
+    {
+      "id": "geeS1wYk20kRY86N57_tS",
+      "name": "TokyoNight(10)",
+      "value": "#3d59a1"
+    },
+    {
+      "id": "pvfKRkc8AM4XWhiKADvmz",
+      "name": "TokyoNight(11)",
+      "value": "#7aa2f7"
+    },
+    {
+      "id": "XQUufUmfLqFKkpJV_Sqkr",
+      "name": "TokyoNight(12)",
+      "value": "#7dcfff"
+    },
+    {
+      "id": "-SjmXoPR8Cu3315-yIrWJ",
+      "name": "TokyoNight(13)",
+      "value": "#b4f9f8"
+    },
+    {
+      "id": "dip3E1wCR-M-Q-Xe7nnce",
+      "name": "TokyoNight(14)",
+      "value": "#bb9af7"
+    },
+    {
+      "id": "KnYUmj74y-UEZMisKGFRe",
+      "name": "TokyoNight(15)",
+      "value": "#9d7cd8"
+    },
+    {
+      "id": "xt-PkVy0znbgwJw9HqmkX",
+      "name": "TokyoNight(16)",
+      "value": "#ff9e64"
+    },
+    {
+      "id": "xA8Pd9UAa5EoEHIvjyrqT",
+      "name": "TokyoNight(17)",
+      "value": "#ffc777"
+    },
+    {
+      "id": "IXtc_ssStQqjMZXcvOjzU",
+      "name": "TokyoNight(18)",
+      "value": "#c3e88d"
+    },
+    {
+      "id": "yze6rLd_LOg_PH15erTu4",
+      "name": "TokyoNight(19)",
+      "value": "#4fd6be"
+    },
+    {
+      "id": "Ibl48IGXKclz4wSUHp6sQ",
+      "name": "TokyoNight(20)",
+      "value": "#41a6b5"
+    },
+    {
+      "id": "9LYxbeJJrdDxlCM9A_oJ_",
+      "name": "TokyoNight(21)",
+      "value": "#ff757f"
+    },
+    {
+      "id": "8FS_Lh28SP_yNKcflPihW",
+      "name": "TokyoNight(22)",
+      "value": "#c53b53"
+    },
+    {
+      "id": "ZLYoTfu2GCcbCpVVePLuJ",
+      "name": "TokyoNight(23)",
+      "value": "#ff007c"
+    }
+  ],
+  "fileColors": [
+    {
+      "path": "Dev",
+      "color": "geeS1wYk20kRY86N57_tS"
+    },
+    {
+      "path": "Diff Eq's",
+      "color": "KnYUmj74y-UEZMisKGFRe"
+    },
+    {
+      "path": "Ewka",
+      "color": "geeS1wYk20kRY86N57_tS"
+    },
+    {
+      "path": "Kaizen journal",
+      "color": "pvfKRkc8AM4XWhiKADvmz"
+    },
+    {
+      "path": "Nihongo",
+      "color": "8FS_Lh28SP_yNKcflPihW"
+    },
+    {
+      "path": "Diff Eq's/ÉQ'S DIFF.md",
+      "color": "dip3E1wCR-M-Q-Xe7nnce"
+    },
+    {
+      "path": "Métodos Numéricos",
+      "color": "xA8Pd9UAa5EoEHIvjyrqT"
+    },
+    {
+      "path": "Principios electricos",
+      "color": "XQUufUmfLqFKkpJV_Sqkr"
+    },
+    {
+      "path": "Dev/Android",
+      "color": "yze6rLd_LOg_PH15erTu4"
+    },
+    {
+      "path": "Calculus",
+      "color": "xt-PkVy0znbgwJw9HqmkX"
+    },
+    {
+      "path": "Audio",
+      "color": "pvfKRkc8AM4XWhiKADvmz"
+    },
+    {
+      "path": "Algebra Relacional",
+      "color": "1CasA1eBVde8R-2IIiJIV"
+    },
+    {
+      "path": "Dev/Python/pybind11",
+      "color": "1CasA1eBVde8R-2IIiJIV"
+    },
+    {
+      "path": "Simulación",
+      "color": "dip3E1wCR-M-Q-Xe7nnce"
+    },
+    {
+      "path": "Desarrollo Sustentable",
+      "color": "yze6rLd_LOg_PH15erTu4"
+    },
+    {
+      "path": "Ingeniería de Software",
+      "color": "dip3E1wCR-M-Q-Xe7nnce"
+    },
+    {
+      "path": "Computer Architecture",
+      "color": "-SjmXoPR8Cu3315-yIrWJ"
+    },
+    {
+      "path": "NasaSpaceApps",
+      "color": "JO87vzjJkJXs0ahykRw5C"
+    },
+    {
+      "path": "Telecomunicaciones",
+      "color": "-SjmXoPR8Cu3315-yIrWJ"
+    },
+    {
+      "path": "Tasks",
+      "color": "9LYxbeJJrdDxlCM9A_oJ_"
+    },
+    {
+      "path": "Graphs",
+      "color": "-SjmXoPR8Cu3315-yIrWJ"
+    },
+    {
+      "path": "Automatas",
+      "color": "dip3E1wCR-M-Q-Xe7nnce"
+    },
+    {
+      "path": "Images",
+      "color": "xt-PkVy0znbgwJw9HqmkX"
+    },
+    {
+      "path": "Linux",
+      "color": "dip3E1wCR-M-Q-Xe7nnce"
+    },
+    {
+      "path": "Escritura",
+      "color": "9LYxbeJJrdDxlCM9A_oJ_"
+    },
+    {
+      "path": "Kaizen App dev",
+      "color": "1CasA1eBVde8R-2IIiJIV"
+    },
+    {
+      "path": "Kaizen",
+      "color": "IXtc_ssStQqjMZXcvOjzU"
+    },
+    {
+      "path": "Automatas II",
+      "color": "1CasA1eBVde8R-2IIiJIV"
+    },
+    {
+      "path": "Fl Studio",
+      "color": "IXtc_ssStQqjMZXcvOjzU"
+    },
+    {
+      "path": "Taller de investigación",
+      "color": "JO87vzjJkJXs0ahykRw5C"
+    },
+    {
+      "path": "Programación lógica y funcional",
+      "color": "geeS1wYk20kRY86N57_tS"
+    },
+    {
+      "path": "Frameworks",
+      "color": "dip3E1wCR-M-Q-Xe7nnce"
+    },
+    {
+      "path": "Dev logbook",
+      "color": "xt-PkVy0znbgwJw9HqmkX"
+    }
+  ]
+}

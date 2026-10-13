@@ -1,0 +1,42 @@
+{
+  "palette": {
+    "seed": 0,
+    "selected": "adaptive-bright",
+    "custom": "e12729-f37324-f8cc1b-72b043-007f4e"
+  },
+  "mixColors": true,
+  "transition": true,
+  "accessibility": {
+    "highTextContrast": false
+  },
+  "knownTags": {
+    "Circuito": 1,
+    "tag": 2,
+    "inprogress": 3,
+    "todo": 4,
+    "todos": 5,
+    "to-do": 6,
+    "this": 7,
+    "estudiaconmigo": 8,
+    "Resultado": 9,
+    "4361EE": 10,
+    "F72585": 11,
+    "4CC9F0": 12,
+    "1a365d": 13,
+    "2b6cb0": 14,
+    "ACCESO": 15,
+    "effeef": 16,
+    "ddd": 17,
+    "bfb": 18,
+    "notice": 19,
+    "ffb": 20,
+    "show": 21,
+    "update": 22,
+    "8f8": 23,
+    "9d9": 24,
+    "error_explanation": 25,
+    "encoding": 26,
+    "3B82F6": 27
+  },
+  "_version": 3
+}

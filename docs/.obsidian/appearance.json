@@ -1,0 +1,9 @@
+{
+  "accentColor": "#915abf",
+  "cssTheme": "Catppuccin",
+  "theme": "obsidian",
+  "enabledCssSnippets": [
+    "style"
+  ],
+  "monospaceFontFamily": "mononoki"
+}
