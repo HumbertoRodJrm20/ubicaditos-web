@@ -88,9 +88,16 @@
                             Rutas más cercanas
                             <span class="text-[11px] font-normal text-slate-400">5 km</span>
                         </h3>
+                        <button type="button" data-collapse-target="nearest-routes-body" aria-expanded="true" aria-label="Minimizar panel" class="w-7 h-7 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100/80 dark:hover:bg-gray-700/60 transition-transform">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
+                            </svg>
+                        </button>
                     </div>
-                    <div id="nearest-routes-list" class="space-y-2 overflow-y-auto panel-scroll lg:max-h-[46vh]">
-                        <p class="text-xs text-slate-500 dark:text-gray-400">Activa «Mostrar solo rutas cercanas» en los filtros para ver las rutas más cercanas a ti.</p>
+                    <div id="nearest-routes-body">
+                        <div id="nearest-routes-list" class="space-y-2 overflow-y-auto panel-scroll lg:max-h-[46vh]">
+                            <p class="text-xs text-slate-500 dark:text-gray-400">Activa «Mostrar solo rutas cercanas» en los filtros para ver las rutas más cercanas a ti.</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -113,27 +120,35 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
                             </svg>
                         </button>
+                        <button type="button" data-collapse-target="arrival-body" aria-expanded="true" aria-label="Minimizar panel" class="w-9 h-9 rounded-full bg-white/80 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 flex items-center justify-center text-slate-500 shrink-0 transition-transform">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
+                            </svg>
+                        </button>
                     </div>
 
-                    <div class="border-t border-slate-200/70 dark:border-white/10 my-3"></div>
+                    <div id="arrival-body">
+                        <div class="border-t border-slate-200/70 dark:border-white/10 my-3"></div>
 
-                    <div class="text-[10px] font-semibold tracking-[.12em] uppercase text-slate-400 mb-2">Próximos autobuses</div>
+                        <div class="text-[10px] font-semibold tracking-[.12em] uppercase text-slate-400 mb-2">Próximos autobuses</div>
 
-                    <div id="arrival-times" class="space-y-2 max-h-[40vh] overflow-y-auto panel-scroll">
-                        <p class="text-xs text-slate-500 dark:text-gray-400 italic">Haz clic en una parada para ver los tiempos de llegada</p>
+                        <div id="arrival-times" class="space-y-2 max-h-[40vh] overflow-y-auto panel-scroll">
+                            <p class="text-xs text-slate-500 dark:text-gray-400 italic">Haz clic en una parada para ver los tiempos de llegada</p>
+                        </div>
+
+                        <button type="button" class="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-full border border-slate-300 dark:border-gray-600 bg-white/60 dark:bg-gray-700/60 text-[13px] font-medium text-[#4b5a85] dark:text-gray-200">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                            </svg>
+                            Agregar a favoritos
+                        </button>
                     </div>
-
-                    <button type="button" class="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-full border border-slate-300 dark:border-gray-600 bg-white/60 dark:bg-gray-700/60 text-[13px] font-medium text-[#4b5a85] dark:text-gray-200">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
-                        </svg>
-                        Agregar a favoritos
-                    </button>
                 </div>
 
                 <div class="pointer-events-auto flex items-center gap-2">
-                    <button type="button" class="w-10 h-10 rounded-full bg-white/90 dark:bg-gray-700 shadow-lg flex items-center justify-center text-[#4b5a85] dark:text-gray-200 text-xl leading-none" aria-label="Acercar">+</button>
-                    <button type="button" class="w-11 h-11 rounded-full bg-[#4b5a85] text-white shadow-lg flex items-center justify-center" aria-label="Mi ubicación">
+                    <button type="button" id="zoom-in-btn" class="w-10 h-10 rounded-full bg-white/90 dark:bg-gray-700 shadow-lg flex items-center justify-center text-[#4b5a85] dark:text-gray-200 text-xl leading-none" aria-label="Acercar">+</button>
+                    <button type="button" id="zoom-out-btn" class="w-10 h-10 rounded-full bg-white/90 dark:bg-gray-700 shadow-lg flex items-center justify-center text-[#4b5a85] dark:text-gray-200 text-xl leading-none" aria-label="Alejar">−</button>
+                    <button type="button" id="locate-btn" class="w-11 h-11 rounded-full bg-[#4b5a85] text-white shadow-lg flex items-center justify-center" aria-label="Mi ubicación">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <circle cx="12" cy="12" r="3" stroke-width="2"></circle>
                             <circle cx="12" cy="12" r="8" stroke-width="2"></circle>
@@ -166,6 +181,44 @@
             maxZoom: 19,
         }).addTo(map);
 
+        // ===== Controles manuales del mapa (antes eran botones muertos) =====
+        document.getElementById('zoom-in-btn').addEventListener('click', () => map.zoomIn());
+        document.getElementById('zoom-out-btn').addEventListener('click', () => map.zoomOut());
+
+        document.getElementById('locate-btn').addEventListener('click', function() {
+            // Volver a la ubicación del usuario "desancla" el centro del mapa,
+            // de modo que puede volver a seguir al GPS.
+            centerLocked = false;
+
+            if (userLocationMarker) {
+                map.flyTo(userLocationMarker.getLatLng(), 16);
+            } else {
+                // Sin posición conocida: pide una fix al navegador y centra con ella.
+                map.locate({ setView: true, maxZoom: 16 });
+            }
+        });
+
+        // Leaflet emite estos eventos cuando se llama a map.locate().
+        map.on('locationfound', function(e) {
+            updateUserLocationMarker(e.latlng.lat, e.latlng.lng, e.accuracy);
+        });
+
+        map.on('locationerror', function(e) {
+            console.warn('⚠ No se pudo obtener tu ubicación:', e.message);
+        });
+
+        // ===== Paneles flotantes colapsables (data-collapse-target) =====
+        document.querySelectorAll('[data-collapse-target]').forEach(function(button) {
+            const body = document.getElementById(button.dataset.collapseTarget);
+            if (!body) return;
+
+            button.addEventListener('click', function() {
+                const collapsed = body.classList.toggle('hidden');
+                button.classList.toggle('rotate-180', collapsed);
+                button.setAttribute('aria-expanded', String(!collapsed));
+            });
+        });
+
         let busMarkers = {};
         let stopMarkers = {};
         let routePolylines = {};
@@ -174,6 +227,9 @@
         const simulationSpeed = 2;
         let routesLoaded = {};
         let currentFilteredRoute = null;
+        // Cuando es true el mapa NO sigue al GPS: queda "anclado" al elemento
+        // consultado (ruta, parada o autobús llegado por URL ?route_id/?stop_id/?bus_id).
+        let centerLocked = false;
 
         const NEAREST_EMPTY = '<p class="text-xs text-slate-500 dark:text-gray-400">Activa «Mostrar solo rutas cercanas» en los filtros para ver las rutas más cercanas a ti.</p>';
 
@@ -312,7 +368,9 @@
 
             updateSimulatedLocation();
 
-            map.setView([SIMULATED_LOCATION.lat, SIMULATED_LOCATION.lng], 15);
+            if (!centerLocked) {
+                map.flyTo([SIMULATED_LOCATION.lat, SIMULATED_LOCATION.lng], 15);
+            }
 
             simulatedLocationInterval = setInterval(updateSimulatedLocation, 2000);
 
@@ -367,15 +425,17 @@
 
                         updateUserLocationMarker(userLat, userLng, accuracy);
 
-                        if (!userLocationMarker || resolve) {
-                            map.setView([userLat, userLng], 15);
-                            console.log('✓ Mapa centrado en ubicación del usuario');
-
-                            if (resolve) {
-                                const tempResolve = resolve;
-                                resolve = null;
-                                tempResolve({ lat: userLat, lng: userLng });
+                        // El mapa se centra en el GPS solo la primera vez, y nunca
+                        // si hay un elemento objetivo anclado (centerLocked).
+                        if (resolve) {
+                            if (!centerLocked) {
+                                map.flyTo([userLat, userLng], 15);
+                                console.log('✓ Mapa centrado en ubicación del usuario');
                             }
+
+                            const tempResolve = resolve;
+                            resolve = null;
+                            tempResolve({ lat: userLat, lng: userLng });
                         }
                     },
                     function(error) {
@@ -1370,8 +1430,9 @@
             filterNearestRoutes(e.target.checked);
         });
 
-        document.getElementById('route-filter').addEventListener('change', async function(e) {
-            const routeId = parseInt(e.target.value) || null;
+        // Aplica el filtro de ruta: carga su trazado si hace falta, la aísla de
+        // las demás rutas y encuadra el mapa en ella con fitBounds.
+        async function applyRouteFilter(routeId, { focus = true } = {}) {
             currentFilteredRoute = routeId;
 
             if (routeId) {
@@ -1381,6 +1442,7 @@
                 }
             }
 
+            // Aislamiento: solo la ruta filtrada permanece visible en el mapa.
             Object.keys(routePolylines).forEach(key => {
                 const rId = parseInt(key);
                 if (!routeId || rId === routeId) {
@@ -1413,6 +1475,16 @@
                     }
                 }
             });
+
+            // Encuadre completo de la ruta consultada (ancla el centro del mapa).
+            if (routeId && focus && routePolylines[routeId]) {
+                centerLocked = true;
+                map.fitBounds(routePolylines[routeId].getBounds(), { padding: [40, 40], maxZoom: 16 });
+            }
+        }
+
+        document.getElementById('route-filter').addEventListener('change', function(e) {
+            applyRouteFilter(parseInt(e.target.value) || null);
         });
 
         console.log('🚀 Inicializando sistema de autobuses...');
@@ -1422,6 +1494,19 @@
 
         (async function init() {
             console.log('🚀 Iniciando sistema de mapas...');
+
+            const urlParams = new URLSearchParams(window.location.search);
+
+            // Elemento enlazado desde otra vista: ?route_id, ?stop_id o ?bus_id.
+            // Si llega alguno, el centro queda anclado y el GPS no mueve el mapa.
+            const target = {
+                bus: urlParams.get('bus_id'),
+                stop: urlParams.get('stop_id'),
+                route: urlParams.get('route_id')
+            };
+
+            const hasTarget = !!(target.bus || target.stop || target.route);
+            centerLocked = hasTarget;
 
             const stopsPromise = Promise.resolve(drawStops());
             const routesPromise = loadVisibleRoutes();
@@ -1443,24 +1528,32 @@
             console.log('✅ Sistema listo y en funcionamiento!');
             console.log('💡 Las rutas se cargan automáticamente al seleccionarlas en el filtro');
 
-            const urlParams = new URLSearchParams(window.location.search);
-            const routeIdFromUrl = urlParams.get('route_id');
-            if (routeIdFromUrl) {
-                console.log('📍 Filtrando ruta seleccionada:', routeIdFromUrl);
-                document.getElementById('route-filter').dispatchEvent(new Event('change'));
+            // El contenedor puede cambiar de tamaño al terminar de cargar el layout.
+            map.invalidateSize();
+
+            // 1) Ruta consultada: aislarla de las demás y encuadrarla completa (fitBounds).
+            if (target.route) {
+                console.log('📍 Enfocando ruta seleccionada:', target.route);
+                await applyRouteFilter(parseInt(target.route));
             }
 
-            // Requisito 4: si se llega con ?bus_id, centrar el mapa en ese autobús y abrir sus detalles (popup)
-            const busIdFromUrl = urlParams.get('bus_id');
-            if (busIdFromUrl) {
-                const selectedBus = simulatedBuses.find(b => b.id === parseInt(busIdFromUrl));
+            // 2) Parada consultada: volar hacia ella y abrir su popup.
+            if (target.stop) {
+                const selectedStop = stops.find(s => s.id === parseInt(target.stop));
+                if (selectedStop && stopMarkers[selectedStop.id]) {
+                    map.flyTo([selectedStop.latitude, selectedStop.longitude], 16, { duration: 1.2 });
+                    stopMarkers[selectedStop.id].openPopup();
+                    console.log('🚏 Parada seleccionada centrada:', selectedStop.name);
+                }
+            }
+
+            // 3) Autobús consultado: volar hacia él y abrir sus detalles (popup).
+            if (target.bus) {
+                const selectedBus = simulatedBuses.find(b => b.id === parseInt(target.bus));
                 if (selectedBus && busMarkers[selectedBus.id]) {
-                    setTimeout(() => {
-                        map.invalidateSize();
-                        map.setView([selectedBus.currentPosition.lat, selectedBus.currentPosition.lng], 16);
-                        busMarkers[selectedBus.id].openPopup();
-                        console.log('🚌 Autobús seleccionado centrado:', selectedBus.license_plate);
-                    }, 700);
+                    map.flyTo([selectedBus.currentPosition.lat, selectedBus.currentPosition.lng], 16, { duration: 1.2 });
+                    busMarkers[selectedBus.id].openPopup();
+                    console.log('🚌 Autobús seleccionado centrado:', selectedBus.license_plate);
                 }
             }
         })();

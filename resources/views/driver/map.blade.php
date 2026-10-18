@@ -97,48 +97,58 @@
                 <div class="lg:w-[300px] lg:self-start flex flex-col gap-3">
                     @if($stops && $stops->count() > 0)
                         <div class="pointer-events-auto {{ $glass }} rounded-3xl p-4">
-                            <div class="flex items-center gap-3">
-                                <span class="{{ $iconBox }}">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                    </svg>
-                                </span>
-                                <div class="min-w-0">
-                                    <div class="text-[14px] font-semibold text-slate-800 dark:text-gray-100 truncate">Paradas de la ruta</div>
-                                    <div class="text-[11px] text-slate-500 dark:text-gray-400 truncate">{{ $route->name ?? '' }}</div>
+                            <div class="flex items-center justify-between gap-3">
+                                <div class="flex items-center gap-3 min-w-0">
+                                    <span class="{{ $iconBox }}">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        </svg>
+                                    </span>
+                                    <div class="min-w-0">
+                                        <div class="text-[14px] font-semibold text-slate-800 dark:text-gray-100 truncate">Paradas de la ruta</div>
+                                        <div class="text-[11px] text-slate-500 dark:text-gray-400 truncate">{{ $route->name ?? '' }}</div>
+                                    </div>
                                 </div>
+                                <button type="button" data-collapse-target="driver-stops-body" aria-expanded="true" aria-label="Minimizar panel" class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100/80 dark:hover:bg-gray-700/60 shrink-0 transition-transform">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
+                                    </svg>
+                                </button>
                             </div>
 
-                            <div class="border-t border-slate-200/70 dark:border-white/10 my-3"></div>
+                            <div id="driver-stops-body">
+                                <div class="border-t border-slate-200/70 dark:border-white/10 my-3"></div>
 
-                            <div class="text-[10px] font-semibold tracking-[.12em] uppercase text-slate-400 mb-2">Próximas paradas</div>
+                                <div class="text-[10px] font-semibold tracking-[.12em] uppercase text-slate-400 mb-2">Próximas paradas</div>
 
-                            <div class="space-y-1 max-h-[42vh] overflow-y-auto panel-scroll">
-                                @foreach($stops as $index => $stop)
-                                    <div id="stop-{{ $stop->id }}" class="flex items-center gap-3 rounded-xl px-2 py-2 transition-all">
-                                        <span class="w-9 h-9 rounded-full bg-gradient-to-br from-[#6b7aa8] to-[#3f4c75] text-white flex items-center justify-center shrink-0">{!! $busSvg !!}</span>
-                                        <div class="min-w-0 flex-1">
-                                            <p class="text-[13px] font-semibold text-slate-800 dark:text-gray-100 truncate">{{ $stop->name }}</p>
-                                            <p class="text-[11px] text-slate-500 dark:text-gray-400 truncate">{{ $stop->address }}</p>
-                                        </div>
-                                        @if($index < $stops->count() - 1)
-                                            <div class="text-[14px] font-bold text-[#3f4c75] dark:text-blue-300 whitespace-nowrap">
-                                                ~{{ $stop->pivot->estimated_time_from_previous ?? 5 }} min
+                                <div class="space-y-1 max-h-[42vh] overflow-y-auto panel-scroll">
+                                    @foreach($stops as $index => $stop)
+                                        <div id="stop-{{ $stop->id }}" class="flex items-center gap-3 rounded-xl px-2 py-2 transition-all">
+                                            <span class="w-9 h-9 rounded-full bg-gradient-to-br from-[#6b7aa8] to-[#3f4c75] text-white flex items-center justify-center shrink-0">{!! $busSvg !!}</span>
+                                            <div class="min-w-0 flex-1">
+                                                <p class="text-[13px] font-semibold text-slate-800 dark:text-gray-100 truncate">{{ $stop->name }}</p>
+                                                <p class="text-[11px] text-slate-500 dark:text-gray-400 truncate">{{ $stop->address }}</p>
                                             </div>
-                                        @endif
-                                        <div class="stop-status hidden">
-                                            <span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-green-100 text-green-800">Llegado</span>
+                                            @if($index < $stops->count() - 1)
+                                                <div class="text-[14px] font-bold text-[#3f4c75] dark:text-blue-300 whitespace-nowrap">
+                                                    ~{{ $stop->pivot->estimated_time_from_previous ?? 5 }} min
+                                                </div>
+                                            @endif
+                                            <div class="stop-status hidden">
+                                                <span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-green-100 text-green-800">Llegado</span>
+                                            </div>
                                         </div>
-                                    </div>
-                                @endforeach
+                                    @endforeach
+                                </div>
                             </div>
                         </div>
                     @endif
 
                     <div class="pointer-events-auto flex items-center gap-2">
-                        <button type="button" class="w-10 h-10 rounded-full bg-white/90 dark:bg-gray-700 shadow-lg flex items-center justify-center text-[#4b5a85] dark:text-gray-200 text-xl leading-none" aria-label="Acercar">+</button>
-                        <button type="button" class="w-11 h-11 rounded-full bg-[#4b5a85] text-white shadow-lg flex items-center justify-center" aria-label="Mi ubicación">
+                        <button type="button" id="zoom-in-btn" class="w-10 h-10 rounded-full bg-white/90 dark:bg-gray-700 shadow-lg flex items-center justify-center text-[#4b5a85] dark:text-gray-200 text-xl leading-none" aria-label="Acercar">+</button>
+                        <button type="button" id="zoom-out-btn" class="w-10 h-10 rounded-full bg-white/90 dark:bg-gray-700 shadow-lg flex items-center justify-center text-[#4b5a85] dark:text-gray-200 text-xl leading-none" aria-label="Alejar">−</button>
+                        <button type="button" id="locate-btn" class="w-11 h-11 rounded-full bg-[#4b5a85] text-white shadow-lg flex items-center justify-center" aria-label="Mi ubicación">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <circle cx="12" cy="12" r="3" stroke-width="2"></circle>
                                 <circle cx="12" cy="12" r="8" stroke-width="2"></circle>
@@ -209,6 +219,46 @@
             attribution: '© OpenStreetMap contributors',
             maxZoom: 19,
         }).addTo(map);
+
+        // ===== Controles manuales del mapa (antes eran botones muertos) =====
+        document.getElementById('zoom-in-btn').addEventListener('click', () => map.zoomIn());
+        document.getElementById('zoom-out-btn').addEventListener('click', () => map.zoomOut());
+
+        document.getElementById('locate-btn').addEventListener('click', function() {
+            if (lastPosition) {
+                map.flyTo([lastPosition.lat, lastPosition.lng], 16);
+            } else if (busMarker) {
+                map.flyTo(busMarker.getLatLng(), 16);
+            } else {
+                // Sin posición conocida: pide una fix al navegador y centra con ella.
+                map.locate({ setView: true, maxZoom: 16 });
+            }
+        });
+
+        // Leaflet emite estos eventos cuando se llama a map.locate().
+        map.on('locationfound', function(e) {
+            if (busMarker) {
+                busMarker.setLatLng(e.latlng);
+            } else {
+                createBusMarker(e.latlng.lat, e.latlng.lng);
+            }
+        });
+
+        map.on('locationerror', function(e) {
+            console.warn('⚠ No se pudo obtener tu ubicación:', e.message);
+        });
+
+        // ===== Paneles flotantes colapsables (data-collapse-target) =====
+        document.querySelectorAll('[data-collapse-target]').forEach(function(button) {
+            const body = document.getElementById(button.dataset.collapseTarget);
+            if (!body) return;
+
+            button.addEventListener('click', function() {
+                const collapsed = body.classList.toggle('hidden');
+                button.classList.toggle('rotate-180', collapsed);
+                button.setAttribute('aria-expanded', String(!collapsed));
+            });
+        });
 
         const stops = @json($stops ?? []);
         const route = @json($route ?? null);

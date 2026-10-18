@@ -203,11 +203,18 @@
                 <div id="admin-map" class="w-full h-96 rounded-[24px] overflow-hidden"></div>
 
                 <div id="gps-overlay-admin" class="absolute top-4 right-4 z-[1000] bg-white/85 dark:bg-gray-800/80 backdrop-blur-xl border border-white/70 dark:border-white/10 rounded-2xl shadow-lg px-4 py-2 max-w-xs">
-                    <div class="text-sm space-y-1">
+                    <div class="flex items-center justify-between gap-3">
                         <div class="flex items-center">
                             <span id="gps-indicator-admin" class="w-2 h-2 bg-gray-400 rounded-full mr-2"></span>
                             <span id="gps-status-text-admin" class="text-[12px] font-medium text-slate-600 dark:text-gray-300">GPS Inactivo</span>
                         </div>
+                        <button type="button" data-collapse-target="gps-admin-body" aria-expanded="true" aria-label="Minimizar panel" class="w-6 h-6 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100/80 dark:hover:bg-gray-700/60 shrink-0 transition-transform">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="gps-admin-body" class="text-sm space-y-1 pt-1">
                         <div id="gps-details-admin" class="hidden space-y-0.5">
                             <div class="text-[11px] text-slate-500 dark:text-gray-400">
                                 Última actualización: <span id="last-update-admin">--</span>
@@ -237,6 +244,18 @@
             attribution: '© OpenStreetMap contributors',
             maxZoom: 19,
         }).addTo(adminMap);
+
+        // ===== Paneles flotantes colapsables (data-collapse-target) =====
+        document.querySelectorAll('[data-collapse-target]').forEach(function(button) {
+            const body = document.getElementById(button.dataset.collapseTarget);
+            if (!body) return;
+
+            button.addEventListener('click', function() {
+                const collapsed = body.classList.toggle('hidden');
+                button.classList.toggle('rotate-180', collapsed);
+                button.setAttribute('aria-expanded', String(!collapsed));
+            });
+        });
 
         let busMarkers = {};
         let stopMarkers = {};
