@@ -158,6 +158,21 @@
                 </div>
             </div>
         </div>
+
+        <!-- Capa de carga: difumina el mapa mientras se traza el elemento consultado -->
+        <div id="map-loading" class="hidden absolute inset-0 z-[2000] pointer-events-auto flex items-center justify-center">
+            <div class="absolute inset-0 bg-white/40 dark:bg-gray-900/50 backdrop-blur-md"></div>
+            <div class="relative bg-white/85 dark:bg-gray-800/85 backdrop-blur-xl border border-white/70 dark:border-white/10 shadow-xl rounded-2xl px-5 py-4 flex items-center gap-3" role="status" aria-live="polite">
+                <svg class="w-5 h-5 text-[#4b5a85] animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                </svg>
+                <div>
+                    <div id="map-loading-title" class="text-[13px] font-semibold text-slate-800 dark:text-gray-100">Cargando mapa…</div>
+                    <div id="map-loading-sub" class="text-[11px] text-slate-500 dark:text-gray-400">Preparando rutas y autobuses</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
@@ -218,6 +233,21 @@
                 button.setAttribute('aria-expanded', String(!collapsed));
             });
         });
+
+        // ===== Capa de carga del mapa =====
+        // Mientras se trazan los recorridos (puede tardar varios segundos si OSRM
+        // tarda), el mapa queda difuminado tras una ventana emergente de carga.
+        const mapLoading = document.getElementById('map-loading');
+
+        function showMapLoading(title, sub) {
+            document.getElementById('map-loading-title').textContent = title || 'Cargando mapa…';
+            document.getElementById('map-loading-sub').textContent = sub || 'Preparando rutas y autobuses';
+            mapLoading.classList.remove('hidden');
+        }
+
+        function hideMapLoading() {
+            mapLoading.classList.add('hidden');
+        }
 
         let busMarkers = {};
         let stopMarkers = {};
@@ -1386,10 +1416,12 @@
 
             if (nearestRoutes.length === 0) {
                 showNearestRoutesInContainer([]);
+                hideMapLoading();
                 return;
             }
 
             showNearestRoutesInContainer(nearestRoutes);
+            showMapLoading('Buscando rutas cercanas…', 'Calculando distancias y trazados');
 
             const nearestRouteIds = nearestRoutes.map(r => r.route.id);
 
@@ -1424,6 +1456,7 @@
             });
 
             console.log('✅ Mostrando solo rutas cercanas:', nearestRouteIds);
+            hideMapLoading();
         }
 
         document.getElementById('show-nearest-routes').addEventListener('change', function(e) {
@@ -1432,8 +1465,12 @@
 
         // Aplica el filtro de ruta: carga su trazado si hace falta, la aísla de
         // las demás rutas y encuadra el mapa en ella con fitBounds.
-        async function applyRouteFilter(routeId, { focus = true } = {}) {
+        async function applyRouteFilter(routeId, { focus = true, loading = true } = {}) {
             currentFilteredRoute = routeId;
+
+            if (routeId && loading) {
+                showMapLoading('Trazando la ruta…', 'Consultando el recorrido sobre las calles');
+            }
 
             if (routeId) {
                 const route = routes.find(r => r.id === routeId);
@@ -1481,6 +1518,10 @@
                 centerLocked = true;
                 map.fitBounds(routePolylines[routeId].getBounds(), { padding: [40, 40], maxZoom: 16 });
             }
+
+            if (routeId && loading) {
+                hideMapLoading();
+            }
         }
 
         document.getElementById('route-filter').addEventListener('change', function(e) {
@@ -1508,53 +1549,69 @@
             const hasTarget = !!(target.bus || target.stop || target.route);
             centerLocked = hasTarget;
 
-            const stopsPromise = Promise.resolve(drawStops());
-            const routesPromise = loadVisibleRoutes();
-            const locationPromise = getUserLocation().catch(err => {
-                console.warn('⚠ Continuando sin ubicación del usuario:', err.message);
-                return null;
-            });
+            // Ventana de carga: tapa el "parpadeo" en el que se trazan todas las
+            // rutas y solo al final queda aislada la que se consultó.
+            showMapLoading(
+                hasTarget ? 'Buscando en el mapa…' : 'Cargando mapa…',
+                target.route ? 'Trazando la ruta consultada…'
+                    : target.bus ? 'Localizando el autobús…'
+                    : target.stop ? 'Localizando la parada…'
+                    : 'Preparando rutas y autobuses'
+            );
 
-            await Promise.all([stopsPromise, routesPromise, locationPromise]);
+            try {
+                const stopsPromise = Promise.resolve(drawStops());
+                const routesPromise = loadVisibleRoutes();
+                const locationPromise = getUserLocation().catch(err => {
+                    console.warn('⚠ Continuando sin ubicación del usuario:', err.message);
+                    return null;
+                });
 
-            console.log('✅ Mapa base cargado');
+                await Promise.all([stopsPromise, routesPromise, locationPromise]);
 
-            initializeSimulatedBuses();
-            drawBuses();
-            startSimulation();
-            startRealtimeUpdates();
-            wireMapSearch();
+                console.log('✅ Mapa base cargado');
 
-            console.log('✅ Sistema listo y en funcionamiento!');
-            console.log('💡 Las rutas se cargan automáticamente al seleccionarlas en el filtro');
+                initializeSimulatedBuses();
+                drawBuses();
+                startSimulation();
+                startRealtimeUpdates();
+                wireMapSearch();
 
-            // El contenedor puede cambiar de tamaño al terminar de cargar el layout.
-            map.invalidateSize();
+                console.log('✅ Sistema listo y en funcionamiento!');
+                console.log('💡 Las rutas se cargan automáticamente al seleccionarlas en el filtro');
 
-            // 1) Ruta consultada: aislarla de las demás y encuadrarla completa (fitBounds).
-            if (target.route) {
-                console.log('📍 Enfocando ruta seleccionada:', target.route);
-                await applyRouteFilter(parseInt(target.route));
-            }
+                // El contenedor puede cambiar de tamaño al terminar de cargar el layout.
+                map.invalidateSize();
 
-            // 2) Parada consultada: volar hacia ella y abrir su popup.
-            if (target.stop) {
-                const selectedStop = stops.find(s => s.id === parseInt(target.stop));
-                if (selectedStop && stopMarkers[selectedStop.id]) {
-                    map.flyTo([selectedStop.latitude, selectedStop.longitude], 16, { duration: 1.2 });
-                    stopMarkers[selectedStop.id].openPopup();
-                    console.log('🚏 Parada seleccionada centrada:', selectedStop.name);
+                // 1) Ruta consultada: aislarla de las demás y encuadrarla completa (fitBounds).
+                //    La capa de carga la controla init(), por eso { loading: false }.
+                if (target.route) {
+                    console.log('📍 Enfocando ruta seleccionada:', target.route);
+                    await applyRouteFilter(parseInt(target.route), { loading: false });
                 }
-            }
 
-            // 3) Autobús consultado: volar hacia él y abrir sus detalles (popup).
-            if (target.bus) {
-                const selectedBus = simulatedBuses.find(b => b.id === parseInt(target.bus));
-                if (selectedBus && busMarkers[selectedBus.id]) {
-                    map.flyTo([selectedBus.currentPosition.lat, selectedBus.currentPosition.lng], 16, { duration: 1.2 });
-                    busMarkers[selectedBus.id].openPopup();
-                    console.log('🚌 Autobús seleccionado centrado:', selectedBus.license_plate);
+                // 2) Parada consultada: volar hacia ella y abrir su popup.
+                if (target.stop) {
+                    const selectedStop = stops.find(s => s.id === parseInt(target.stop));
+                    if (selectedStop && stopMarkers[selectedStop.id]) {
+                        map.flyTo([selectedStop.latitude, selectedStop.longitude], 16, { duration: 1.2 });
+                        stopMarkers[selectedStop.id].openPopup();
+                        console.log('🚏 Parada seleccionada centrada:', selectedStop.name);
+                    }
                 }
+
+                // 3) Autobús consultado: volar hacia él y abrir sus detalles (popup).
+                if (target.bus) {
+                    const selectedBus = simulatedBuses.find(b => b.id === parseInt(target.bus));
+                    if (selectedBus && busMarkers[selectedBus.id]) {
+                        map.flyTo([selectedBus.currentPosition.lat, selectedBus.currentPosition.lng], 16, { duration: 1.2 });
+                        busMarkers[selectedBus.id].openPopup();
+                        console.log('🚌 Autobús seleccionado centrado:', selectedBus.license_plate);
+                    }
+                }
+            } finally {
+                // Siempre se oculta, aunque algo falle: el mapa no queda bloqueado.
+                hideMapLoading();
             }
         })();
 

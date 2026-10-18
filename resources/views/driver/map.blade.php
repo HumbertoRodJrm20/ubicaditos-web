@@ -197,6 +197,21 @@
                 </div>
             </div>
         </div>
+
+        <!-- Capa de carga: difumina el mapa mientras se traza la ruta del conductor -->
+        <div id="map-loading" class="hidden absolute inset-0 z-[2000] pointer-events-auto flex items-center justify-center">
+            <div class="absolute inset-0 bg-white/40 dark:bg-gray-900/50 backdrop-blur-md"></div>
+            <div class="relative bg-white/85 dark:bg-gray-800/85 backdrop-blur-xl border border-white/70 dark:border-white/10 shadow-xl rounded-2xl px-5 py-4 flex items-center gap-3" role="status" aria-live="polite">
+                <svg class="w-5 h-5 text-[#4b5a85] animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                </svg>
+                <div>
+                    <div id="map-loading-title" class="text-[13px] font-semibold text-slate-800 dark:text-gray-100">Cargando tu ruta…</div>
+                    <div id="map-loading-sub" class="text-[11px] text-slate-500 dark:text-gray-400">Trazando el recorrido sobre las calles</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
@@ -259,6 +274,21 @@
                 button.setAttribute('aria-expanded', String(!collapsed));
             });
         });
+
+        // ===== Capa de carga del mapa =====
+        // Mientras OSRM traza la ruta sobre las calles, el mapa queda difuminado
+        // tras una ventana emergente de carga.
+        const mapLoading = document.getElementById('map-loading');
+
+        function showMapLoading(title, sub) {
+            document.getElementById('map-loading-title').textContent = title || 'Cargando tu ruta…';
+            document.getElementById('map-loading-sub').textContent = sub || 'Trazando el recorrido sobre las calles';
+            mapLoading.classList.remove('hidden');
+        }
+
+        function hideMapLoading() {
+            mapLoading.classList.add('hidden');
+        }
 
         const stops = @json($stops ?? []);
         const route = @json($route ?? null);
@@ -590,12 +620,20 @@
 
         console.log('Inicializando mapa del conductor...');
 
+        showMapLoading('Cargando tu ruta…', 'Trazando el recorrido sobre las calles');
+
         Promise.all([
             generateRoute(),
             Promise.resolve(drawStops()),
             Promise.resolve(createBusMarker(busData.latitude, busData.longitude))
         ]).then(() => {
+            hideMapLoading();
             console.log('✅ Mapa inicializado y listo');
+        }).catch(error => {
+            // Aunque falle el trazado (p. ej. OSRM caído), la capa se retira
+            // para no dejar el mapa bloqueado.
+            hideMapLoading();
+            console.error('Error al inicializar el mapa:', error);
         });
 
         const simulatedToggle = document.getElementById('simulated-location-toggle');
