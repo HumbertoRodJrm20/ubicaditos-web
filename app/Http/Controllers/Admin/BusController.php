@@ -32,6 +32,24 @@ class BusController extends Controller
         return view('admin.buses.index', compact('buses'));
     }
 
+    /**
+     * Detalle de un autobús: datos, conductor, ruta asignada y viajes recientes.
+     */
+    public function show(Bus $bus)
+    {
+        $bus->load(['driver', 'routes']);
+
+        $recentTrips = $bus->trips()
+            ->with(['route', 'driver'])
+            ->latest()
+            ->limit(10)
+            ->get();
+
+        $emergencies = $bus->emergencyReports()->latest()->limit(5)->get();
+
+        return view('admin.buses.show', compact('bus', 'recentTrips', 'emergencies'));
+    }
+
     public function create()
     {
         $routes = Route::all();

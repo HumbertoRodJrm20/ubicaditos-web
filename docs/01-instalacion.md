@@ -77,6 +77,16 @@ php artisan serve
 bun run dev
 ```
 
+### Tiempo real (WebSockets con Reverb)
+
+La comunicación en tiempo real usa **Laravel Reverb**. Para que los mapas reciban posiciones por WebSocket en desarrollo hay que levantarlo en una terminal adicional:
+
+```bash
+php artisan reverb:start
+```
+
+Si Reverb no está corriendo, el frontend detecta que el WebSocket no conecta y usa automáticamente un **fallback de sondeo** a `GET /api/buses/active` cada 5 segundos, por lo que la aplicación sigue mostrando posiciones actualizadas sin configuración extra.
+
 ### Simular movimiento de autobuses
 
 Para ver autobuses moviéndose en el mapa sin conductores reales:
@@ -120,6 +130,10 @@ El archivo `.env.example` contiene la configuración base de Laravel. Las variab
 | `QUEUE_CONNECTION` | `database` | Las colas usan la tabla `jobs`. |
 | `CACHE_STORE` | `database` | La caché usa la tabla `cache`. |
 | `MAIL_MAILER` | `log` | Los correos (recuperación de contraseña, verificación) se escriben en `storage/logs/laravel.log`. |
+| `BROADCAST_CONNECTION` | `reverb` | Driver de broadcasting para el tiempo real (iteración 3). En los entornos de prueba (`phpunit.xml`) se fija a `null`. |
+| `REVERB_APP_ID` / `REVERB_APP_KEY` / `REVERB_APP_SECRET` | credenciales propias | Credenciales de la aplicación Reverb (copiadas al crearla con `php artisan reverb:app`). |
+| `REVERB_HOST` / `REVERB_PORT` / `REVERB_SCHEME` | `127.0.0.1` / `8080` / `http` | Endpoint del servidor Reverb para el backend. En producción: dominio con TLS y puerto 443. |
+| `VITE_REVERB_APP_KEY` / `VITE_REVERB_HOST` / `VITE_REVERB_PORT` / `VITE_REVERB_WSS_PORT` / `VITE_REVERB_SCHEME` | igual que las anteriores | Expuestas al navegador por Vite; las usa `resources/js/realtime.js` para conectar Echo con Reverb. |
 
 ### PostgreSQL en producción y staging (no en desarrollo)
 
@@ -143,6 +157,28 @@ DB_PASSWORD=secret
 ```
 
 El conector `pgsql` ya viene registrado en `config/database.php` con el puerto estándar 5432, y el entorno actual dispone de la extensión `pdo_pgsql`. `.env.example` conserva `DB_CONNECTION=sqlite` y solo documenta el bloque de PostgreSQL como referencia comentada.
+
+### Tiempo real con Laravel Reverb (iteración 3)
+
+`.env.example`, `.env.production.example` y `.env.staging.example` incluyen el bloque de Reverb (con comentarios y valores de ejemplo). Tras crear la aplicación con `php artisan reverb:app`, el bloque en desarrollo es:
+
+```dotenv
+BROADCAST_CONNECTION=reverb
+REVERB_APP_ID=xxxxxx
+REVERB_APP_KEY=xxxxxxxxxxxxxxxx
+REVERB_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+REVERB_HOST=127.0.0.1
+REVERB_PORT=8080
+REVERB_SCHEME=http
+
+VITE_REVERB_APP_KEY="${REVERB_APP_KEY}"
+VITE_REVERB_HOST=127.0.0.1
+VITE_REVERB_PORT=8080
+VITE_REVERB_WSS_PORT=443
+VITE_REVERB_SCHEME=http
+```
+
+En producción/staging el host debe ser el dominio con TLS y el scheme `wss`/`https` (puerto 443).
 
 > **Nota:** el reporte de "ocupación promedio por hora" en `ReportController@index` usa la función `strftime()`, exclusiva de SQLite. Al migrar a PostgreSQL debe sustituirse por `EXTRACT(HOUR FROM started_at)` en la consulta nativa. Ver [Pruebas y estado del proyecto](10-pruebas-y-estado.md).
 

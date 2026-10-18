@@ -1,6 +1,8 @@
-# _devlog — Bitácora técnica (Iteración 1)
+# _devlog — Bitácora técnica
 
-Registro técnico de lo realizado en la iteración 1 de Ubicaditos Web. Formato interno de desarrollo, complementario a la documentación numerada `01–12`.
+Registro técnico del desarrollo de Ubicaditos Web. Formato interno de desarrollo, complementario a la documentación numerada `01–13`.
+
+Este documento cubre la **iteración 1** (a continuación) y la **iteración 3** (al final). La iteración 2 se documentó en `tests/load/README.md`.
 
 ## Resumen
 
@@ -140,3 +142,83 @@ Desglose completo en `12-swagger-api.md` → "Informe de ejecución de pruebas".
 ## Pendientes para la siguiente iteración
 
 Véase `10-pruebas-y-estado.md` (observaciones 1, 3–8): alta de `current_passengers` en `Bus::$fillable`, `EXTRACT(HOUR)` para PostgreSQL en el reporte de ocupación, implementar `Admin\StopController`, rutas/controlador de resolución de emergencias, `available_seats` en `DashboardController@getActiveBuses`, límites correctos de `Route::resource` y el enum `work_shift` (turno `night`).
+## Iteración 3 — Tiempo real, búsqueda, estadísticas e incidencias
+
+Rama de trabajo: `develop`. Enfoque **TDD** (tests en rojo primero, implementación, verde; suite completa al final): **86 pruebas / 289 aserciones en verde**. Gestor de paquetes JS: **bun** en todo el proyecto.
+
+### Resumen
+
+| # | Tarea | Descripción | Estado |
+|---|-------|-------------|:------:|
+| 1 | Tiempo real con WebSockets | Laravel Reverb + canal privado `buses` + evento `BusLocationUpdated` (`ShouldBroadcastNow`); módulo frontend `resources/js/realtime.js` (Echo + fallback de sondeo a `/api/buses/active` cada 5 s). | ✅ Hecho |
+| 2 | Búsqueda y filtros de autobuses | Filtros en servidor (`q`, `route_id`, `status`, `sort`) + refinamiento client-side; ocupación y asientos en tarjetas y modal. | ✅ Hecho |
+| 3 | Detalle de autobús (admin) | `Admin\BusController@show` + vista con KPIs, historial de viajes y emergencias. | ✅ Hecho |
+| 4 | Ciclo de viaje y GPS automático | Inicio/fin de viaje con validaciones; interruptor de compartir ubicación persistido en `localStorage`; auto-actualización con deriva cada 5 s en modo simulado. | ✅ Hecho |
+| 5 | Estadísticas de conductor | `DriverController@statistics` + vista con KPIs y gráfica de barras; accesos desde el nav y el panel. | ✅ Hecho |
+| 6 | Incidencias (ciclo completo) | Formulario del conductor (5 tipos), listado con filtros del admin, resolución solo de pendientes y **vuelta de la unidad a servicio**. | ✅ Hecho |
+| 7 | Restyle responsive | Todas las vistas restantes al estilo cristal y mobile-first (objetivo 375×667). | ✅ Hecho |
+| 8 | Pruebas (TDD) | Suites nuevas: tiempo real, filtros del pasajero, ciclo de viaje, estadísticas, incidencias y detalle de autobús. | ✅ Hecho |
+| 9 | Scripts E2E (Selenium) | `tests/selenium/` (bun + selenium-webdriver, Chrome headless, 5 specs). No se ejecutan en esta rama. | ✅ Hecho (ejecución pendiente en la rama de pruebas) |
+| 10 | Pruebas de carga (k6) | `tests/load/ubicaditos-iteration3-load.js` (solo lectura, 3 roles). No se ejecutó: k6 no está disponible en este entorno. | ✅ Hecho (ejecución pendiente) |
+| 11 | Documentación y swagger | `06`, `07`, `08`, `10`, nuevo `13-iteracion-3.md`, `_devlog`, `swagger.yaml` y `12-swagger-api.md`. | ✅ Hecho |
+
+### Decisiones técnicas
+
+| Decisión | Motivo |
+|----------|--------|
+| Laravel Reverb (v1.12) como servidor de broadcasting | Solución oficial, liviana y sin dependencias externas (Pusher/AWS). |
+| Canal privado `buses` autorizado para cualquier usuario autenticado (`routes/channels.php`) | Los mapas de pasajero, conductor y admin muestran la misma flota; la sesión Breeze ya define quién entra. |
+| `BusLocationUpdated implements ShouldBroadcastNow` | El evento se emite en el mismo request (sin worker de colas); suficiente para el volumen actual. |
+| Módulo `resources/js/realtime.js` con fallback de sondeo (5 s) | La app sigue funcionando si Reverb no está corriendo (entorno de desarrollo); ambas fuentes emiten el mismo payload normalizado `{id, license_plate, latitude, longitude, status, current_passengers, available_seats, route_id, last_update, source, received_at}`. |
+| `$busDetailsData` calculado en `PassengerController@buses` (no en la vista) | Permite aserción con `assertViewHas` en pruebas; `$busFilterData` (búsqueda client-side) se calcula en el bloque `@php` de la vista. |
+| Filtros de lista en servidor (query string) + búsqueda instantánea en cliente | Los filtros son compartibles/enlazables (chips como enlaces) y la búsqueda no recarga; el cliente solo refina `q`. |
+| La resolución de una incidencia devuelve la unidad a `active` | Regla de dominio incorporada en la iteración 3 (con pruebas): resolver el incidente restaura el servicio de la unidad. |
+| Interruptor de compartir ubicación persistido en `localStorage` | El conductor controla el envío de su GPS; el estado sobrevive a recargas (por defecto activo). |
+| Pruebas E2E con `bun test` + `selenium-webdriver` y localizadores `By.*` | Consistencia con el stack (bun); los localizadores string (`css=…`) no existen en selenium-webdriver 4.x para JS. |
+
+### Ciclo de incidencias (nuevo comportamiento)
+
+1. El conductor reporta desde su panel (`POST /driver/emergency`, tipos `accident|breakdown|medical|security|other`); la unidad pasa a estado `emergency` y se guarda la posición del bus.
+2. El administrador ve el reporte en `GET /admin/emergencies` (filtros por estado y tipo, contadores) con la placa de la unidad.
+3. Solo los reportes `pending` pueden resolverse (`POST /admin/emergencies/{id}/resolve`); se registra `resolved_at` y **si la unidad estaba en `emergency` vuelve a `active`**.
+
+### Restyle responsive
+
+Se maquetaron al nuevo estilo (cristal + mobile-first): `admin/buses/index|create|edit`, `admin/routes/index|create|edit`, `admin/passengers`, `admin/users/create|edit`, además de las vistas nuevas (`admin/emergencies`, `driver/statistics`, `admin/buses/show`, `passenger/buses` reescrita) y las modificadas (`driver/dashboard` con modal de incidencia, `driver/map` con interruptor de GPS, `passenger/dashboard` con tiempo real). Los partials `profile/partials/*` son código heredado de Breeze que ya no se incluye en ninguna vista (sin uso; no se tocó).
+
+### Pruebas nuevas (fase roja → verde)
+
+| Archivo | Enfoque |
+|---------|---------|
+| `tests/Feature/RealTime/BusLocationUpdatedTest.php` | Payload del evento, nombre de canal `private-buses`, autorización de canal con el driver real (reverb) y `broadcastNow`. |
+| `tests/Feature/Passenger/BusSearchFilterTest.php` | `q`, `status`, `route_id`, `sort` (plate/occupancy) y `$busDetailsData` (asientos disponibles). |
+| `tests/Feature/Bus/OccupancyTest.php` | Accessors `available_seats` y `occupancy_percentage` (promedio excluye viajes sin capacidad). |
+| `tests/Feature/Driver/TripLifecycleTest.php` | Iniciar/finalizar viaje, validaciones de turno y cercanía a parada, pasajeros registrados al finalizar. |
+| `tests/Feature/Driver/DriverStatisticsTest.php` | KPIs con tipos estrictos y desglose por ruta. |
+| `tests/Feature/Admin/EmergencyManagementTest.php` | Listado, filtros, resolución solo de pendientes, 404 y vuelta de la unidad a servicio. |
+| `tests/Feature/Admin/BusShowTest.php` | Detalle de autobús: KPIs, viajes y emergencias. |
+
+### Archivos creados
+
+- `app/Events/BusLocationUpdated.php`, `routes/channels.php`, `resources/js/realtime.js`
+- `resources/views/admin/emergencies.blade.php`, `resources/views/driver/statistics.blade.php`, `resources/views/admin/buses/show.blade.php`
+- `tests/Feature/RealTime/BusLocationUpdatedTest.php` y las suites indicadas arriba
+- `tests/selenium/` (`package.json`, `config.js`, 5 specs, `README.md`, `.gitignore`)
+- `tests/load/ubicaditos-iteration3-load.js`
+- `docs/13-iteracion-3.md`
+- `.env.production.example`, `.env.staging.example` (bloques Reverb; `.env.example` ampliado)
+
+### Archivos modificados (principales)
+
+- Controladores: `PassengerController@buses`, `DriverController@statistics|endTrip|reportEmergency`, `AdminController@emergencies|resolveEmergency`, `Admin\BusController@show`
+- Modelo `Bus` (`current_passengers` en `$fillable`, accessors `available_seats`/`occupancy_percentage`, `updateLocation()`), `bootstrap/app.php` (canales), `routes/web.php`
+- Vistas: `passenger/buses`, `passenger/dashboard`, `driver/dashboard`, `driver/map`, `driver/statistics`, `admin/dashboard`, `admin/buses/*`, `admin/routes/*`, `admin/passengers`, `admin/users/*`, `components/passenger-nav`
+- Assets y entorno: `package.json` (`laravel-echo@2.6.1`, `pusher-js@8.6.0`), `resources/js/app.js`, `.env.example`(+staging/production), `composer.json` (sin cambios de dependencias PHP fuera de Reverb)
+- Documentación: `docs/06`, `docs/07`, `docs/08`, `docs/10`, `docs/12`, `docs/13`, `docs/README.md`, `docs/swagger.yaml`, `tests/load/README.md`
+
+### Pendientes para la siguiente iteración
+
+- Ejecutar la suite Selenium y el script k6 en la rama de pruebas (con servidor local + `migrate:fresh --seed`) y archivar resultados en `tests/load/results/`.
+- Incidencias preexistentes sin resolver (ver `10-pruebas-y-estado.md`): `Admin\StopController`, `strftime`→`EXTRACT` para PostgreSQL en `ReportController`, enum `work_shift` con turno `night`, límites de `Route::resource`, seeders obsoletos y validaciones de autorización (calificaciones, `driver_id`, coordenadas acotadas).
+- Despliegue: proceso de Reverb en segundo plano (supervisor/systemd) y WSS con certificado TLS en producción/staging.
+- Limpieza: eliminar o reutilizar los partials de perfil heredados; extraer el JavaScript de los mapas a módulos (parcialmente avanzado con `realtime.js`).

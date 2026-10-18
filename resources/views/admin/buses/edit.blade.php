@@ -1,14 +1,53 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-700 dark:text-gray-200 leading-tight">
+        <h2 class="text-xl font-semibold leading-tight text-[#273252] dark:text-gray-100">
             {{ __('Editar Autobús') }}
         </h2>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6">
+    @php
+        $muted = 'text-slate-500 dark:text-gray-400';
+        $heading = 'text-[#273252] dark:text-gray-100';
+        $panel = 'rounded-[24px] border border-white/80 bg-white/75 shadow-[0_14px_35px_-20px_rgba(40,50,90,0.35)] backdrop-blur-xl dark:border-white/10 dark:bg-gray-800/75';
+    @endphp
+
+    <style>
+        .buses-form-page {
+            background:
+                radial-gradient(circle at 8% 12%, rgba(151, 169, 211, .30), transparent 31%),
+                radial-gradient(circle at 96% 8%, rgba(178, 207, 232, .48), transparent 30%),
+                linear-gradient(135deg, #f5f7fb 0%, #edf1f8 52%, #f9fafc 100%);
+        }
+        .buses-form-page input[type="checkbox"] { accent-color: #53658f; }
+        .buses-form-routes { scrollbar-width: thin; scrollbar-color: #c5ccdc transparent; }
+    </style>
+
+    <div class="buses-form-page -m-4 min-h-[calc(100vh-5rem)] px-4 py-7 sm:-m-6 sm:px-6 lg:-m-8 lg:px-8">
+        <div class="mx-auto max-w-[1400px]">
+            @if(session('success'))
+                <div class="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-800 shadow-sm dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200" role="alert">
+                    {{ session('success') }}
+                </div>
+            @endif
+
+            @if(session('error'))
+                <div class="mb-5 rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-800 shadow-sm dark:border-rose-800 dark:bg-rose-900/30 dark:text-rose-200" role="alert">
+                    {{ session('error') }}
+                </div>
+            @endif
+
+            <div class="mx-auto max-w-3xl">
+                <div class="mb-7 text-center">
+                    <p class="mb-1 text-xs font-semibold uppercase tracking-[.18em] text-[#697aa8] dark:text-[#aab7df]">Administración de Ubicaditos</p>
+                    <h1 class="text-3xl font-bold tracking-tight text-[#252e4b] dark:text-gray-100 sm:text-4xl">
+                        Editar Autobús
+                    </h1>
+                    <p class="mt-2 text-sm text-slate-500 dark:text-gray-400">
+                        Actualiza los datos de la unidad {{ $bus->license_plate }} y sus asignaciones.
+                    </p>
+                </div>
+
+                <section class="{{ $panel }} p-4 sm:p-6">
                     <form method="POST" action="{{ route('admin.buses.update', $bus) }}" x-data="busForm()">
                         @csrf
                         @method('PUT')
@@ -16,8 +55,8 @@
                         <div class="space-y-6">
                             <!-- License Plate -->
                             <div>
-                                <label for="license_plate" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Placa <span class="text-red-500">*</span>
+                                <label for="license_plate" class="block mb-1 text-[11px] font-medium text-slate-500 dark:text-gray-400">
+                                    Placa <span class="text-rose-500">*</span>
                                 </label>
                                 <input type="text" name="license_plate" id="license_plate" value="{{ old('license_plate', $bus->license_plate) }}" required
                                     x-model="license_plate"
@@ -26,25 +65,25 @@
                                     placeholder="ABC123 (3 letras y 3 números)"
                                     maxlength="6"
                                     style="text-transform: uppercase"
-                                    class="mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-gray-300"
-                                    :class="touchedFields.license_plate && errors.license_plate ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'">
-                                <p x-show="touchedFields.license_plate && errors.license_plate" x-text="errors.license_plate" class="mt-1 text-sm text-red-600"></p>
+                                    class="block w-full rounded-full border border-slate-200/90 bg-white/90 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-[#8295c5] focus:ring-2 focus:ring-[#8295c5]/20 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder:text-gray-400"
+                                    :class="touchedFields.license_plate && errors.license_plate ? 'border-rose-500 dark:border-rose-500' : ''">
+                                <p x-show="touchedFields.license_plate && errors.license_plate" x-text="errors.license_plate" class="mt-1 text-xs text-rose-600 dark:text-rose-400"></p>
                                 @error('license_plate')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p>
                                 @enderror
                             </div>
 
                             <!-- Model -->
                             <div>
-                                <label for="model" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Modelo <span class="text-red-500">*</span>
+                                <label for="model" class="block mb-1 text-[11px] font-medium text-slate-500 dark:text-gray-400">
+                                    Modelo <span class="text-rose-500">*</span>
                                 </label>
                                 <select name="model" id="model" required
                                     x-model="model"
                                     @change="validateModel"
                                     @blur="touchedFields.model = true; validateModel()"
-                                    class="mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-gray-300"
-                                    :class="touchedFields.model && errors.model ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'">
+                                    class="block w-full rounded-full border border-slate-200/90 bg-white/90 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#8295c5] focus:ring-2 focus:ring-[#8295c5]/20 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                    :class="touchedFields.model && errors.model ? 'border-rose-500 dark:border-rose-500' : ''">
                                     <option value="">Seleccionar modelo</option>
                                     <option value="Foton AUV" {{ old('model', $bus->model) === 'Foton AUV' ? 'selected' : '' }}>Foton AUV</option>
                                     <option value="Yutong" {{ old('model', $bus->model) === 'Yutong' ? 'selected' : '' }}>Yutong</option>
@@ -53,37 +92,37 @@
                                     <option value="Toyota" {{ old('model', $bus->model) === 'Toyota' ? 'selected' : '' }}>Toyota</option>
                                     <option value="Honda" {{ old('model', $bus->model) === 'Honda' ? 'selected' : '' }}>Honda</option>
                                 </select>
-                                <p x-show="touchedFields.model && errors.model" x-text="errors.model" class="mt-1 text-sm text-red-600"></p>
+                                <p x-show="touchedFields.model && errors.model" x-text="errors.model" class="mt-1 text-xs text-rose-600 dark:text-rose-400"></p>
                                 @error('model')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p>
                                 @enderror
                             </div>
 
                             <!-- Capacity -->
                             <div>
-                                <label for="capacity" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Capacidad <span class="text-red-500">*</span>
+                                <label for="capacity" class="block mb-1 text-[11px] font-medium text-slate-500 dark:text-gray-400">
+                                    Capacidad <span class="text-rose-500">*</span>
                                 </label>
                                 <input type="number" name="capacity" id="capacity" value="{{ old('capacity', $bus->capacity) }}" min="30" max="50" required
                                     x-model="capacity"
                                     @input="validateCapacity"
                                     @blur="touchedFields.capacity = true"
                                     placeholder="Entre 30 y 50 pasajeros"
-                                    class="mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-gray-300"
-                                    :class="touchedFields.capacity && errors.capacity ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'">
-                                <p x-show="touchedFields.capacity && errors.capacity" x-text="errors.capacity" class="mt-1 text-sm text-red-600"></p>
+                                    class="block w-full rounded-full border border-slate-200/90 bg-white/90 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-[#8295c5] focus:ring-2 focus:ring-[#8295c5]/20 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder:text-gray-400"
+                                    :class="touchedFields.capacity && errors.capacity ? 'border-rose-500 dark:border-rose-500' : ''">
+                                <p x-show="touchedFields.capacity && errors.capacity" x-text="errors.capacity" class="mt-1 text-xs text-rose-600 dark:text-rose-400"></p>
                                 @error('capacity')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p>
                                 @enderror
                             </div>
 
                             <!-- Driver -->
                             <div>
-                                <label for="driver_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label for="driver_id" class="block mb-1 text-[11px] font-medium text-slate-500 dark:text-gray-400">
                                     Conductor
                                 </label>
                                 <select name="driver_id" id="driver_id"
-                                    class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500">
+                                    class="block w-full rounded-full border border-slate-200/90 bg-white/90 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#8295c5] focus:ring-2 focus:ring-[#8295c5]/20 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
                                     <option value="">Sin conductor</option>
                                     @foreach($drivers as $driver)
                                         <option value="{{ $driver->id }}" {{ old('driver_id', $bus->driver_id) == $driver->id ? 'selected' : '' }}>
@@ -92,60 +131,62 @@
                                     @endforeach
                                 </select>
                                 @error('driver_id')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p>
                                 @enderror
                             </div>
 
                             <!-- Status -->
                             <div>
-                                <label for="status" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Estado <span class="text-red-500">*</span>
+                                <label for="status" class="block mb-1 text-[11px] font-medium text-slate-500 dark:text-gray-400">
+                                    Estado <span class="text-rose-500">*</span>
                                 </label>
                                 <select name="status" id="status" required
-                                    class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500">
+                                    class="block w-full rounded-full border border-slate-200/90 bg-white/90 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#8295c5] focus:ring-2 focus:ring-[#8295c5]/20 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
                                     <option value="active" {{ old('status', $bus->status) == 'active' ? 'selected' : '' }}>Activo</option>
                                     <option value="inactive" {{ old('status', $bus->status) == 'inactive' ? 'selected' : '' }}>Inactivo</option>
                                     <option value="maintenance" {{ old('status', $bus->status) == 'maintenance' ? 'selected' : '' }}>Mantenimiento</option>
                                 </select>
                                 @error('status')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p>
                                 @enderror
                             </div>
 
                             <!-- Routes -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                <label class="block mb-2 text-[11px] font-medium text-slate-500 dark:text-gray-400">
                                     Rutas Asignadas
                                 </label>
-                                <div class="space-y-2 max-h-48 overflow-y-auto p-3 border border-gray-300 dark:border-gray-700 rounded-md">
+                                <div class="buses-form-routes max-h-64 space-y-1 overflow-y-auto rounded-2xl border border-slate-200/90 bg-white/60 p-3 dark:border-gray-600 dark:bg-gray-700/40">
                                     @foreach($routes as $route)
-                                        <div class="flex items-center">
+                                        <div class="flex items-center gap-2 rounded-xl px-2 py-1.5 transition hover:bg-slate-50 dark:hover:bg-gray-700/40">
                                             <input type="checkbox" name="routes[]" value="{{ $route->id }}" id="route_{{ $route->id }}"
                                                 {{ in_array($route->id, old('routes', $bus->routes->pluck('id')->toArray())) ? 'checked' : '' }}
-                                                class="mr-2 rounded border-gray-300 text-primary-600 focus:ring-primary-500">
-                                            <label for="route_{{ $route->id }}" class="text-sm text-gray-700 dark:text-gray-300">
+                                                class="h-4 w-4 rounded border-slate-300 focus:ring-[#8295c5] dark:border-gray-600 dark:bg-gray-700">
+                                            <label for="route_{{ $route->id }}" class="min-w-0 flex-1 cursor-pointer text-sm text-slate-700 dark:text-gray-300">
                                                 {{ $route->name }} ({{ $route->code }})
                                             </label>
                                         </div>
                                     @endforeach
                                 </div>
                                 @error('routes')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p>
                                 @enderror
                             </div>
 
                             <!-- Buttons -->
-                            <div class="flex justify-end gap-4">
-                                <a href="{{ route('admin.buses.index') }}" class="px-4 py-2 bg-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-400">
+                            <div class="flex flex-col-reverse gap-2 border-t border-slate-100 pt-5 dark:border-gray-700 sm:flex-row sm:justify-end">
+                                <a href="{{ route('admin.buses.index') }}" class="inline-flex h-10 items-center justify-center rounded-full border border-slate-200 bg-white/85 px-5 text-xs font-semibold text-slate-600 transition hover:bg-white dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
                                     Cancelar
                                 </a>
-                                <button type="submit" class="px-4 py-2 bg-primary-500 text-white text-sm font-medium rounded-md hover:bg-primary-600">
+                                <button type="submit" class="inline-flex h-10 items-center justify-center rounded-full bg-gradient-to-b from-[#7b8db8] to-[#53658f] px-5 text-xs font-semibold text-white shadow-sm transition hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-[#8295c5] focus:ring-offset-2">
                                     Actualizar Autobús
                                 </button>
                             </div>
                         </div>
                     </form>
-                </div>
+                </section>
+
+                <p class="py-5 text-center text-xs text-slate-400 dark:text-gray-500">Ubicaditos · Gestión de Autobuses</p>
             </div>
         </div>
     </div>

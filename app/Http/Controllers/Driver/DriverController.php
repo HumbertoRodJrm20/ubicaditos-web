@@ -46,6 +46,67 @@ class DriverController extends Controller
         return view('driver.map', compact('bus', 'route', 'stops', 'currentTrip'));
     }
 
+    /**
+     * Estadísticas del perfil del conductor: viajes, ocupación, calificaciones,
+     * distancia, tiempo al volante e incidencias reportadas.
+     */
+    public function statistics()
+    {
+        $driver = auth()->user();
+
+        $trips = Trip::where('driver_id', $driver->id)->with('bus')->get();
+        $completed = $trips->where('status', 'completed');
+
+        $occupancies = $completed
+            ->filter(fn ($trip) => $trip->bus && $trip->bus->capacity > 0)
+            ->map(fn ($trip) => min(100, round(($trip->total_passengers / $trip->bus->capacity) * 100, 2)));
+
+        $stats = [
+            'total_trips' => $trips->count(),
+            'completed_trips' => $completed->count(),
+            'active_trips' => $trips->where('status', 'in_progress')->count(),
+            'total_passengers' => (int) $completed->sum('total_passengers'),
+            'avg_occupancy' => $occupancies->isEmpty() ? 0.0 : round($occupancies->avg(), 2),
+            'avg_rating' => round((float) $driver->ratingsReceived()->avg('rating'), 2),
+            'ratings_count' => $driver->ratingsReceived()->count(),
+            'total_distance_km' => round((float) $completed->sum('distance_km'), 2),
+            'total_minutes' => (int) $completed->sum(
+                fn ($trip) => $trip->started_at && $trip->completed_at
+                    ? round($trip->started_at->diffInMinutes($trip->completed_at))
+                    : 0
+            ),
+            'emergencies_reported' => EmergencyReport::where('reporter_id', $driver->id)->count(),
+        ];
+
+        $stats['avg_minutes'] = $stats['completed_trips'] > 0
+            ? (int) round($stats['total_minutes'] / $stats['completed_trips'])
+            : 0;
+
+        $stats['by_day'] = Trip::selectRaw('DATE(started_at) as date, COUNT(*) as total')
+            ->where('driver_id', $driver->id)
+            ->where('started_at', '>=', now()->subDays(6)->startOfDay())
+            ->groupBy('date')
+            ->orderBy('date')
+            ->pluck('total', 'date');
+
+        $stats['by_route'] = Trip::selectRaw('route_id, COUNT(*) as total')
+            ->where('driver_id', $driver->id)
+            ->where('status', 'completed')
+            ->groupBy('route_id')
+            ->orderByDesc('total')
+            ->limit(5)
+            ->with('route')
+            ->get();
+
+        $recentRatings = $driver->ratingsReceived()
+            ->with('passenger')
+            ->latest()
+            ->limit(5)
+            ->get();
+
+        return view('driver.statistics', compact('stats', 'recentRatings'));
+    }
+
     public function startTrip(Request $request)
     {
         $driver = auth()->user();
@@ -192,9 +253,13 @@ class DriverController extends Controller
             return back()->with('error', 'No tienes un viaje activo');
         }
 
+        $bus = auth()->user()->drivingBus;
+
         $trip->update([
             'completed_at' => now(),
             'status' => 'completed',
+            // Ocupación real del viaje (último conteo reportado por el conductor)
+            'total_passengers' => (int) ($bus?->current_passengers ?? 0),
         ]);
 
         // El estado del autobús solo puede ser cambiado por el administrador

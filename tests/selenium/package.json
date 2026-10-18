@@ -1,0 +1,17 @@
+{
+    "name": "ubicaditos-selenium-tests",
+    "private": true,
+    "type": "module",
+    "description": "Pruebas E2E de Ubicaditos con Selenium WebDriver (se ejecutan en la rama de pruebas)",
+    "scripts": {
+        "test": "bun test --timeout 90000",
+        "test:auth": "bun test auth.test.js --timeout 90000",
+        "test:passenger": "bun test passenger.test.js --timeout 90000",
+        "test:driver": "bun test driver.test.js --timeout 90000",
+        "test:incident": "bun test incident-admin.test.js --timeout 90000",
+        "test:responsive": "bun test responsive.test.js --timeout 90000"
+    },
+    "dependencies": {
+        "selenium-webdriver": "^4.27.0"
+    }
+}

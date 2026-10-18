@@ -53,12 +53,13 @@ Abre `http://localhost:8000` e inicia sesión con alguna de las cuentas de prueb
 | 10 | [Pruebas y estado del proyecto](10-pruebas-y-estado.md) | Suite de pruebas, observaciones técnicas y mejoras sugeridas. |
 | 11 | [Diagramas y diccionario de datos](11-diagramas.md) | Diagramas de clases, de objetos, E-R y relacional, y diccionario de datos. |
 | 12 | [API Swagger — Iteración 1](12-swagger-api.md) | Especificación OpenAPI, modelos, seguridad y informe de pruebas de la iteración 1. |
-| 13 | [Registro técnico de desarrollo (_devlog)](_devlog.md) | Bitácora técnica de lo realizado en cada iteración. |
+| 13 | [Iteración 3 — Tiempo real, búsqueda e incidencias](13-iteracion-3.md) | WebSockets con Reverb, búsqueda y filtros de autobuses, estadísticas de conductor, ciclo de incidencias, pruebas E2E y de carga. |
+| 14 | [Registro técnico de desarrollo (_devlog)](_devlog.md) | Bitácora técnica de lo realizado en cada iteración. |
 
 ## Resumen funcional
 
-| Rol | Funcionalidades principales |
-|-----|-----------------------------|
-| **Pasajero** | Mapa en tiempo real con rutas, paradas y autobuses; rutas más cercanas a su ubicación; tiempos estimados de llegada; paradas favoritas; listado de rutas y autobuses; calificación de conductores. |
-| **Conductor** | Panel con su autobús asignado y viajes recientes; mapa de su ruta con GPS; inicio y fin de viaje (validando turno y cercanía a una parada); actualización de pasajeros a bordo; reporte de emergencias. |
+| Rol               | Funcionalidades principales                                                                                                                                                                                 |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Pasajero**      | Mapa en tiempo real con rutas, paradas y autobuses; rutas más cercanas a su ubicación; tiempos estimados de llegada; paradas favoritas; listado de rutas y autobuses; calificación de conductores.          |
+| **Conductor**     | Panel con su autobús asignado y viajes recientes; mapa de su ruta con GPS; inicio y fin de viaje (validando turno y cercanía a una parada); actualización de pasajeros a bordo; reporte de emergencias.     |
 | **Administrador** | Dashboard con estadísticas y mapa en vivo; CRUD de autobuses, rutas y usuarios; asignación de autobuses a conductores; gestión de pasajeros; estadísticas y reportes con gráficas; exportación a PDF y CSV. |

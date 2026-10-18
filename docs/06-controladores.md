@@ -15,13 +15,13 @@ Convenciones comunes:
 |-------------|------------|-----------------|
 | `DashboardController` | `auth` | Redirección por rol y endpoints JSON de autobuses. |
 | `ProfileController` | `auth` | Edición y eliminación del perfil propio. |
-| `Admin\AdminController` | `auth`, `admin` | Dashboard, estadísticas, conductores y pasajeros. |
-| `Admin\BusController` | `auth`, `admin` | CRUD de autobuses. |
+| `Admin\AdminController` | `auth`, `admin` | Dashboard, estadísticas, conductores, pasajeros y emergencias. |
+| `Admin\BusController` | `auth`, `admin` | CRUD de autobuses y detalle (`show`). |
 | `Admin\RouteController` | `auth`, `admin` | CRUD de rutas y sus paradas. |
 | `Admin\UserController` | `auth`, `admin` | Alta, edición y baja de usuarios. |
 | `Admin\ReportController` | `auth`, `admin` | Reportes, gráficas y exportación PDF/CSV. |
 | `Admin\StopController` | `auth`, `admin` | CRUD de paradas (**sin implementar**). |
-| `Driver\DriverController` | `auth`, `driver` | Panel, mapa, viajes, GPS, pasajeros y emergencias. |
+| `Driver\DriverController` | `auth`, `driver` | Panel, mapa, estadísticas, viajes, GPS, pasajeros y emergencias. |
 | `Passenger\PassengerController` | `auth`, `passenger` | Mapa, rutas, autobuses, favoritos y calificaciones. |
 | `Auth\*` | `guest` / `auth` | Autenticación de Laravel Breeze. |
 
@@ -32,7 +32,7 @@ Convenciones comunes:
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | `index()` | `GET /dashboard` | Redirige a `admin.dashboard`, `driver.dashboard` o `passenger.dashboard` según el rol; responde 403 si el rol es desconocido. |
-| `getActiveBuses()` | `GET /api/buses/active` | JSON con los autobuses activos que tienen coordenadas: placa, posición, capacidad, pasajeros, conductor, ruta, color de ruta y hace cuánto se actualizó. |
+| `getActiveBuses()` | `GET /api/buses/active` | JSON con los autobuses activos que tienen coordenadas: placa, posición, capacidad, pasajeros, asientos libres (`available_seats`, calculados), conductor, ruta, color de ruta y hace cuánto se actualizó. Además del consumo directo, es el **fallback de polling** (cada 5 s) que usa `resources/js/realtime.js` cuando el WebSocket no está disponible. |
 | `getBusLocation(Bus $bus)` | `GET /api/buses/{bus}/location` | JSON con posición, estado, pasajeros y fecha de actualización de un autobús. |
 | `getRouteBuses(Route $route)` | `GET /api/routes/{route}/buses` | JSON con los autobuses activos de una ruta junto con su conductor. |
 
@@ -48,14 +48,17 @@ El formato de las respuestas JSON se detalla en [Rutas y API](08-rutas.md#endpoi
 | `assignBusToDriver(Request, User $driver)` | `POST /admin/drivers/{driver}/assign-bus` | — | Valida `bus_id`, libera el autobús que el conductor tuviera antes y asigna el nuevo. Garantiza la relación uno a uno conductor ↔ autobús. |
 | `unassignBusFromDriver(User $driver)` | `DELETE /admin/drivers/{driver}/unassign-bus` | — | Quita el conductor de su autobús. |
 | `passengers(Request)` | `GET /admin/passengers` | `admin.passengers` | Lista paginada de pasajeros con búsqueda; incluye conteo de calificaciones emitidas y paradas favoritas. |
+| `emergencies(Request)` | `GET /admin/emergencies` | `admin.emergencies` | Listado de incidencias reportadas por los conductores (con `reporter` y `bus`), filtrable por `status` (`pending`, `in_progress`, `resolved`) y `type` (`accident`, `breakdown`, `medical`, `security`, `other`); incluye contadores por estado y las etiquetas traducidas de estados y tipos. |
+| `resolveEmergency(EmergencyReport $emergency)` | `POST /admin/emergencies/{emergency}/resolve` | — | Marca la incidencia como `resolved` con `resolved_at = now()`, **solo si estaba `pending`** (en caso contrario redirige con mensaje de error). Al resolverse, si el autobús asociado estaba en estado `emergency`, **vuelve a `active`**. Redirige al listado con mensaje de éxito. |
 
 ## Admin\BusController
 
-Controlador de recurso (`Route::resource('buses', ...)`).
+Controlador de recurso (`Route::resource('buses', ...)`); además de las operaciones CRUD, implementa `show()`.
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | `index(Request)` | `GET /admin/buses` | Lista paginada con búsqueda por placa, modelo o nombre del conductor. |
+| `show(Bus $bus)` | `GET /admin/buses/{bus}` | Detalle del autobús: carga conductor y rutas, últimos 10 viajes (con ruta y conductor) y últimas 5 emergencias. |
 | `create()` | `GET /admin/buses/create` | Formulario con todas las rutas y solo los conductores **sin** autobús asignado. |
 | `store(Request)` | `POST /admin/buses` | Valida, crea el autobús y sincroniza sus rutas (`routes[]`). |
 | `edit(Bus $bus)` | `GET /admin/buses/{bus}/edit` | Formulario con conductores libres más el conductor actual. |
@@ -147,11 +150,28 @@ Está registrado como recurso (`/admin/stops`), pero todos sus métodos están v
 |--------|------|-----------|-------------|
 | `index()` | `GET /driver` | Vista `driver.dashboard` | Autobús asignado, viaje en curso, últimos 10 viajes y calificación promedio. |
 | `map()` | `GET /driver/map` | Vista `driver.map` | Mapa con la ruta, paradas ordenadas y viaje en curso. Redirige con error si no hay autobús asignado. |
+| `statistics()` | `GET /driver/statistics` | Vista `driver.statistics` | Estadísticas del propio conductor (ver abajo). |
 | `startTrip()` | `POST /driver/start-trip` | Redirección | Inicia un viaje tras validar las reglas de negocio (ver abajo). |
-| `endTrip()` | `POST /driver/end-trip` | Redirección | Marca el viaje en curso como `completed` con `completed_at = now()`. |
-| `updateLocation()` | `POST /driver/update-location` | JSON | Recibe `latitude` y `longitude` y actualiza la posición del autobús. Devuelve `{"success": true}` o error 400 si no hay autobús. |
+| `endTrip()` | `POST /driver/end-trip` | Redirección | Marca el viaje en curso como `completed` con `completed_at = now()` y registra la ocupación final del viaje en `total_passengers` (último conteo de pasajeros reportado en el autobús, 0 si no hay autobús). |
+| `updateLocation()` | `POST /driver/update-location` | JSON | Recibe `latitude` y `longitude` y actualiza la posición del autobús mediante `Bus::updateLocation()`, que despacha el evento `BusLocationUpdated` (ver [Tiempo real](#tiempo-real-broadcasting)). Devuelve `{"success": true}` o error 400 si no hay autobús. |
 | `updatePassengers()` | `POST /driver/update-passengers` | Redirección | Recibe `passengers` (entero ≥ 0) y lo limita a la capacidad del autobús. |
-| `reportEmergency()` | `POST /driver/emergency` | Redirección | Crea un `EmergencyReport` (`type`, `description` ≤ 500) con la ubicación actual y cambia el autobús a estado `emergency`. |
+| `reportEmergency()` | `POST /driver/emergency` | Redirección | Valida `type` (`accident`, `breakdown`, `medical`, `security`, `other`) y `description` (≤ 500); crea un `EmergencyReport` en estado `pending` con las coordenadas actuales del autobús y cambia el autobús a estado `emergency`. |
+
+### Estadísticas del conductor
+
+`statistics()` calcula a partir de los viajes, calificaciones e incidencias del conductor:
+
+| Dato | Descripción |
+|------|-------------|
+| `total_trips`, `completed_trips`, `active_trips` | Total, completados y en curso. |
+| `total_passengers` | Suma de `total_passengers` de los viajes completados. |
+| `avg_occupancy` | Ocupación promedio (0–100 %) de los viajes completados respecto a la capacidad del autobús. |
+| `avg_rating`, `ratings_count` | Calificación promedio (1–5) y número de calificaciones recibidas. |
+| `total_distance_km`, `total_minutes`, `avg_minutes` | Distancia acumulada (`distance_km`), minutos al volante (diferencia `started_at`→`completed_at`) y promedio por viaje. |
+| `emergencies_reported` | Incidencias reportadas por el conductor. |
+| `by_day` | Viajes iniciados por día en los últimos 7 días (para la gráfica de barras CSS). |
+| `by_route` | Top 5 de rutas por número de viajes completados. |
+| `recentRatings` | Últimas 5 calificaciones recibidas, con el pasajero. |
 
 ### Reglas para iniciar un viaje
 
@@ -182,7 +202,7 @@ Si todo es válido, se crea un `Trip` con estado `in_progress` y se informa la p
 | `map()` | `GET /passenger` | Vista `passenger.dashboard` | Página principal del pasajero: mapa con rutas activas, paradas activas y autobuses activos. |
 | `index()` | `GET /passenger/menu` | Vista `passenger.menu` | Menú de opciones y paradas favoritas del usuario. |
 | `routes()` | `GET /passenger/routes` | Vista `passenger.routes` | Rutas activas con sus paradas y autobuses. |
-| `buses()` | `GET /passenger/buses` | Vista `passenger.buses` | Todos los autobuses con conductor y ruta. |
+| `buses(Request)` | `GET /passenger/buses` | Vista `passenger.buses` | Listado filtrado en servidor: `q` (placa, modelo o nombre del conductor), `route_id`, `status` (por defecto `active`; `all` muestra todos) y `sort` (`plate` A-Z por defecto, u `occupancy` por ocupación descendente). Pasa además las rutas activas y `$busDetailsData`, un arreglo con datos verificables por autobús (placa, modelo, capacidad, pasajeros, asientos libres, estado, ruta, conductor, última actualización y enlace al mapa) que alimenta el modal de detalles. |
 | `addFavorite(Stop $stop)` | `POST /passenger/favorites/{stop}` | JSON o redirección | Agrega la parada a favoritos con `nickname` opcional. Evita duplicados. |
 | `removeFavorite(Stop $stop)` | `DELETE /passenger/favorites/{stop}` | JSON o redirección | Quita la parada de favoritos. |
 | `rateDriver(Request, $driverId)` | `POST /passenger/rate/{driver}` | Redirección | Registra una calificación (`rating` 1–5, `comment` ≤ 500). |
@@ -221,3 +241,12 @@ Ubicados en `app/Http/Controllers/Auth`, provienen de Breeze:
 |-------|-----|
 | `App\Http\Requests\Auth\LoginRequest` | Valida correo y contraseña, intenta la autenticación y aplica limitación de intentos por correo + IP. |
 | `App\Http\Requests\ProfileUpdateRequest` | Valida la actualización del perfil (`name` y `email` único). |
+
+## Tiempo real (Broadcasting)
+
+El modelo `App\Models\Bus::updateLocation($latitude, $longitude)` guarda las coordenadas y `last_location_update`, y despacha el evento `App\Events\BusLocationUpdated`. El evento implementa `ShouldBroadcastNow` (se publica de inmediato, sin worker de colas) y se transmite en el **canal privado `buses`** con el alias `bus.location.updated`:
+
+- La autorización del canal está en `routes/channels.php`: cualquier usuario autenticado (cualquier rol) puede suscribirse, igual que con los endpoints JSON `/api/*`.
+- El payload incluye `id`, `license_plate`, `latitude`, `longitude`, `status`, `current_passengers`, `available_seats`, `route_id` y `last_update`.
+- El backend usa **Laravel Reverb** (`BROADCAST_CONNECTION=reverb`); la suscripción del navegador pasa por las rutas automáticas `GET|POST /broadcasting/auth` (ver [Rutas y API](08-rutas.md#tiempo-real-y-broadcasting)).
+- En el cliente, `resources/js/realtime.js` (Echo + Reverb) recibe el evento y, si el WebSocket no conecta, cae al polling de `GET /api/buses/active`; ambas rutas emiten el mismo payload normalizado a los dashboards del pasajero y del administrador.

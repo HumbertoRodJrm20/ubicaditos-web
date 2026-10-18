@@ -27,9 +27,23 @@ composer run test
 | `tests/Feature/EndpointProtectionTest.php` | Protección con sesión de Breeze de los endpoints web y JSON, y restricción de acciones de conductor. |
 | `tests/Feature/DatabaseConfigurationTest.php` | SQLite en desarrollo/pruebas y PostgreSQL configurado solo para producción y staging. |
 | `tests/Feature/ExampleTest.php` | Respuesta de la ruta `/`. |
+| `tests/Feature/Bus/OccupancyTest.php` | Cálculo de ocupación y asientos disponibles de un autobús (iteración 3). |
+| `tests/Feature/Passenger/BusSearchFilterTest.php` | Búsqueda y filtros de autobuses del pasajero: `q`, `status`, `route_id`, `sort` y datos del modal de detalles (iteración 3). |
+| `tests/Feature/Driver/TripLifecycleTest.php` | Ciclo de viaje del conductor: iniciar, finalizar, validaciones de turno y ubicación, pasajeros a bordo (iteración 3). |
+| `tests/Feature/Driver/DriverStatisticsTest.php` | Estadísticas del conductor: KPIs, promedios y desglose por ruta (iteración 3). |
+| `tests/Feature/Admin/EmergencyManagementTest.php` | Incidencias: listado, filtros, resolución solo de pendientes y vuelta de la unidad a servicio (iteración 3). |
+| `tests/Feature/Admin/BusShowTest.php` | Detalle de autobús del administrador: KPIs, viajes y emergencias (iteración 3). |
+| `tests/Feature/RealTime/BusLocationUpdatedTest.php` | Evento `BusLocationUpdated`: payload, canal privado `buses`, autorización de canal con el driver reverb y `ShouldBroadcastNow` (iteración 3). |
 | `tests/Unit/ExampleTest.php` | Ejemplo unitario. |
 
-**Estado actual:** la suite completa está **en verde (40 pruebas, 172 aserciones)** tras la iteración 1. El desglose por archivo aparece en [API Swagger — Iteración 1](12-swagger-api.md) y en el [_devlog](_devlog.md).
+**Estado actual:** la suite completa está **en verde (86 pruebas, 289 aserciones)** tras la iteración 3. El detalle de las pruebas de la iteración 1 está en [API Swagger — Iteración 1](12-swagger-api.md); las de la iteración 3, en [Iteración 3](13-iteracion-3.md) y en el [_devlog](_devlog.md).
+
+Además de `php artisan test`, la iteración 3 incorpora scripts de prueba **no ejecutados en esta rama** (previstos para la rama de pruebas):
+
+| Tipo | Ubicación | Herramienta |
+|------|-----------|-------------|
+| E2E de navegador | `tests/selenium/` | Selenium WebDriver + Chrome headless (instalados con `bun install`; ejecución con `bun test`). |
+| Carga/rendimiento | `tests/load/ubicaditos-iteration3-load.js` | k6 (solo lectura; patrón de sesión documentado en `tests/load/README.md`). |
 
 Las pruebas generadas por Breeze habían quedado desincronizadas con el esquema real de `users` en la iteración 0; se corrigieron en la iteración 1:
 
@@ -68,13 +82,13 @@ Hallazgos del análisis del código, ordenados por impacto.
 
 | # | Ubicación | Descripción |
 |---|-----------|-------------|
-| 1 | `app/Models/Bus.php` | `current_passengers` no está en `$fillable`, así que `DriverController@updatePassengers` y `buses:simulate` no guardan el número de pasajeros. |
+| 1 | `app/Models/Bus.php` | **Resuelto en la iteración 3:** `current_passengers` está en `$fillable` (además de los accessors `available_seats` y `occupancy_percentage`). |
 | 2 | `ProfileUpdateRequest` y `profile/partials/update-profile-information-form` | **Resuelto en la iteración 1:** ya validan y envían `first_name`, `last_name`, `maternal_last_name` y `phone`. |
 | 3 | `ReportController@index` | La consulta de ocupación por hora usa `strftime()`, exclusiva de SQLite; falla en PostgreSQL (producción/staging). Sustituir por `EXTRACT(HOUR FROM started_at)`. |
 | 4 | `Admin\StopController` | Registrado como recurso pero sin implementar; no hay forma de gestionar paradas desde la interfaz. |
-| 5 | `resources/views/admin/emergencies.blade.php` | Usa `route('admin.emergencies.resolve')`, que no existe; tampoco hay ruta ni controlador que muestre la vista. Las emergencias reportadas solo aparecen como conteos en los reportes. |
-| 6 | `Route::resource` en `routes/web.php` | Se registran `show` (y `index` de usuarios) sin métodos en los controladores. Conviene usar `->except(['show'])` o `->only([...])`. |
-| 7 | `DashboardController@getActiveBuses` | Devuelve `available_seats`, que no existe en el modelo (siempre `null`). |
+| 5 | `resources/views/admin/emergencies.blade.php` | **Resuelto en la iteración 3:** existen `admin.emergencies` (listado con filtros) y `admin.emergencies.resolve` (solo pendientes; al resolverse la unidad vuelve a servicio). |
+| 6 | `Route::resource` en `routes/web.php` | Parcialmente resuelto: `admin.buses.show` sí está implementado (`Admin\BusController@show`, iteración 3); siguen sin implementar `show`/`index` de usuarios y el de paradas. Conviene usar `->except([...])` o `->only([...])`. |
+| 7 | `DashboardController@getActiveBuses` | **Resuelto en la iteración 3:** `available_seats` es un accessor real de `Bus` (capacidad menos pasajeros a bordo, mínimo 0). |
 | 8 | `DriverController@startTrip` | Contempla el turno `night`, pero el enum `work_shift` solo admite `morning` y `afternoon`. |
 
 ### Inconsistencias de datos
@@ -112,12 +126,12 @@ Hallazgos del análisis del código, ordenados por impacto.
 
 | Prioridad | Mejora |
 |-----------|--------|
-| Alta | Corregir `$fillable` de `Bus`, el formulario de perfil y la factory; actualizar las pruebas para que la suite pase. |
-| Alta | Implementar `StopController` y la gestión de emergencias (listado, cambio de estado y resolución). |
+| Alta | Corregir `$fillable` de `Bus`, el formulario de perfil y la factory; actualizar las pruebas para que la suite pase. **Hecho (iteraciones 1 y 3).** |
+| Alta | Implementar `StopController` y la gestión de emergencias (listado, cambio de estado y resolución). **Gestión de emergencias hecha en la iteración 3; `StopController` sigue pendiente.** |
 | Alta | Añadir validaciones de autorización (rol de destino, calificaciones solo tras un viaje). |
-| Media | Escribir pruebas Feature para middleware de roles, `startTrip`, CRUD de administración y favoritos. |
+| Media | Escribir pruebas Feature para middleware de roles, `startTrip`, CRUD de administración y favoritos. **Parcialmente hecho: roles (`RoleAccessTest`), viajes (`TripLifecycleTest`) y detalle de autobús (`BusShowTest`) en la iteración 3.** |
 | Media | Hacer portable la consulta por hora (`HOUR()` / `strftime()` según el driver). |
 | Media | Usar el `path_coordinates` almacenado en el frontend para evitar llamar a OSRM en cada carga. |
-| Baja | Tiempo real con Laravel Reverb o broadcasting en lugar de simulación en el cliente. |
-| Baja | Extraer el JavaScript de los mapas a módulos reutilizables. |
+| Baja | Tiempo real con Laravel Reverb o broadcasting en lugar de simulación en el cliente. **Hecho en la iteración 3: Reverb + canal privado `buses` con fallback de sondeo.** |
+| Baja | Extraer el JavaScript de los mapas a módulos reutilizables. **Parcialmente hecho en la iteración 3: `resources/js/realtime.js` (Echo + sondeo) compilado con Vite/bun.** |
 | Baja | Implementar la mensajería ya modelada (`Message`). |

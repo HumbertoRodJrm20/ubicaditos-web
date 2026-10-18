@@ -14,6 +14,16 @@ info:
     cookie `laravel_session` (y la cabecera `X-XSRF-TOKEN` con la cookie
     `XSRF-TOKEN` para los métodos que mutan estado).
 
+    La **iteración 3** amplía la especificación con las vistas de KPIs del
+    conductor (`/driver/statistics`), la gestión de incidencias de
+    administración (`/admin/emergencies` y
+    `/admin/emergencies/{emergency}/resolve`), el detalle de unidad
+    (`/admin/buses/{bus}`), el endpoint de autorización de broadcasting
+    (`/broadcasting/auth`), los campos calculados de ocupación del esquema
+    `Bus` (`available_seats` y `occupancy_percentage`) y el evento de
+    tiempo real `BusLocationUpdated` (canal privado `buses`, canal
+    autorizado en `routes/channels.php`).
+
     Repositorio: `ubicaditos-web` · Laravel 12 · Rama de producción: `main`
     (PostgreSQL) · Staging: `staging` (PostgreSQL) · Desarrollo: `develop`
     (SQLite).
@@ -267,11 +277,94 @@ paths:
         '403':
           description: No autorizado.
 
+  /admin/emergencies:
+    get:
+      tags: [Administración]
+      summary: Lista y filtra las incidencias/emergencias reportadas.
+      description: |
+        Muestra las tarjetas de incidencias (placa del autobús, reportero,
+        descripción, coordenadas y marcas de tiempo) junto con contadores
+        por estado (total, pendientes, en atención y resueltas).
+      parameters:
+        - in: query
+          name: status
+          required: false
+          schema:
+            type: string
+            enum: [pending, in_progress, resolved]
+          description: Filtra por estado de la incidencia.
+        - in: query
+          name: type
+          required: false
+          schema:
+            type: string
+            enum: [accident, breakdown, medical, security, other]
+          description: Filtra por tipo de incidencia.
+      responses:
+        '200':
+          description: Vista de incidencias (HTML) con los reportes filtrados.
+        '403':
+          description: No autorizado (rol distinto de admin).
+
+  /admin/emergencies/{emergency}/resolve:
+    post:
+      tags: [Administración]
+      summary: Marca una incidencia pendiente como resuelta.
+      description: |
+        Solo las incidencias en estado `pending` pueden resolverse; en caso
+        contrario se redirige con mensaje de error en la sesión. Se registra
+        `resolved_at` y, si el autobús asociado estaba en estado `emergency`,
+        vuelve a `active` (regresa al servicio).
+      parameters:
+        - in: path
+          name: emergency
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: ID de la incidencia.
+      responses:
+        '302':
+          description: Redirige a `/admin/emergencies` con mensaje de éxito (o de error si la incidencia no estaba pendiente).
+        '404':
+          description: Incidencia no encontrada (ID desconocido).
+
+  /admin/buses/{bus}:
+    get:
+      tags: [Administración]
+      summary: Detalle de un autobús de la flota.
+      description: |
+        Página de detalle con KPIs de ocupación (capacidad, ocupación actual,
+        asientos libres y porcentaje de ocupación), datos generales de la
+        unidad, conductor y rutas asignadas, historial de los últimos 10
+        viajes y las 5 incidencias recientes asociadas.
+      parameters:
+        - in: path
+          name: bus
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: ID del autobús.
+      responses:
+        '200':
+          description: Vista de detalle del autobús (HTML).
+        '403':
+          description: No autorizado (rol distinto de admin).
+        '404':
+          description: Autobús no encontrado.
+
   /api/buses/active:
     get:
       tags: [API en tiempo real]
       summary: Lista los autobuses activos con ubicación.
-      description: Devuelve el arreglo JSON que consumen los mapas de pasajeros, conductores y administradores.
+      description: |
+        Devuelve el arreglo JSON que consumen los mapas de pasajeros,
+        conductores y administradores. Cada elemento incluye los campos
+        calculados `available_seats` y `occupancy_percentage`. Es también la
+        fuente del fallback de polling (cada 5 s) que usa
+        `resources/js/realtime.js` cuando el WebSocket no conecta a tiempo
+        (ver el evento `BusLocationUpdated`).
       responses:
         '200':
           description: Autobuses activos (puede ser un arreglo vacío).
@@ -330,6 +423,49 @@ paths:
                   $ref: '#/components/schemas/Bus'
         '404':
           description: Ruta no encontrada.
+
+  /broadcasting/auth:
+    get:
+      tags: [API en tiempo real]
+      summary: Autoriza la suscripción al canal privado de broadcasting (informativo).
+      description: |
+        Endpoint de Laravel Broadcasting (Laravel Reverb) usado por
+        Laravel Echo para suscribirse al canal privado `buses` (definido en
+        `routes/channels.php`: cualquier usuario autenticado puede
+        recibir las posiciones de la flota). Requiere sesión autenticada
+        (cualquier rol); los invitados reciben 403. Ver
+        `app/Events/BusLocationUpdated.php`.
+      responses:
+        '200':
+          description: Autorización concedida (respuesta vacía estándar de Laravel Broadcasting).
+        '403':
+          description: No autorizado (sin sesión o el canal no permite la suscripción).
+    post:
+      tags: [API en tiempo real]
+      summary: Autoriza la suscripción al canal privado de broadcasting (informativo).
+      description: |
+        Misma autorización que GET; Laravel Echo envía `channel_name`
+        (`private-buses`) y `socket_id` en el cuerpo de la petición.
+        Requiere sesión autenticada (cualquier rol); los invitados reciben 403.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [channel_name, socket_id]
+              properties:
+                channel_name:
+                  type: string
+                  example: private-buses
+                socket_id:
+                  type: string
+                  example: '123.456'
+      responses:
+        '200':
+          description: Autorización concedida (respuesta vacía estándar de Laravel Broadcasting).
+        '403':
+          description: No autorizado (sin sesión o el canal no permite la suscripción).
 
   /driver:
     get:
@@ -442,6 +578,25 @@ paths:
           description: Errores de validación.
         '403':
           description: No autorizado.
+
+  /driver/statistics:
+    get:
+      tags: [Conductor]
+      summary: Estadísticas y KPIs del conductor.
+      description: |
+        Vista HTML con los KPIs del conductor: viajes completados (sobre el
+        total), pasajeros transportados, ocupación promedio por viaje
+        (capacidad del autobús), calificación promedio y número de
+        calificaciones recibidas, distancia total en km, tiempo al volante
+        (total y promedio por viaje), viajes activos e incidencias
+        reportadas por él. Incluye además los viajes iniciados en los
+        últimos 7 días (por fecha), sus 5 rutas más frecuentes (viajes y
+        porcentaje) y las 5 calificaciones recientes con pasajero.
+      responses:
+        '200':
+          description: Vista de estadísticas del conductor (HTML).
+        '403':
+          description: No autorizado (rol distinto de driver).
 
   /passenger:
     get:
@@ -662,7 +817,18 @@ components:
         current_passengers:
           type: integer
           nullable: true
-          description: Columnas existente en BD (aún de alta parcial en el modelo de la iteración 0).
+          description: Pasajeros a bordo reportados por el conductor vía `/driver/update-passengers`. Campo mas-assignable del modelo (se recorta a la capacidad del autobús).
+        available_seats:
+          type: integer
+          readOnly: true
+          minimum: 0
+          description: "Asientos libres calculados (accessor: capacidad menos ocupación actual, nunca negativo)."
+          example: 12
+        occupancy_percentage:
+          type: number
+          readOnly: true
+          description: "Porcentaje de ocupación actual 0–100 calculado (accessor)."
+          example: 70
         last_location_update:
           type: string
           format: date-time
@@ -773,6 +939,60 @@ components:
           type: string
           format: date-time
 
+    BusLocationUpdate:
+      type: object
+      description: |
+        Payload del evento broadcast `BusLocationUpdated`
+        (`app/Events/BusLocationUpdated.php`): se emite cada vez que un
+        autobús reporta su posición GPS, en el canal privado `buses` con el
+        nombre `bus.location.updated`. Implementa `ShouldBroadcastNow`, por
+        lo que se publica de inmediato sin depender de un worker de colas.
+        El cliente (`resources/js/realtime.js`) normaliza tanto el mensaje
+        del WebSocket como los elementos de `/api/buses/active` (fallback de
+        polling cada 5 s) añadiendo `source` y `received_at`.
+      properties:
+        id:
+          type: integer
+          example: 1
+        license_plate:
+          type: string
+          example: 12-345-ABC
+        latitude:
+          type: number
+          format: float
+          example: 17.061319
+        longitude:
+          type: number
+          format: float
+          example: -96.725226
+        status:
+          type: string
+          enum: [active, inactive, maintenance, emergency]
+          example: active
+        current_passengers:
+          type: integer
+          nullable: true
+          example: 28
+        available_seats:
+          type: integer
+          minimum: 0
+          example: 12
+        route_id:
+          type: integer
+          nullable: true
+          description: Primera ruta asignada al autobús.
+          example: 1
+        last_update:
+          type: string
+          format: date-time
+          nullable: true
+          description: Marca de tiempo de la última posición GPS.
+        source:
+          type: string
+          enum: [websocket, polling]
+          description: Origen del dato (WebSocket o fallback de polling; el cliente añade además `received_at` con la hora local de recepción).
+          example: websocket
+
     Trip:
       type: object
       description: Viaje registrado por un conductor.
@@ -856,7 +1076,7 @@ components:
           nullable: true
         status:
           type: string
-          enum: [pending, resolved]
+          enum: [pending, in_progress, resolved]
           example: pending
         resolved_at:
           type: string

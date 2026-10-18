@@ -16,17 +16,39 @@ class Bus extends Model
         'last_location_update',
         'driver_id',
         'is_active',
+        'current_passengers',
     ];
 
     protected function casts(): array
     {
         return [
             'capacity' => 'integer',
+            'current_passengers' => 'integer',
             'current_latitude' => 'decimal:7',
             'current_longitude' => 'decimal:7',
             'last_location_update' => 'datetime',
             'is_active' => 'boolean',
         ];
+    }
+
+    /**
+     * Asientos libres (capacidad - ocupación actual), nunca negativo.
+     */
+    public function getAvailableSeatsAttribute(): int
+    {
+        return max(0, (int) $this->capacity - (int) ($this->current_passengers ?? 0));
+    }
+
+    /**
+     * Porcentaje de ocupación actual (0-100).
+     */
+    public function getOccupancyPercentageAttribute(): int
+    {
+        if (!$this->capacity) {
+            return 0;
+        }
+
+        return (int) round((($this->current_passengers ?? 0) / $this->capacity) * 100);
     }
 
     // Relationships
@@ -52,6 +74,11 @@ class Bus extends Model
         return $this->hasMany(Message::class);
     }
 
+    public function emergencyReports()
+    {
+        return $this->hasMany(EmergencyReport::class);
+    }
+
     // Helper methods
     public function isActive()
     {
@@ -71,5 +98,7 @@ class Bus extends Model
             'current_longitude' => $longitude,
             'last_location_update' => now(),
         ]);
+
+        event(new \App\Events\BusLocationUpdated($this));
     }
 }

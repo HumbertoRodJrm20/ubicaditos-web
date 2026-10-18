@@ -1,168 +1,208 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-700 dark:text-gray-200 leading-tight">
+        <h2 class="text-xl font-semibold leading-tight text-[#273252] dark:text-gray-100">
             {{ __('Crear Usuario') }}
         </h2>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6">
-                    <form method="POST" action="{{ route('admin.users.store') }}" x-data="userForm()" @submit="handleSubmit">
-                        @csrf
+    @php
+        $muted = 'text-slate-500 dark:text-gray-400';
+        $heading = 'text-[#273252] dark:text-gray-100';
+        $panel = 'rounded-[24px] border border-white/80 bg-white/75 shadow-[0_14px_35px_-20px_rgba(40,50,90,0.35)] backdrop-blur-xl dark:border-white/10 dark:bg-gray-800/75';
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Nombre(s) -->
-                            <div>
-                                <label for="first_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre(s) <span class="text-red-500">*</span></label>
-                                <input type="text" name="first_name" id="first_name" required
-                                       value="{{ old('first_name') }}"
-                                       x-model="first_name"
-                                       @input="validateFirstName"
-                                       @blur="touchedFields.first_name = true; validateFirstName()"
-                                       maxlength="35"
-                                       class="mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-gray-300"
-                                       :class="touchedFields.first_name && errors.first_name ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'">
-                                <p x-show="touchedFields.first_name && errors.first_name" x-text="errors.first_name" class="mt-1 text-sm text-red-600"></p>
-                                @error('first_name')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
+        $input = 'block w-full rounded-full border border-slate-200/90 bg-white/90 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#8295c5] focus:ring-2 focus:ring-[#8295c5]/20 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100';
+        $inputOk = 'border-slate-200/90 dark:border-gray-600';
+        $inputError = 'border-rose-400 dark:border-rose-500';
+    @endphp
 
-                            <!-- Apellido Paterno -->
-                            <div>
-                                <label for="last_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Apellido Paterno <span class="text-red-500">*</span></label>
-                                <input type="text" name="last_name" id="last_name" required
-                                       value="{{ old('last_name') }}"
-                                       x-model="last_name"
-                                       @input="validateLastName"
-                                       @blur="touchedFields.last_name = true; validateLastName()"
-                                       maxlength="35"
-                                       class="mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-gray-300"
-                                       :class="touchedFields.last_name && errors.last_name ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'">
-                                <p x-show="touchedFields.last_name && errors.last_name" x-text="errors.last_name" class="mt-1 text-sm text-red-600"></p>
-                                @error('last_name')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
+    <style>
+        .users-form-page {
+            background:
+                radial-gradient(circle at 8% 12%, rgba(151, 169, 211, .30), transparent 31%),
+                radial-gradient(circle at 96% 8%, rgba(178, 207, 232, .48), transparent 30%),
+                linear-gradient(135deg, #f5f7fb 0%, #edf1f8 52%, #f9fafc 100%);
+        }
+        .users-form-page .field-error { font-size: 12px; }
+    </style>
 
-                            <!-- Apellido Materno -->
-                            <div>
-                                <label for="maternal_last_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Apellido Materno <span class="text-red-500">*</span></label>
-                                <input type="text" name="maternal_last_name" id="maternal_last_name" required
-                                       value="{{ old('maternal_last_name') }}"
-                                       x-model="maternal_last_name"
-                                       @input="validateMaternalLastName"
-                                       @blur="touchedFields.maternal_last_name = true; validateMaternalLastName()"
-                                       maxlength="35"
-                                       class="mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-gray-300"
-                                       :class="touchedFields.maternal_last_name && errors.maternal_last_name ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'">
-                                <p x-show="touchedFields.maternal_last_name && errors.maternal_last_name" x-text="errors.maternal_last_name" class="mt-1 text-sm text-red-600"></p>
-                                @error('maternal_last_name')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            <!-- Email -->
-                            <div>
-                                <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email <span class="text-red-500">*</span></label>
-                                <input type="email" name="email" id="email" required
-                                       value="{{ old('email') }}"
-                                       x-model="email"
-                                       @input="validateEmail"
-                                       @blur="touchedFields.email = true; validateEmail()"
-                                       class="mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-gray-300"
-                                       :class="touchedFields.email && errors.email ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'">
-                                <p x-show="touchedFields.email && errors.email" x-text="errors.email" class="mt-1 text-sm text-red-600"></p>
-                                @error('email')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            <!-- Teléfono -->
-                            <div>
-                                <label for="phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Teléfono <span class="text-red-500">*</span></label>
-                                <input type="text" name="phone" id="phone" required
-                                       value="{{ old('phone') }}"
-                                       x-model="phone"
-                                       @input="validatePhone"
-                                       @blur="touchedFields.phone = true; validatePhone()"
-                                       maxlength="10"
-                                       placeholder="10 dígitos"
-                                       class="mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-gray-300"
-                                       :class="touchedFields.phone && errors.phone ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'">
-                                <p x-show="touchedFields.phone && errors.phone" x-text="errors.phone" class="mt-1 text-sm text-red-600"></p>
-                                @error('phone')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            <!-- Rol (oculto) -->
-                            <input type="hidden" name="role" x-model="role" value="{{ old('role', request('role')) }}">
-
-                            <!-- Tipo de Usuario (solo lectura) -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tipo de Usuario</label>
-                                <div class="mt-1 px-4 py-3 bg-gray-100 dark:bg-gray-700 rounded-md border border-gray-300 dark:border-gray-600">
-                                    <span class="text-sm font-semibold text-gray-700 dark:text-gray-100" x-text="
-                                        role === 'admin' ? 'Administrador' :
-                                        role === 'driver' ? 'Conductor' :
-                                        role === 'passenger' ? 'Pasajero' : 'No especificado'
-                                    "></span>
-                                </div>
-                            </div>
-
-                            <!-- Horario Laboral (solo para conductores) -->
-                            <div x-show="role === 'driver'">
-                                <label for="work_shift" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Horario Laboral <span class="text-red-500">*</span></label>
-                                <select name="work_shift" id="work_shift"
-                                        x-model="work_shift"
-                                        @change="validateWorkShift"
-                                        @blur="touchedFields.work_shift = true; validateWorkShift()"
-                                        :required="role === 'driver'"
-                                        class="mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-gray-300"
-                                        :class="touchedFields.work_shift && errors.work_shift ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'">
-                                    <option value="">Seleccionar horario</option>
-                                    <option value="morning" {{ old('work_shift') === 'morning' ? 'selected' : '' }}>6:00 AM - 2:00 PM</option>
-                                    <option value="afternoon" {{ old('work_shift') === 'afternoon' ? 'selected' : '' }}>2:00 PM - 10:00 PM</option>
-                                </select>
-                                <p x-show="touchedFields.work_shift && errors.work_shift" x-text="errors.work_shift" class="mt-1 text-sm text-red-600"></p>
-                                @error('work_shift')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            <!-- Contraseña -->
-                            <div>
-                                <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Contraseña <span class="text-red-500">*</span></label>
-                                <input type="password" name="password" id="password" required
-                                       x-model="password"
-                                       @input="validatePassword"
-                                       @blur="touchedFields.password = true; validatePassword()"
-                                       placeholder="Mínimo 8 caracteres, incluir letras, números y símbolos"
-                                       class="mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-gray-300"
-                                       :class="touchedFields.password && errors.password ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'">
-                                <p x-show="touchedFields.password && errors.password" x-text="errors.password" class="mt-1 text-sm text-red-600"></p>
-                                @error('password')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="mt-6 flex justify-end gap-3">
-                            <a href="{{ url()->previous() }}"
-                               class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">
-                                Cancelar
-                            </a>
-                            <button type="submit"
-                                    class="px-4 py-2 bg-primary-500 text-white rounded-md hover:bg-primary-600">
-                                Crear Usuario
-                            </button>
-                        </div>
-                    </form>
+    <div class="users-form-page -m-4 min-h-[calc(100vh-5rem)] px-4 py-7 sm:-m-6 sm:px-6 lg:-m-8 lg:px-8">
+        <div class="mx-auto max-w-[1400px]">
+            @if(session('success'))
+                <div class="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-800 shadow-sm dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200" role="alert">
+                    {{ session('success') }}
                 </div>
+            @endif
+
+            @if(session('error'))
+                <div class="mb-5 rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-800 shadow-sm dark:border-rose-800 dark:bg-rose-900/30 dark:text-rose-200" role="alert">
+                    {{ session('error') }}
+                </div>
+            @endif
+
+            <div class="mb-7 text-center">
+                <p class="mb-1 text-xs font-semibold uppercase tracking-[.18em] text-[#697aa8] dark:text-[#aab7df]">Administración de Ubicaditos</p>
+                <h1 class="text-3xl font-bold tracking-tight text-[#252e4b] dark:text-gray-100 sm:text-4xl">
+                    Crear Usuario
+                </h1>
+                <p class="mt-2 text-sm text-slate-500 dark:text-gray-400">Registra un nuevo administrador, conductor o pasajero.</p>
             </div>
+
+            <section class="{{ $panel }} p-4 sm:p-6">
+                <form method="POST" action="{{ route('admin.users.store') }}" x-data="userForm()" @submit="handleSubmit">
+                    @csrf
+
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
+                        <!-- Nombre(s) -->
+                        <div>
+                            <label for="first_name" class="mb-1 block text-[11px] font-medium text-slate-500 dark:text-gray-400">Nombre(s) <span class="text-rose-500">*</span></label>
+                            <input type="text" name="first_name" id="first_name" required
+                                   value="{{ old('first_name') }}"
+                                   x-model="first_name"
+                                   @input="validateFirstName"
+                                   @blur="touchedFields.first_name = true; validateFirstName()"
+                                   maxlength="35"
+                                   class="{{ $input }} mt-1"
+                                   :class="touchedFields.first_name && errors.first_name ? '{{ $inputError }}' : '{{ $inputOk }}'">
+                            <p x-show="touchedFields.first_name && errors.first_name" x-text="errors.first_name" class="field-error mt-1 text-rose-600 dark:text-rose-400"></p>
+                            @error('first_name')
+                                <p class="field-error mt-1 text-rose-600 dark:text-rose-400">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Apellido Paterno -->
+                        <div>
+                            <label for="last_name" class="mb-1 block text-[11px] font-medium text-slate-500 dark:text-gray-400">Apellido Paterno <span class="text-rose-500">*</span></label>
+                            <input type="text" name="last_name" id="last_name" required
+                                   value="{{ old('last_name') }}"
+                                   x-model="last_name"
+                                   @input="validateLastName"
+                                   @blur="touchedFields.last_name = true; validateLastName()"
+                                   maxlength="35"
+                                   class="{{ $input }} mt-1"
+                                   :class="touchedFields.last_name && errors.last_name ? '{{ $inputError }}' : '{{ $inputOk }}'">
+                            <p x-show="touchedFields.last_name && errors.last_name" x-text="errors.last_name" class="field-error mt-1 text-rose-600 dark:text-rose-400"></p>
+                            @error('last_name')
+                                <p class="field-error mt-1 text-rose-600 dark:text-rose-400">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Apellido Materno -->
+                        <div>
+                            <label for="maternal_last_name" class="mb-1 block text-[11px] font-medium text-slate-500 dark:text-gray-400">Apellido Materno <span class="text-rose-500">*</span></label>
+                            <input type="text" name="maternal_last_name" id="maternal_last_name" required
+                                   value="{{ old('maternal_last_name') }}"
+                                   x-model="maternal_last_name"
+                                   @input="validateMaternalLastName"
+                                   @blur="touchedFields.maternal_last_name = true; validateMaternalLastName()"
+                                   maxlength="35"
+                                   class="{{ $input }} mt-1"
+                                   :class="touchedFields.maternal_last_name && errors.maternal_last_name ? '{{ $inputError }}' : '{{ $inputOk }}'">
+                            <p x-show="touchedFields.maternal_last_name && errors.maternal_last_name" x-text="errors.maternal_last_name" class="field-error mt-1 text-rose-600 dark:text-rose-400"></p>
+                            @error('maternal_last_name')
+                                <p class="field-error mt-1 text-rose-600 dark:text-rose-400">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Email -->
+                        <div>
+                            <label for="email" class="mb-1 block text-[11px] font-medium text-slate-500 dark:text-gray-400">Email <span class="text-rose-500">*</span></label>
+                            <input type="email" name="email" id="email" required
+                                   value="{{ old('email') }}"
+                                   x-model="email"
+                                   @input="validateEmail"
+                                   @blur="touchedFields.email = true; validateEmail()"
+                                   class="{{ $input }} mt-1"
+                                   :class="touchedFields.email && errors.email ? '{{ $inputError }}' : '{{ $inputOk }}'">
+                            <p x-show="touchedFields.email && errors.email" x-text="errors.email" class="field-error mt-1 text-rose-600 dark:text-rose-400"></p>
+                            @error('email')
+                                <p class="field-error mt-1 text-rose-600 dark:text-rose-400">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Teléfono -->
+                        <div>
+                            <label for="phone" class="mb-1 block text-[11px] font-medium text-slate-500 dark:text-gray-400">Teléfono <span class="text-rose-500">*</span></label>
+                            <input type="text" name="phone" id="phone" required
+                                   value="{{ old('phone') }}"
+                                   x-model="phone"
+                                   @input="validatePhone"
+                                   @blur="touchedFields.phone = true; validatePhone()"
+                                   maxlength="10"
+                                   placeholder="10 dígitos"
+                                   class="{{ $input }} mt-1"
+                                   :class="touchedFields.phone && errors.phone ? '{{ $inputError }}' : '{{ $inputOk }}'">
+                            <p x-show="touchedFields.phone && errors.phone" x-text="errors.phone" class="field-error mt-1 text-rose-600 dark:text-rose-400"></p>
+                            @error('phone')
+                                <p class="field-error mt-1 text-rose-600 dark:text-rose-400">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Rol (oculto) -->
+                        <input type="hidden" name="role" x-model="role" value="{{ old('role', request('role')) }}">
+
+                        <!-- Tipo de Usuario (solo lectura) -->
+                        <div>
+                            <label class="mb-1 block text-[11px] font-medium text-slate-500 dark:text-gray-400">Tipo de Usuario</label>
+                            <div class="mt-1 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-4 py-3 dark:border-gray-600 dark:bg-gray-700/60">
+                                <span class="inline-flex rounded-full bg-[#53658f]/10 px-2.5 py-1 text-[11px] font-semibold text-[#53658f] ring-1 ring-[#53658f]/20 dark:bg-[#8295c5]/20 dark:text-[#b6c4e6] dark:ring-[#8295c5]/30" x-text="
+                                    role === 'admin' ? 'Administrador' :
+                                    role === 'driver' ? 'Conductor' :
+                                    role === 'passenger' ? 'Pasajero' : 'No especificado'
+                                "></span>
+                            </div>
+                        </div>
+
+                        <!-- Horario Laboral (solo para conductores) -->
+                        <div x-show="role === 'driver'">
+                            <label for="work_shift" class="mb-1 block text-[11px] font-medium text-slate-500 dark:text-gray-400">Horario Laboral <span class="text-rose-500">*</span></label>
+                            <select name="work_shift" id="work_shift"
+                                    x-model="work_shift"
+                                    @change="validateWorkShift"
+                                    @blur="touchedFields.work_shift = true; validateWorkShift()"
+                                    :required="role === 'driver'"
+                                    class="{{ $input }} mt-1"
+                                    :class="touchedFields.work_shift && errors.work_shift ? '{{ $inputError }}' : '{{ $inputOk }}'">
+                                <option value="">Seleccionar horario</option>
+                                <option value="morning" {{ old('work_shift') === 'morning' ? 'selected' : '' }}>6:00 AM - 2:00 PM</option>
+                                <option value="afternoon" {{ old('work_shift') === 'afternoon' ? 'selected' : '' }}>2:00 PM - 10:00 PM</option>
+                            </select>
+                            <p x-show="touchedFields.work_shift && errors.work_shift" x-text="errors.work_shift" class="field-error mt-1 text-rose-600 dark:text-rose-400"></p>
+                            @error('work_shift')
+                                <p class="field-error mt-1 text-rose-600 dark:text-rose-400">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Contraseña -->
+                        <div>
+                            <label for="password" class="mb-1 block text-[11px] font-medium text-slate-500 dark:text-gray-400">Contraseña <span class="text-rose-500">*</span></label>
+                            <input type="password" name="password" id="password" required
+                                   x-model="password"
+                                   @input="validatePassword"
+                                   @blur="touchedFields.password = true; validatePassword()"
+                                   placeholder="Mínimo 8 caracteres, incluir letras, números y símbolos"
+                                   class="{{ $input }} mt-1"
+                                   :class="touchedFields.password && errors.password ? '{{ $inputError }}' : '{{ $inputOk }}'">
+                            <p x-show="touchedFields.password && errors.password" x-text="errors.password" class="field-error mt-1 text-rose-600 dark:text-rose-400"></p>
+                            @error('password')
+                                <p class="field-error mt-1 text-rose-600 dark:text-rose-400">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                        <a href="{{ url()->previous() }}"
+                           class="rounded-full border border-slate-200 bg-white/85 px-5 py-2.5 text-center text-xs font-semibold text-slate-600 transition hover:bg-white dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
+                            Cancelar
+                        </a>
+                        <button type="submit"
+                                class="rounded-full bg-gradient-to-b from-[#7b8db8] to-[#53658f] px-5 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-[#8295c5] focus:ring-offset-2">
+                            Crear Usuario
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <p class="py-5 text-center text-xs text-slate-400 dark:text-gray-500">Ubicaditos · Crear Usuario</p>
         </div>
     </div>
 
