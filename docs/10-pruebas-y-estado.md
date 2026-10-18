@@ -42,7 +42,7 @@ Además de `php artisan test`, la iteración 3 incorpora scripts de prueba **no 
 
 | Tipo | Ubicación | Herramienta |
 |------|-----------|-------------|
-| E2E de navegador | `tests/selenium/` | Selenium WebDriver + Chrome headless (instalados con `bun install`; ejecución con `bun test`). |
+| E2E de navegador | `tests/selenium/` | Selenium WebDriver + pytest + Chrome headless (dependencias con `pip install -r requirements.txt`; ejecución con `python3 -m pytest`). |
 | Carga/rendimiento | `tests/load/ubicaditos-iteration3-load.js` | k6 (solo lectura; patrón de sesión documentado en `tests/load/README.md`). |
 
 Las pruebas generadas por Breeze habían quedado desincronizadas con el esquema real de `users` en la iteración 0; se corrigieron en la iteración 1:

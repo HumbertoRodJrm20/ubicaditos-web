@@ -1,0 +1,4 @@
+# Dependencias de las pruebas E2E (Selenium WebDriver + pytest).
+# Instalar con:  pip install -r requirements.txt   (o python3 -m pip install -r ...)
+selenium>=4.27
+pytest>=8.0

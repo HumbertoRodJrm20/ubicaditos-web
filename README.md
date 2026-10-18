@@ -44,7 +44,7 @@ Abre `http://localhost:8000` e inicia sesión con alguna de las cuentas de prueb
 
 ```bash
 php artisan test          # suite Feature/Unit (SQLite en memoria)
-cd tests/selenium && bun install && bun test   # E2E con Chrome headless (rama de pruebas)
+cd tests/selenium && pip install -r requirements.txt && python3 -m pytest   # E2E con Chrome headless (rama de pruebas)
 k6 run tests/load/ubicaditos-iteration3-load.js -e K6_VUS=15   # carga, solo lectura (rama de pruebas)
 ```
 

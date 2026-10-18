@@ -158,7 +158,7 @@ Rama de trabajo: `develop`. Enfoque **TDD** (tests en rojo primero, implementaci
 | 6 | Incidencias (ciclo completo) | Formulario del conductor (5 tipos), listado con filtros del admin, resolución solo de pendientes y **vuelta de la unidad a servicio**. | ✅ Hecho |
 | 7 | Restyle responsive | Todas las vistas restantes al estilo cristal y mobile-first (objetivo 375×667). | ✅ Hecho |
 | 8 | Pruebas (TDD) | Suites nuevas: tiempo real, filtros del pasajero, ciclo de viaje, estadísticas, incidencias y detalle de autobús. | ✅ Hecho |
-| 9 | Scripts E2E (Selenium) | `tests/selenium/` (bun + selenium-webdriver, Chrome headless, 5 specs). No se ejecutan en esta rama. | ✅ Hecho (ejecución pendiente en la rama de pruebas) |
+| 9 | Scripts E2E (Selenium) | `tests/selenium/` (Python + pytest + selenium, Chrome headless, 5 specs). No se ejecutan en esta rama. | ✅ Hecho (ejecución pendiente en la rama de pruebas) |
 | 10 | Pruebas de carga (k6) | `tests/load/ubicaditos-iteration3-load.js` (solo lectura, 3 roles). No se ejecutó: k6 no está disponible en este entorno. | ✅ Hecho (ejecución pendiente) |
 | 11 | Documentación y swagger | `06`, `07`, `08`, `10`, nuevo `13-iteracion-3.md`, `_devlog`, `swagger.yaml` y `12-swagger-api.md`. | ✅ Hecho |
 
@@ -174,7 +174,7 @@ Rama de trabajo: `develop`. Enfoque **TDD** (tests en rojo primero, implementaci
 | Filtros de lista en servidor (query string) + búsqueda instantánea en cliente | Los filtros son compartibles/enlazables (chips como enlaces) y la búsqueda no recarga; el cliente solo refina `q`. |
 | La resolución de una incidencia devuelve la unidad a `active` | Regla de dominio incorporada en la iteración 3 (con pruebas): resolver el incidente restaura el servicio de la unidad. |
 | Interruptor de compartir ubicación persistido en `localStorage` | El conductor controla el envío de su GPS; el estado sobrevive a recargas (por defecto activo). |
-| Pruebas E2E con `bun test` + `selenium-webdriver` y localizadores `By.*` | Consistencia con el stack (bun); los localizadores string (`css=…`) no existen en selenium-webdriver 4.x para JS. |
+| Pruebas E2E con `pytest` + `selenium` y localizadores `By.*` | `pytest` es el runner estándar de Python; los localizadores se construyen con la API `By.*` de Selenium, ya que las cadenas tipo `css=…` no son válidas en la API de Python. |
 
 ### Ciclo de incidencias (nuevo comportamiento)
 
@@ -203,7 +203,7 @@ Se maquetaron al nuevo estilo (cristal + mobile-first): `admin/buses/index|creat
 - `app/Events/BusLocationUpdated.php`, `routes/channels.php`, `resources/js/realtime.js`
 - `resources/views/admin/emergencies.blade.php`, `resources/views/driver/statistics.blade.php`, `resources/views/admin/buses/show.blade.php`
 - `tests/Feature/RealTime/BusLocationUpdatedTest.php` y las suites indicadas arriba
-- `tests/selenium/` (`package.json`, `config.js`, 5 specs, `README.md`, `.gitignore`)
+- `tests/selenium/` (`config.py`, `conftest.py`, 5 specs, `requirements.txt`, `README.md`, `.gitignore`)
 - `tests/load/ubicaditos-iteration3-load.js`
 - `docs/13-iteracion-3.md`
 - `.env.production.example`, `.env.staging.example` (bloques Reverb; `.env.example` ampliado)
