@@ -159,6 +159,14 @@
                 </button>
 
                 <div id="sim-panel" data-popover class="hidden absolute bottom-[calc(100%+8px)] left-0 w-64 bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl border border-white/70 dark:border-white/10 shadow-xl rounded-2xl p-4 space-y-2">
+                    <label class="flex items-center cursor-pointer" id="share-location-label">
+                        <input type="checkbox" id="share-location-toggle" class="sr-only peer">
+                        <div class="relative w-11 h-6 bg-slate-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#4b5a85]"></div>
+                        <span class="ml-3 text-xs font-medium text-slate-700 dark:text-gray-300">Compartir mi ubicación</span>
+                    </label>
+                    <p class="text-[11px] text-slate-500 dark:text-gray-400">
+                        Se envía automáticamente a los pasajeros mientras esté activo.
+                    </p>
                     <label class="flex items-center cursor-pointer" id="simulated-location-label">
                         <input type="checkbox" id="simulated-location-toggle" class="sr-only peer">
                         <div class="relative w-11 h-6 bg-slate-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#4b5a85]"></div>
@@ -376,14 +384,26 @@
             return Math.round(speed);
         }
 
-        function useSimulatedLocationDriver() {
-            const location = customSimulatedLocation || SIMULATED_LOCATION;
-            console.log('🎯 Usando ubicación GPS simulada para conductor:', location);
+        // Envía la posición al servidor (el backend la retransmite en tiempo real).
+        function sendLocationToServer(lat, lng) {
+            fetch('{{ route("driver.update-location") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ latitude: lat, longitude: lng })
+            })
+            .then(response => response.json())
+            .then(() => {
+                console.log('Ubicación actualizada en servidor');
+            })
+            .catch(error => {
+                console.error('Error al actualizar ubicación:', error);
+            });
+        }
 
-            const lat = location.lat;
-            const lng = location.lng;
-            const timestamp = Date.now();
-
+        function applySimulatedPosition(lat, lng) {
             if (busMarker) {
                 busMarker.setLatLng([lat, lng]);
             } else {
@@ -395,27 +415,34 @@
             document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
             document.getElementById('current-speed').textContent = '0';
 
-            lastPosition = { lat, lng, timestamp };
-
-            fetch('{{ route("driver.update-location") }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                },
-                body: JSON.stringify({ latitude: lat, longitude: lng })
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Ubicación simulada actualizada en servidor');
-            })
-            .catch(error => {
-                console.error('Error al actualizar ubicación:', error);
-            });
+            lastPosition = { lat, lng, timestamp: Date.now() };
 
             checkProximityToStops(lat, lng);
+        }
 
-            console.log('✅ Ubicación GPS simulada establecida (sin actualización automática)');
+        function useSimulatedLocationDriver() {
+            const location = customSimulatedLocation || SIMULATED_LOCATION;
+            console.log('🎯 Usando ubicación GPS simulada para conductor:', location);
+
+            applySimulatedPosition(location.lat, location.lng);
+            sendLocationToServer(location.lat, location.lng);
+
+            // Auto-actualización: reenvía la posición cada 5 s con una deriva mínima
+            // para que los pasajeros vean la ubicación "viva" también en modo simulado.
+            if (simulatedLocationInterval) {
+                clearInterval(simulatedLocationInterval);
+            }
+
+            simulatedLocationInterval = setInterval(() => {
+                const drift = 0.0003;
+                location.lat += (Math.random() - 0.5) * drift;
+                location.lng += (Math.random() - 0.5) * drift;
+
+                applySimulatedPosition(location.lat, location.lng);
+                sendLocationToServer(location.lat, location.lng);
+            }, 5000);
+
+            console.log('✅ Ubicación GPS simulada con auto-actualización cada 5 s');
         }
 
         function updateLocation() {
@@ -461,21 +488,7 @@
 
                         lastPosition = { lat, lng, timestamp };
 
-                        fetch('{{ route("driver.update-location") }}', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                            },
-                            body: JSON.stringify({ latitude: lat, longitude: lng })
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            console.log('Ubicación actualizada en servidor');
-                        })
-                        .catch(error => {
-                            console.error('Error al actualizar ubicación:', error);
-                        });
+                        sendLocationToServer(lat, lng);
 
                         checkProximityToStops(lat, lng);
                     },
@@ -561,32 +574,72 @@
 
             if (isSimulatedMode) {
                 simulatedHint.classList.remove('hidden');
-                gpsIndicator.className = 'w-2 h-2 bg-blue-500 rounded-full animate-pulse';
-                gpsText.textContent = 'Modo Simulado';
-
-                if (watchId) {
-                    navigator.geolocation.clearWatch(watchId);
-                    watchId = null;
-                }
-
-                if (customSimulatedLocation) {
-                    useSimulatedLocationDriver();
-                } else {
-                    alert('Haz clic en el mapa para establecer tu ubicación simulada');
-                }
-            } else {
-                simulatedHint.classList.add('hidden');
-                gpsIndicator.className = 'w-2 h-2 bg-green-500 rounded-full animate-pulse';
-                gpsText.textContent = 'GPS Activo';
                 customSimulatedLocation = null;
 
                 if (simulatedLocationInterval) {
                     clearInterval(simulatedLocationInterval);
                     simulatedLocationInterval = null;
                 }
+            } else {
+                simulatedHint.classList.add('hidden');
+                customSimulatedLocation = null;
 
+                if (simulatedLocationInterval) {
+                    clearInterval(simulatedLocationInterval);
+                    simulatedLocationInterval = null;
+                }
+            }
+
+            applySharingState();
+        });
+
+        // ===== Compartir ubicación (estado persistente entre sesiones) =====
+        const shareToggle = document.getElementById('share-location-toggle');
+        const SHARE_KEY = 'ubicaditos_share_location';
+
+        function isSharingEnabled() {
+            return localStorage.getItem(SHARE_KEY) !== 'off';
+        }
+
+        function stopSharing() {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            if (simulatedLocationInterval) {
+                clearInterval(simulatedLocationInterval);
+                simulatedLocationInterval = null;
+            }
+            gpsIndicator.className = 'w-2 h-2 bg-slate-400 rounded-full';
+            gpsText.textContent = 'GPS Inactivo';
+        }
+
+        function applySharingState() {
+            const enabled = isSharingEnabled();
+            shareToggle.checked = enabled;
+
+            if (!enabled) {
+                stopSharing();
+                return;
+            }
+
+            if (isSimulatedMode) {
+                gpsIndicator.className = 'w-2 h-2 bg-blue-500 rounded-full animate-pulse';
+                gpsText.textContent = 'Modo Simulado';
+
+                if (customSimulatedLocation) {
+                    useSimulatedLocationDriver();
+                }
+            } else {
+                gpsIndicator.className = 'w-2 h-2 bg-green-500 rounded-full animate-pulse';
+                gpsText.textContent = 'GPS Activo';
                 updateLocation();
             }
+        }
+
+        shareToggle.addEventListener('change', function() {
+            localStorage.setItem(SHARE_KEY, this.checked ? 'on' : 'off');
+            applySharingState();
         });
 
         map.on('click', function(e) {
@@ -608,7 +661,12 @@
                     simulatedLocationInterval = null;
                 }
 
-                useSimulatedLocationDriver();
+                if (isSharingEnabled()) {
+                    useSimulatedLocationDriver();
+                } else {
+                    // Sin compartir: solo se mueve el marcador local, no se envía al servidor.
+                    applySimulatedPosition(lat, lng);
+                }
 
                 L.circleMarker([lat, lng], {
                     radius: 8,
@@ -621,7 +679,8 @@
             }
         });
 
-        updateLocation();
+        // Arranque: respeta la preferencia de compartir ubicación guardada.
+        applySharingState();
 
         window.addEventListener('beforeunload', function() {
             if (watchId) {

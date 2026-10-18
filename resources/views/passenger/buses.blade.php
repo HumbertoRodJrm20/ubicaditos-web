@@ -1,29 +1,44 @@
 @php
-    $activeBuses = $buses->where('status', 'active')->values();
-    $routes = \App\Models\Route::where('is_active', true)->get();
+    // $buses, $routes y $busDetailsData vienen filtrados desde PassengerController (q, route_id, status, sort).
 
-    $busFilterData = $activeBuses->map(fn ($bus) => [
+    $busFilterData = $buses->map(fn ($bus) => [
         'plate' => mb_strtolower($bus->license_plate ?? ''),
         'model' => mb_strtolower($bus->model ?? ''),
         'driver' => mb_strtolower($bus->driver->name ?? ''),
         'route' => mb_strtolower($bus->routes->first()->name ?? ''),
     ])->values();
 
-    // Datos completos y verificables para el modal de detalles del autobús (Requisito 4)
-    $busDetailsData = $activeBuses->map(fn ($bus) => [
-        'id' => $bus->id,
-        'plate' => $bus->license_plate ?? '—',
-        'model' => $bus->model ?? 'Modelo no especificado',
-        'capacity' => $bus->capacity,
-        'passengers' => $bus->current_passengers ?? 0,
-        'status' => $bus->status,
-        'route' => $bus->routes->first()?->name ?? 'Sin ruta asignada',
-        'route_code' => $bus->routes->first()?->code ?? '',
-        'route_color' => $bus->routes->first()?->color ?? '#6b7bad',
-        'driver' => $bus->driver?->name ?? 'Sin conductor asignado',
-        'last_update' => $bus->last_location_update?->diffForHumans() ?? 'Sin datos de ubicación',
-        'map_url' => route('passenger.dashboard', ['bus_id' => $bus->id]),
-    ])->values();
+    $statusStyles = [
+        'active' => ['label' => 'En servicio', 'classes' => 'bg-emerald-50 text-emerald-600 ring-emerald-100', 'dot' => 'bg-emerald-500'],
+        'emergency' => ['label' => 'Emergencia', 'classes' => 'bg-rose-50 text-rose-600 ring-rose-100', 'dot' => 'bg-rose-500'],
+        'maintenance' => ['label' => 'En mantenimiento', 'classes' => 'bg-amber-50 text-amber-600 ring-amber-100', 'dot' => 'bg-amber-500'],
+        'inactive' => ['label' => 'Inactivo', 'classes' => 'bg-slate-100 text-slate-500 ring-slate-200', 'dot' => 'bg-slate-400'],
+    ];
+
+    $statusOptions = [
+        'active' => 'En servicio',
+        'maintenance' => 'Mantenimiento',
+        'emergency' => 'Emergencia',
+        'all' => 'Todos los estados',
+    ];
+
+    // Construye una URL conservando los filtros actuales y sobrescribiendo los indicados.
+    $filterUrl = fn (array $overrides) => route('passenger.buses', array_filter(
+        array_merge(
+            [
+                'q' => request('q'),
+                'route_id' => request('route_id'),
+                'status' => request('status'),
+                'sort' => request('sort'),
+            ],
+            $overrides
+        ),
+        fn ($value) => filled($value)
+    ));
+
+    $currentStatus = request('status', 'active');
+    $currentSort = request('sort', 'plate');
+    $currentRouteId = request('route_id');
 
     $chipBase = 'inline-flex h-8 items-center justify-center rounded-full px-3.5 text-xs font-semibold transition focus:outline-none focus:ring-4 focus:ring-[#6b7bad]/25';
     $chipOn = 'bg-gradient-to-b from-[#7b88b8] to-[#4a5a8a] text-white shadow-md shadow-[#4a5a8a]/25';
@@ -49,42 +64,78 @@
                 </p>
             </div>
 
-            <div class="relative w-full sm:w-72">
-                <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-[#8a94b3]">
-                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                         stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="11" cy="11" r="7" />
-                        <path d="m20 20-3.5-3.5" />
-                    </svg>
-                </span>
-                <input
-                    id="bus-search"
-                    type="search"
-                    x-data
-                    oninput="filterBuses()"
-                    aria-label="Buscar autobús"
-                    placeholder="Buscar por placas o conductor"
-                    class="h-11 w-full rounded-full border border-white/70 bg-white/85 pl-11 pr-4 text-sm text-[#1e2a4a] shadow-lg shadow-[#4a5a8a]/10 backdrop-blur-xl placeholder:text-[#8a94b3] focus:border-[#6b7bad] focus:ring-4 focus:ring-[#6b7bad]/25"
-                />
-            </div>
+            {{-- Búsqueda: filtra al instante (JS) y también en el servidor al enviar el formulario --}}
+            <form method="GET" action="{{ route('passenger.buses') }}" class="w-full sm:w-72" role="search">
+                @foreach (array_filter(['route_id' => $currentRouteId, 'status' => $currentStatus !== 'active' ? $currentStatus : null, 'sort' => $currentSort !== 'plate' ? $currentSort : null]) as $param => $value)
+                    <input type="hidden" name="{{ $param }}" value="{{ $value }}">
+                @endforeach
+
+                <div class="relative">
+                    <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-[#8a94b3]">
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="7" />
+                            <path d="m20 20-3.5-3.5" />
+                        </svg>
+                    </span>
+                    <input
+                        id="bus-search"
+                        name="q"
+                        type="search"
+                        value="{{ request('q') }}"
+                        oninput="filterBuses()"
+                        aria-label="Buscar autobús"
+                        placeholder="Buscar por placas o conductor"
+                        class="h-11 w-full rounded-full border border-white/70 bg-white/85 pl-11 pr-4 text-sm text-[#1e2a4a] shadow-lg shadow-[#4a5a8a]/10 backdrop-blur-xl placeholder:text-[#8a94b3] focus:border-[#6b7bad] focus:ring-4 focus:ring-[#6b7bad]/25"
+                    />
+                </div>
+            </form>
         </header>
+
+        {{-- Filtros por estado y ordenamiento (navegan al servidor) --}}
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex flex-wrap gap-2" id="status-chips">
+                @foreach ($statusOptions as $statusKey => $statusLabel)
+                    <a href="{{ $filterUrl(['status' => $statusKey === 'active' ? null : $statusKey]) }}"
+                       aria-current="{{ $currentStatus === $statusKey ? 'true' : 'false' }}"
+                       class="{{ $chipBase }} {{ $currentStatus === $statusKey ? $chipOn : $chipOff }}">
+                        {{ $statusLabel }}
+                    </a>
+                @endforeach
+            </div>
+
+            <label class="flex items-center gap-2 text-xs text-[#5b6788]">
+                <span class="whitespace-nowrap">Ordenar</span>
+                <select onchange="location = this.value"
+                        aria-label="Ordenar autobuses"
+                        class="h-9 rounded-full border border-white/70 bg-white/85 px-3 text-xs text-[#1e2a4a] shadow-sm focus:border-[#6b7bad] focus:ring-4 focus:ring-[#6b7bad]/25">
+                    <option value="{{ $filterUrl(['sort' => null]) }}" {{ $currentSort === 'plate' ? 'selected' : '' }}>
+                        Por placa (A-Z)
+                    </option>
+                    <option value="{{ $filterUrl(['sort' => 'occupancy']) }}" {{ $currentSort === 'occupancy' ? 'selected' : '' }}>
+                        Por ocupación (mayor primero)
+                    </option>
+                </select>
+            </label>
+        </div>
 
         {{-- Filtros por ruta --}}
         <div class="flex flex-wrap gap-2" id="route-chips">
-            <button type="button" data-route="" onclick="setRouteFilter(this)"
-                class="{{ $chipBase }} {{ $chipOn }}">
+            <a href="{{ $filterUrl(['route_id' => null]) }}"
+               aria-current="{{ $currentRouteId ? 'false' : 'true' }}"
+               class="{{ $chipBase }} {{ $currentRouteId ? $chipOff : $chipOn }}">
                 Todas las rutas
-            </button>
+            </a>
             @foreach ($routes as $route)
-                <button type="button" data-route="{{ mb_strtolower($route->name) }}"
-                    onclick="setRouteFilter(this)"
-                    class="{{ $chipBase }} {{ $chipOff }}">
+                <a href="{{ $filterUrl(['route_id' => $route->id]) }}"
+                   aria-current="{{ $currentRouteId == $route->id ? 'true' : 'false' }}"
+                   class="{{ $chipBase }} {{ $currentRouteId == $route->id ? $chipOn : $chipOff }}">
                     {{ $route->name }}
-                </button>
+                </a>
             @endforeach
         </div>
 
-        @if ($activeBuses->isEmpty())
+        @if ($buses->isEmpty())
             <div class="mx-auto mt-8 max-w-md rounded-[28px] border border-white/70 bg-white/80 p-10 text-center shadow-xl shadow-[#4a5a8a]/10 backdrop-blur-xl">
                 <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#7b88b8] to-[#4a5a8a] text-white shadow-md shadow-[#4a5a8a]/30">
                     <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -93,19 +144,26 @@
                         <path d="M3 10h18M7 18l-1 3M17 18l1 3M7 14h.01M17 14h.01" />
                     </svg>
                 </div>
-                <h3 class="mt-4 text-lg font-bold text-[#1e2a4a]">No hay autobuses en servicio</h3>
+                <h3 class="mt-4 text-lg font-bold text-[#1e2a4a]">No hay autobuses que coincidan</h3>
                 <p class="mt-1 text-xs text-[#5b6788]">
-                    Los autobuses disponibles aparecerán aquí cuando estén activos.
+                    Ajusta la búsqueda o los filtros para ver más unidades.
                 </p>
+                @if (request()->hasAny(['q', 'route_id', 'status']))
+                    <a href="{{ route('passenger.buses') }}"
+                       class="mt-4 inline-flex h-9 items-center justify-center rounded-full bg-gradient-to-b from-[#7b88b8] to-[#4a5a8a] px-5 text-xs font-semibold text-white shadow-md shadow-[#4a5a8a]/25">
+                        Limpiar filtros
+                    </a>
+                @endif
             </div>
         @else
             {{-- Tarjetas de autobuses --}}
             <div id="bus-grid" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                @foreach ($activeBuses as $bus)
+                @foreach ($buses as $bus)
                     @php
                         $busRoute = $bus->routes->first();
                         $driver = $bus->driver;
                         $routeColor = $busRoute->color ?? '#6b7bad';
+                        $statusStyle = $statusStyles[$bus->status] ?? $statusStyles['inactive'];
                     @endphp
 
                     <article
@@ -135,9 +193,9 @@
                                 </p>
                             </div>
 
-                            <span class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-600 ring-1 ring-emerald-100">
-                                <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                                En servicio
+                            <span class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold ring-1 {{ $statusStyle['classes'] }}">
+                                <span class="h-1.5 w-1.5 rounded-full {{ $statusStyle['dot'] }}"></span>
+                                {{ $statusStyle['label'] }}
                             </span>
                         </div>
 
@@ -147,6 +205,25 @@
                             <span class="truncate">
                                 {{ $busRoute ? $busRoute->name : 'Sin ruta asignada' }}
                             </span>
+                        </div>
+
+                        {{-- Ocupación y asientos libres --}}
+                        <div class="space-y-1.5">
+                            <div class="flex items-center justify-between text-[10px] font-semibold text-[#5b6788]">
+                                <span>{{ $bus->current_passengers ?? 0 }}/{{ $bus->capacity }} ocupados</span>
+                                <span class="{{ $bus->available_seats > 0 ? 'text-emerald-600' : 'text-rose-600' }}">
+                                    {{ $bus->available_seats > 0 ? $bus->available_seats . ' asientos libres' : 'Sin asientos libres' }}
+                                </span>
+                            </div>
+                            <div class="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                                <div class="h-full rounded-full {{ $bus->occupancy_percentage >= 90 ? 'bg-rose-500' : ($bus->occupancy_percentage >= 60 ? 'bg-amber-500' : 'bg-emerald-500') }}"
+                                     style="width: {{ $bus->occupancy_percentage }}%"
+                                     role="progressbar"
+                                     aria-valuenow="{{ $bus->occupancy_percentage }}"
+                                     aria-valuemin="0"
+                                     aria-valuemax="100"
+                                     aria-label="Ocupación actual"></div>
+                            </div>
                         </div>
 
                         {{-- Conductor --}}
@@ -332,6 +409,14 @@
                 </div>
 
                 <div class="col-span-2 rounded-2xl bg-[#f3f5fb] p-3">
+                    <p class="text-[11px] text-[#5b6788]">Asientos libres</p>
+                    <p id="bd-seats" class="mt-1 font-semibold text-[#1e2a4a]">—</p>
+                    <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white">
+                        <div id="bd-occupancy-bar" class="h-full w-0 rounded-full bg-emerald-500 transition-all"></div>
+                    </div>
+                </div>
+
+                <div class="col-span-2 rounded-2xl bg-[#f3f5fb] p-3">
                     <p class="text-[11px] text-[#5b6788]">Conductor</p>
                     <p id="bd-driver" class="mt-1 truncate font-semibold text-[#1e2a4a]">—</p>
                 </div>
@@ -361,8 +446,8 @@
     </div>
 
     <script>
-        let selectedRoute = '';
-
+        // Búsqueda instantánea entre las tarjetas renderizadas por el servidor.
+        // (La búsqueda, el estado, la ruta y el orden también se aplican en el servidor vía query string.)
         function filterBuses() {
             const searchInput = document.getElementById('bus-search');
             const query = (searchInput?.value || '').trim().toLowerCase();
@@ -372,14 +457,11 @@
             let visibleCount = 0;
 
             cards.forEach(card => {
-                const matchesQuery =
+                const visible =
                     card.dataset.plate.includes(query) ||
                     card.dataset.model.includes(query) ||
                     card.dataset.driver.includes(query) ||
                     card.dataset.route.includes(query);
-
-                const matchesRoute = !selectedRoute || card.dataset.route === selectedRoute;
-                const visible = matchesQuery && matchesRoute;
 
                 card.classList.toggle('hidden', !visible);
                 if (visible) visibleCount++;
@@ -389,26 +471,6 @@
                 noResults.classList.toggle('hidden', visibleCount !== 0);
                 grid.classList.toggle('hidden', visibleCount === 0);
             }
-        }
-
-        function setRouteFilter(button) {
-            selectedRoute = button.dataset.route || '';
-
-            document.querySelectorAll('#route-chips button').forEach(chip => {
-                chip.classList.remove(
-                    'bg-gradient-to-b', 'from-[#7b88b8]', 'to-[#4a5a8a]',
-                    'text-white', 'shadow-md', 'shadow-[#4a5a8a]/25'
-                );
-                chip.classList.add('border', 'border-white/70', 'bg-white/80', 'text-[#3d4a6b]');
-            });
-
-            button.classList.remove('border', 'border-white/70', 'bg-white/80', 'text-[#3d4a6b]');
-            button.classList.add(
-                'bg-gradient-to-b', 'from-[#7b88b8]', 'to-[#4a5a8a]',
-                'text-white', 'shadow-md', 'shadow-[#4a5a8a]/25'
-            );
-
-            filterBuses();
         }
 
         function showRatingModal(driverId, driverName) {
@@ -481,6 +543,19 @@
             document.getElementById('bd-capacity').textContent = bus.capacity + ' pasajeros';
             document.getElementById('bd-passengers').textContent =
                 bus.passengers + (bus.passengers === 1 ? ' pasajero' : ' pasajeros');
+
+            const seats = Number.isFinite(bus.available_seats)
+                ? bus.available_seats
+                : Math.max(0, bus.capacity - bus.passengers);
+            document.getElementById('bd-seats').textContent =
+                seats + (seats === 1 ? ' asiento libre' : ' asientos libres');
+
+            const occupancy = bus.capacity > 0 ? Math.round((bus.passengers / bus.capacity) * 100) : 0;
+            const occupancyBar = document.getElementById('bd-occupancy-bar');
+            occupancyBar.style.width = Math.min(100, occupancy) + '%';
+            occupancyBar.className = 'h-full rounded-full transition-all '
+                + (occupancy >= 90 ? 'bg-rose-500' : (occupancy >= 60 ? 'bg-amber-500' : 'bg-emerald-500'));
+
             document.getElementById('bd-driver').textContent = bus.driver;
             document.getElementById('bd-update').textContent = bus.last_update;
             document.getElementById('bd-map-link').href = bus.map_url;

@@ -273,3 +273,61 @@ Lo siguiente es análisis, no medición directa:
    cubren.
 6. **Registrar capturas de pantalla** de cada ejecución (encabezado de resultados de k6 en
    consola) como evidencia visual para el informe académico.
+
+## 13. Script de la iteración 3 (búsqueda, tiempo real, estadísticas e incidencias)
+
+Script: `tests/load/ubicaditos-iteration3-load.js`
+
+La iteración 3 añade un segundo script de carga, **solo de lectura**, que sigue el mismo
+patrón de autenticación verificado en la iteración 2 (login real con CSRF de formulario y
+propagación explícita de la cookie de sesión; sin cookie jar automática).
+
+### 13.1 Alcance
+
+| Rol | Endpoints medidos (GET) |
+|---|---|
+| Pasajero | `/passenger/buses` base, `?q=oax`, `?status=active`, `?sort=occupancy`, `?route_id={id}` y `/api/buses/active` (polling en vivo del fallback de WebSocket) |
+| Conductor | `/driver` (panel), `/driver/map`, `/driver/statistics` |
+| Admin | `/admin`, `/admin/emergencies`, `/admin/emergencies?status=pending`, `/admin/buses`, `/admin/buses/{id}` (detalle) |
+
+Excluido a propósito (nunca se envía): `driver/update-location`, `start-trip`,
+`end-trip`, `update-passengers`, `emergency`, `admin/emergencies/{id}/resolve` y cualquier
+otro POST/PUT/DELETE. Tampoco debe ejecutarse `buses:simulate` durante la prueba.
+
+### 13.2 Configuración
+
+| Variable | Descripción | Por defecto |
+|---|---|---|
+| `K6_VUS` | usuarios virtuales (se reparten por `__VU % 3` entre pasajero/conductor/admin) | `15` |
+| `K6_DURATION` | duración del escenario | `30s` |
+| `K6_BASE_URL` | base del servidor local | `http://127.0.0.1:8000` |
+| `K6_ROLE` | fija todos los VUs a un rol (`passenger`, `driver` o `admin`) | vacío (reparto) |
+| `K6_PASSENGER_EMAIL` / `K6_DRIVER_EMAIL` / `K6_ADMIN_EMAIL` | usuarios del seeder | `pasajero1@…` / `chofer1@…` / `admin@…` |
+| `K6_PASSWORD` | contraseña común | `password` |
+
+### 13.3 Ejecución
+
+```bash
+# suite completa (3 roles mezclados):
+k6 run tests/load/ubicaditos-iteration3-load.js -e K6_VUS=15 -e K6_DURATION=30s
+
+# un solo rol:
+k6 run tests/load/ubicaditos-iteration3-load.js -e K6_ROLE=passenger -e K6_VUS=25
+```
+
+### 13.4 Umbrales y métricas
+
+- `i3_read_duration` p(95) < 800 ms (heredado de la iteración 2).
+- `http_req_failed{kind:read}` < 1 %; `checks` > 99 %.
+- Métricas propias: `i3_logins`, `i3_auth_failures`, `i3_read_duration`.
+
+El id del autobús del detalle se **descubre** del listado de administración en `setup()`
+(nunca se inventan identificadores); el `route_id` se descubre de los chips de filtro de
+la propia página del pasajero dentro del flujo.
+
+### 13.5 Resultados
+
+Sin ejecutar en la iteración 3: el entorno de desarrollo de esta rama no tiene k6
+disponible. El script queda preparado para la rama de pruebas con el mismo procedimiento
+documentado en las secciones 4–11 (servidor local, datos del seeder, resultados en
+`tests/load/results/`).

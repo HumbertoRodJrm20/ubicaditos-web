@@ -227,6 +227,10 @@
             crossorigin=""></script>
 
     <script>
+        // Guard: si el CDN de Leaflet no carga, el resto de la página sigue funcionando.
+        if (typeof L === 'undefined') {
+            console.error('Leaflet no está disponible; el mapa en tiempo real no se inicializará.');
+        } else {
         const adminMap = L.map('admin-map').setView([17.0654, -96.7256], 13);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -427,16 +431,23 @@
 
                 const startProgress = (index * 0.3) % 1;
                 const pathIndex = Math.floor(routePath.length * startProgress);
-                const startPoint = routePath[pathIndex];
+
+                // Posición real reportada por el conductor (GPS): deja de simularse.
+                const hasRealPosition = bus.current_latitude != null && bus.current_longitude != null;
+                const startPoint = hasRealPosition
+                    ? [Number(bus.current_latitude), Number(bus.current_longitude)]
+                    : routePath[pathIndex];
 
                 return {
                     id: bus.id,
                     license_plate: bus.license_plate,
                     model: bus.model,
                     capacity: bus.capacity,
+                    current_passengers: bus.current_passengers ?? 0,
                     driver: bus.driver,
                     route: fullRoute,
                     routePath: routePath,
+                    isReal: hasRealPosition,
                     currentPosition: {
                         lat: startPoint[0],
                         lng: startPoint[1]
@@ -446,7 +457,7 @@
                 };
             }).filter(bus => bus !== null);
 
-            console.log('Autobuses simulados inicializados sobre rutas OSRM:', simulatedBuses.length);
+            console.log('Autobuses inicializados sobre rutas OSRM:', simulatedBuses.length);
         }
 
         function drawStops() {
@@ -465,23 +476,26 @@
 
         function drawBuses() {
             simulatedBuses.forEach(bus => {
+                const popup = `
+                    <div class="font-semibold text-lg">🚌 ${bus.license_plate}</div>
+                    <div class="text-sm text-gray-600">${bus.model}</div>
+                    <div class="mt-2 text-sm">
+                        <div><strong>Conductor:</strong> ${bus.driver?.name || 'N/A'}</div>
+                        <div><strong>Ruta:</strong> ${bus.route.name}</div>
+                        <div><strong>Ocupación:</strong> ${bus.current_passengers ?? 0}/${bus.capacity}</div>
+                    </div>
+                `;
+
                 if (busMarkers[bus.id]) {
                     busMarkers[bus.id].setLatLng([bus.currentPosition.lat, bus.currentPosition.lng]);
+                    busMarkers[bus.id].setPopupContent(popup);
                 } else {
                     const marker = L.marker([bus.currentPosition.lat, bus.currentPosition.lng], {
                         icon: busIcon,
                         zIndexOffset: 1000
                     })
                         .addTo(adminMap)
-                        .bindPopup(`
-                            <div class="font-semibold text-lg">🚌 ${bus.license_plate}</div>
-                            <div class="text-sm text-gray-600">${bus.model}</div>
-                            <div class="mt-2 text-sm">
-                                <div><strong>Conductor:</strong> ${bus.driver?.name || 'N/A'}</div>
-                                <div><strong>Ruta:</strong> ${bus.route.name}</div>
-                                <div><strong>Capacidad:</strong> ${bus.capacity} pasajeros</div>
-                            </div>
-                        `);
+                        .bindPopup(popup);
                     busMarkers[bus.id] = marker;
                     console.log('Autobús dibujado:', bus.license_plate, 'en', bus.currentPosition);
                 }
@@ -489,7 +503,8 @@
         }
 
         function moveBus(bus) {
-            if (!bus.routePath || bus.routePath.length === 0) return;
+            // Los buses con posición real reciben actualizaciones en tiempo real.
+            if (bus.isReal || !bus.routePath || bus.routePath.length === 0) return;
 
             bus.pathIndex += bus.direction * 0.08;
 
@@ -526,6 +541,37 @@
             });
 
             console.log('✅ Simulación iniciada con', simulatedBuses.length, 'autobuses');
+        }
+
+        // ===== Tiempo real (WebSocket con fallback a polling) =====
+        function startRealtimeUpdates() {
+            if (!window.UbicaditosRealtime) {
+                console.warn('⚠ Módulo de tiempo real no disponible; solo simulación local.');
+                return;
+            }
+
+            const realtime = window.UbicaditosRealtime.start({ pollInterval: 5000 });
+
+            realtime.onBusLocation(payload => {
+                const bus = simulatedBuses.find(b => b.id === payload.id);
+                if (!bus) return;
+
+                bus.isReal = true;
+
+                if (simulationIntervals[bus.id]) {
+                    clearInterval(simulationIntervals[bus.id]);
+                    delete simulationIntervals[bus.id];
+                }
+
+                bus.currentPosition = { lat: payload.latitude, lng: payload.longitude };
+                if (payload.current_passengers != null) {
+                    bus.current_passengers = payload.current_passengers;
+                }
+
+                drawBuses();
+            });
+
+            window.addEventListener('beforeunload', () => realtime.stop());
         }
 
         function updateAdminLocationMarker(lat, lng, accuracy) {
@@ -680,10 +726,12 @@
             initializeSimulatedBuses();
             drawBuses();
             startSimulation();
+            startRealtimeUpdates();
 
             getAdminLocation();
 
             console.log('✅ Mapa de administrador listo y en funcionamiento!');
         })();
+        } // fin del guard de Leaflet
     </script>
 </x-passenger-layout>

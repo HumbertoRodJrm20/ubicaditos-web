@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Bus, Route, Stop, User, Trip};
+use App\Models\{Bus, Route, Stop, User, Trip, EmergencyReport};
 use Illuminate\Http\Request;
 
 class AdminController extends Controller
@@ -148,5 +148,58 @@ class AdminController extends Controller
             ->withQueryString();
 
         return view('admin.passengers', compact('passengers'));
+    }
+
+    /**
+     * Listado de incidencias/emergencias reportadas por los conductores.
+     */
+    public function emergencies(Request $request)
+    {
+        $status = $request->input('status');
+        $type = $request->input('type');
+
+        $statuses = ['pending' => 'Pendiente', 'in_progress' => 'En atención', 'resolved' => 'Resuelta'];
+        $types = [
+            'accident' => 'Accidente',
+            'breakdown' => 'Avería',
+            'medical' => 'Médica',
+            'security' => 'Seguridad',
+            'other' => 'Otra',
+        ];
+
+        $emergencies = EmergencyReport::with(['reporter', 'bus'])
+            ->when($status, fn ($query, $status) => $query->where('status', $status))
+            ->when($type, fn ($query, $type) => $query->where('type', $type))
+            ->latest()
+            ->get();
+
+        $counts = EmergencyReport::selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        return view('admin.emergencies', compact('emergencies', 'statuses', 'types', 'counts', 'status', 'type'));
+    }
+
+    /**
+     * Marca una incidencia pendiente como resuelta.
+     */
+    public function resolveEmergency(EmergencyReport $emergency)
+    {
+        if ($emergency->status !== 'pending') {
+            return back()->with('error', 'Solo las incidencias pendientes pueden marcarse como resueltas.');
+        }
+
+        $emergency->update([
+            'status' => 'resolved',
+            'resolved_at' => now(),
+        ]);
+
+        // Al resolverse la incidencia, la unidad vuelve al servicio.
+        if ($emergency->bus && $emergency->bus->status === 'emergency') {
+            $emergency->bus->update(['status' => 'active']);
+        }
+
+        return redirect()->route('admin.emergencies')
+            ->with('success', 'Incidencia marcada como resuelta.');
     }
 }

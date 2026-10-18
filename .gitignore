@@ -23,5 +23,6 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
-docs/.obsidian
-docs/.obsidian/*
+/docs/.obsidian
+/docs/.obsidian/*
+lab.py

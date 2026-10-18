@@ -33,10 +33,63 @@ class PassengerController extends Controller
         return view('passenger.routes', compact('routes'));
     }
 
-    public function buses()
+    /**
+     * Listado de autobuses con búsqueda y filtrado.
+     * Parámetros: q (placa, modelo o conductor), route_id, status (active|all|...) y sort (plate|occupancy).
+     */
+    public function buses(Request $request)
     {
-        $buses = Bus::with(['driver', 'routes'])->get();
-        return view('passenger.buses', compact('buses'));
+        $status = $request->query('status', 'active');
+        $search = trim((string) $request->query('q'));
+        $routeId = $request->query('route_id');
+        $sort = $request->query('sort', 'plate');
+
+        $buses = Bus::with(['driver', 'routes'])
+            ->when($status !== 'all', fn ($query) => $query->where('status', $status))
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($inner) use ($search) {
+                    $inner->where('license_plate', 'like', "%{$search}%")
+                        ->orWhere('model', 'like', "%{$search}%")
+                        ->orWhereHas('driver', function ($driverQuery) use ($search) {
+                            $driverQuery->where(function ($q) use ($search) {
+                                $q->where('first_name', 'like', "%{$search}%")
+                                    ->orWhere('last_name', 'like', "%{$search}%")
+                                    ->orWhere('maternal_last_name', 'like', "%{$search}%");
+                            });
+                        });
+                });
+            })
+            ->when($routeId, fn ($query) => $query->whereHas(
+                'routes',
+                fn ($routes) => $routes->where('routes.id', $routeId)
+            ))
+            ->when(
+                $sort === 'occupancy',
+                fn ($query) => $query->orderByDesc('current_passengers'),
+                fn ($query) => $query->orderBy('license_plate')
+            )
+            ->get();
+
+        $routes = Route::where('is_active', true)->get();
+
+        // Datos completos y verificables para el modal de detalles (Requisito 4)
+        $busDetailsData = $buses->map(fn ($bus) => [
+            'id' => $bus->id,
+            'plate' => $bus->license_plate ?? '—',
+            'model' => $bus->model ?? 'Modelo no especificado',
+            'capacity' => $bus->capacity,
+            'passengers' => $bus->current_passengers ?? 0,
+            'available_seats' => $bus->available_seats,
+            'status' => $bus->status,
+            'route' => $bus->routes->first()?->name ?? 'Sin ruta asignada',
+            'route_code' => $bus->routes->first()?->code ?? '',
+            'route_color' => $bus->routes->first()?->color ?? '#6b7bad',
+            'driver' => $bus->driver?->name ?? 'Sin conductor asignado',
+            'last_update' => $bus->last_location_update?->diffForHumans() ?? 'Sin datos de ubicación',
+            'map_url' => route('passenger.dashboard', ['bus_id' => $bus->id]),
+        ])->values();
+
+        return view('passenger.buses', compact('buses', 'routes', 'busDetailsData'));
     }
 
     public function addFavorite(Stop $stop)

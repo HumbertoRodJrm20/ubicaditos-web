@@ -16,8 +16,9 @@
 
     if ($isDriver) {
         $items = [
-            'Inicio' => 'driver.dashboard',
-            'Mapa'   => 'driver.map',
+            'Inicio'       => 'driver.dashboard',
+            'Mapa'         => 'driver.map',
+            'Estadísticas' => 'driver.statistics',
         ];
     } elseif ($isAdmin) {
         $items = [

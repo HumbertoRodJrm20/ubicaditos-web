@@ -58,9 +58,10 @@
                             <label for="show-nearest-routes" class="text-sm text-slate-700 dark:text-gray-300 cursor-pointer">Mostrar solo rutas cercanas</label>
                         </div>
 
-                        <div class="flex items-center gap-2 px-3 py-2 bg-green-50/80 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800">
-                            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                            <span class="text-xs font-medium text-green-700 dark:text-green-300">{{ $buses->count() }} autobuses en servicio</span>
+                        <div class="flex flex-wrap items-center gap-2 px-3 py-2 bg-green-50/80 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800">
+                            <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                            <span id="fleet-counter" class="text-xs font-medium text-green-700 dark:text-green-300" data-base="{{ $buses->count() }} autobuses en servicio">{{ $buses->count() }} autobuses en servicio</span>
+                            <span id="realtime-status" class="text-[11px] font-medium text-green-600/70 dark:text-green-400/70"></span>
                         </div>
 
                         <div id="gps-overlay" class="text-xs space-y-0.5">
@@ -775,20 +776,29 @@
 
                 const startProgress = (index * 0.3) % 1;
                 const pathIndex = Math.floor(routePath.length * startProgress);
-                const startPoint = routePath[pathIndex];
 
-                console.log(`Autobús ${bus.license_plate}: Ruta ${routeDistanceKm.toFixed(2)}km, Velocidad: ${avgSpeedKmh}km/h, Incremento: ${speedIncrement.toFixed(4)}`);
+                // Si el servidor reporta una posición real del autobús, se usa esa
+                // coordenada y el marcador deja de moverse por simulación (recibe
+                // actualizaciones en tiempo real en su lugar).
+                const hasRealPosition = bus.current_latitude != null && bus.current_longitude != null;
+                const startPoint = hasRealPosition
+                    ? [Number(bus.current_latitude), Number(bus.current_longitude)]
+                    : routePath[pathIndex];
+
+                console.log(`Autobús ${bus.license_plate}: Ruta ${routeDistanceKm.toFixed(2)}km, ${hasRealPosition ? 'posición real' : 'simulada'}`);
 
                 return {
                     id: bus.id,
                     license_plate: bus.license_plate,
                     model: bus.model,
                     capacity: bus.capacity,
+                    current_passengers: bus.current_passengers ?? 0,
                     route: fullRoute,
                     routePath: routePath,
                     routeDistanceKm: routeDistanceKm,
                     speedIncrement: speedIncrement,
                     avgSpeedKmh: avgSpeedKmh,
+                    isReal: hasRealPosition,
                     currentPosition: {
                         lat: startPoint[0],
                         lng: startPoint[1]
@@ -846,6 +856,15 @@
 
                 if (busMarkers[bus.id]) {
                     busMarkers[bus.id].setLatLng([bus.currentPosition.lat, bus.currentPosition.lng]);
+                    busMarkers[bus.id].setPopupContent(`
+                        <div class="font-semibold text-lg">🚌 ${bus.license_plate}</div>
+                        <div class="text-sm text-gray-600">${bus.model}</div>
+                        <div class="mt-2 text-sm">
+                            <div><strong>Ruta:</strong> ${bus.route.name}</div>
+                            <div><strong>Capacidad:</strong> ${bus.capacity} pasajeros</div>
+                            <div><strong>Ocupación:</strong> ${bus.current_passengers ?? 0}/${bus.capacity}</div>
+                        </div>
+                    `);
                 } else {
                     const marker = L.marker([bus.currentPosition.lat, bus.currentPosition.lng], {
                         icon: busIcon,
@@ -858,6 +877,7 @@
                             <div class="mt-2 text-sm">
                                 <div><strong>Ruta:</strong> ${bus.route.name}</div>
                                 <div><strong>Capacidad:</strong> ${bus.capacity} pasajeros</div>
+                                <div><strong>Ocupación:</strong> ${bus.current_passengers ?? 0}/${bus.capacity}</div>
                             </div>
                         `);
                     busMarkers[bus.id] = marker;
@@ -867,7 +887,8 @@
         }
 
         function moveBus(bus) {
-            if (!bus.routePath || bus.routePath.length === 0) return;
+            // Los buses con posición real no se simulan: los mueve el tiempo real.
+            if (bus.isReal || !bus.routePath || bus.routePath.length === 0) return;
 
             const speed = bus.speedIncrement || 0.02;
             bus.pathIndex += bus.direction * speed;
@@ -905,6 +926,91 @@
             });
 
             console.log('✅ Simulación iniciada con', simulatedBuses.length, 'autobuses');
+        }
+
+        // ===== Tiempo real (WebSocket con fallback a polling) =====
+        // Mueve los marcadores con la posición reportada por los conductores.
+        function startRealtimeUpdates() {
+            if (!window.UbicaditosRealtime) {
+                console.warn('⚠ Módulo de tiempo real no disponible; solo simulación local.');
+                return;
+            }
+
+            const realtime = window.UbicaditosRealtime.start({ pollInterval: 5000 });
+
+            realtime.onBusLocation(payload => {
+                const bus = simulatedBuses.find(b => b.id === payload.id);
+                if (!bus) return;
+
+                bus.isReal = true;
+
+                if (simulationIntervals[bus.id]) {
+                    clearInterval(simulationIntervals[bus.id]);
+                    delete simulationIntervals[bus.id];
+                }
+
+                bus.currentPosition = { lat: payload.latitude, lng: payload.longitude };
+
+                if (payload.current_passengers != null) {
+                    bus.current_passengers = payload.current_passengers;
+                }
+
+                if (busMarkers[bus.id]) {
+                    busMarkers[bus.id].setLatLng([payload.latitude, payload.longitude]);
+                    drawBuses(); // refresca el popup con la ocupación más reciente
+                } else {
+                    drawBuses();
+                }
+            });
+
+            realtime.onStatus(status => {
+                const statusEl = document.getElementById('realtime-status');
+                if (!statusEl) return;
+                statusEl.textContent = status === 'websocket'
+                    ? '· en vivo'
+                    : (status === 'polling' ? '· actualizando…' : '· sin conexión en vivo');
+            });
+
+            window.addEventListener('beforeunload', () => realtime.stop());
+        }
+
+        // ===== Búsqueda en el mapa (paradas y autobuses) =====
+        function setMarkerVisible(marker, visible) {
+            if (!marker) return;
+            if (visible && !map.hasLayer(marker)) marker.addTo(map);
+            if (!visible && map.hasLayer(marker)) map.removeLayer(marker);
+        }
+
+        function wireMapSearch() {
+            const searchInput = document.querySelector('input[placeholder="Buscar parada o ruta"]');
+            if (!searchInput) return;
+
+            searchInput.addEventListener('input', () => {
+                const query = searchInput.value.trim().toLowerCase();
+
+                let busesShown = 0;
+                simulatedBuses.forEach(bus => {
+                    const matches = !query
+                        || bus.license_plate.toLowerCase().includes(query)
+                        || bus.route.name.toLowerCase().includes(query);
+                    setMarkerVisible(busMarkers[bus.id], matches);
+                    if (matches) busesShown++;
+                });
+
+                stops.forEach(stop => {
+                    const matches = !query
+                        || stop.name.toLowerCase().includes(query)
+                        || (stop.address || '').toLowerCase().includes(query);
+                    setMarkerVisible(stopMarkers[stop.id], matches);
+                });
+
+                const counter = document.getElementById('fleet-counter');
+                if (counter) {
+                    counter.textContent = query
+                        ? `${busesShown} autobuses coinciden`
+                        : (counter.dataset.base || counter.textContent);
+                }
+            });
         }
 
         window.showNearestRoutes = async function() {
@@ -1331,6 +1437,8 @@
             initializeSimulatedBuses();
             drawBuses();
             startSimulation();
+            startRealtimeUpdates();
+            wireMapSearch();
 
             console.log('✅ Sistema listo y en funcionamiento!');
             console.log('💡 Las rutas se cargan automáticamente al seleccionarlas en el filtro');

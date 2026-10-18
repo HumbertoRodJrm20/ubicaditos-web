@@ -41,9 +41,13 @@ Prefijo `/admin`, nombre `admin.*`, middleware `auth` + `admin`.
 | POST | `/admin/drivers/{driver}/assign-bus` | `admin.drivers.assign-bus` | `AdminController@assignBusToDriver` |
 | DELETE | `/admin/drivers/{driver}/unassign-bus` | `admin.drivers.unassign-bus` | `AdminController@unassignBusFromDriver` |
 | GET | `/admin/passengers` | `admin.passengers` | `AdminController@passengers` |
+| GET | `/admin/emergencies` | `admin.emergencies` | `AdminController@emergencies` |
+| POST | `/admin/emergencies/{emergency}/resolve` | `admin.emergencies.resolve` | `AdminController@resolveEmergency` |
 | GET | `/admin/reports` | `admin.reports` | `ReportController@index` |
 | GET | `/admin/reports/export-pdf` | `admin.reports.export-pdf` | `ReportController@exportPdf` |
 | GET | `/admin/reports/export-excel` | `admin.reports.export-excel` | `ReportController@exportExcel` |
+
+Las rutas de incidencias aceptan los parámetros de consulta `status` (`pending` | `in_progress` | `resolved`) y `type` (`accident` | `breakdown` | `medical` | `security` | `other`). La acción `resolve` solo aplica a incidencias **pendientes**; al resolverla, si el autobús asociado estaba en estado `emergency`, vuelve a `active`.
 
 ### Recursos CRUD
 
@@ -61,12 +65,12 @@ Cada `Route::resource()` registra las siete rutas REST estándar:
 
 | Recurso | Controlador | Acciones implementadas |
 |---------|-------------|------------------------|
-| `buses` | `Admin\BusController` | `index`, `create`, `store`, `edit`, `update`, `destroy` |
+| `buses` | `Admin\BusController` | `index`, `create`, `store`, `show`, `edit`, `update`, `destroy` |
 | `routes` | `Admin\RouteController` | `index`, `create`, `store`, `edit`, `update`, `destroy` |
 | `users` | `Admin\UserController` | `create`, `store`, `edit`, `update`, `destroy` |
 | `stops` | `Admin\StopController` | Ninguna (métodos vacíos) |
 
-Las acciones no implementadas (`show` en todos los recursos e `index` en `users`) están registradas pero producen un error si se visitan.
+`admin.buses.show` (`GET /admin/buses/{bus}`) es el único `show` implementado; el índice de autobuses incluye un enlace "Detalles" hacia él. Las acciones no implementadas (`show` en `routes`, `users` y `stops`, e `index` en `users`) están registradas pero producen un error si se visitan.
 
 ## Rutas del conductor
 
@@ -76,11 +80,12 @@ Prefijo `/driver`, nombre `driver.*`, middleware `auth` + `driver`.
 |--------|-----|--------|--------|------------|
 | GET | `/driver` | `driver.dashboard` | `DriverController@index` | — |
 | GET | `/driver/map` | `driver.map` | `DriverController@map` | — |
+| GET | `/driver/statistics` | `driver.statistics` | `DriverController@statistics` | — |
 | POST | `/driver/start-trip` | `driver.start-trip` | `DriverController@startTrip` | — |
 | POST | `/driver/end-trip` | `driver.end-trip` | `DriverController@endTrip` | — |
 | POST | `/driver/update-location` | `driver.update-location` | `DriverController@updateLocation` | `latitude`, `longitude` (numéricos) |
 | POST | `/driver/update-passengers` | `driver.update-passengers` | `DriverController@updatePassengers` | `passengers` (entero ≥ 0) |
-| POST | `/driver/emergency` | `driver.emergency` | `DriverController@reportEmergency` | `type`, `description` |
+| POST | `/driver/emergency` | `driver.emergency` | `DriverController@reportEmergency` | `type` (`accident`, `breakdown`, `medical`, `security`, `other`), `description` (≤ 500) |
 
 ## Rutas del pasajero
 
@@ -91,7 +96,7 @@ Prefijo `/passenger`, nombre `passenger.*`, middleware `auth` + `passenger`.
 | GET | `/passenger` | `passenger.dashboard` | `PassengerController@map` | — |
 | GET | `/passenger/menu` | `passenger.menu` | `PassengerController@index` | — |
 | GET | `/passenger/routes` | `passenger.routes` | `PassengerController@routes` | — |
-| GET | `/passenger/buses` | `passenger.buses` | `PassengerController@buses` | — |
+| GET | `/passenger/buses` | `passenger.buses` | `PassengerController@buses` | `q` (placa, modelo o conductor), `route_id`, `status` (por defecto `active`; `all` muestra todos), `sort` (`plate` \| `occupancy`) |
 | POST | `/passenger/favorites/{stop}` | `passenger.favorites.add` | `PassengerController@addFavorite` | `nickname` (opcional) |
 | DELETE | `/passenger/favorites/{stop}` | `passenger.favorites.remove` | `PassengerController@removeFavorite` | — |
 | POST | `/passenger/rate/{driver}` | `passenger.rate` | `PassengerController@rateDriver` | `rating` (1–5), `comment` (opcional) |
@@ -121,6 +126,8 @@ Prefijo `/api`, middleware `auth`. Están definidos en `routes/web.php`, por lo 
 
 Nombre: `api.buses.active`. Devuelve los autobuses con `status = active` que tienen coordenadas.
 
+Además del consumo directo, este endpoint es el **fallback de polling** del módulo `resources/js/realtime.js`: cuando el WebSocket (Laravel Reverb) no está disponible, se consulta cada 5 segundos y cada elemento recibido por esta vía se etiqueta con `source: "polling"`.
+
 ```json
 [
   {
@@ -130,7 +137,7 @@ Nombre: `api.buses.active`. Devuelve los autobuses con `status = active` que tie
     "longitude": -96.7256,
     "capacity": 45,
     "current_passengers": 12,
-    "available_seats": null,
+    "available_seats": 33,
     "driver": "Juan Pérez",
     "route": "Ruta 1 - Centro - Tule",
     "route_color": "#3B82F6",
@@ -139,7 +146,7 @@ Nombre: `api.buses.active`. Devuelve los autobuses con `status = active` que tie
 ]
 ```
 
-> `available_seats` siempre es `null` porque el modelo `Bus` no define ese atributo.
+> `available_seats` es un accessor calculado del modelo `Bus` (`capacidad − ocupación actual`, nunca negativo). Ver [Tiempo real y broadcasting](#tiempo-real-y-broadcasting) para el payload normalizado que emite el módulo en tiempo real.
 
 ### GET /api/buses/{bus}/location
 
@@ -191,3 +198,70 @@ Cuando la petición incluye `Accept: application/json`, responde:
 ### POST /check-email
 
 Usado por el formulario de registro. Recibe `email` y responde `{"available": true}` o `{"available": false}`.
+
+## Tiempo real y broadcasting
+
+### Rutas de autorización de broadcasting
+
+Laravel registra automáticamente (no aparecen en `routes/web.php`) las rutas de suscripción a canales, con el middleware `web`:
+
+| Método | URI | Nombre | Acción | Middleware |
+|--------|-----|--------|--------|------------|
+| GET / POST | `/broadcasting/auth` | — | `BroadcastController@authenticate` | `web` |
+
+El navegador las usa para autorizar la suscripción a canales privados. La única canal definido está en `routes/channels.php`:
+
+| Canal | Política |
+|-------|----------|
+| `private-buses` | Cualquier usuario autenticado (cualquier rol), igual que los endpoints JSON `/api/*`. |
+
+### Evento broadcast
+
+Cuando un conductor envía su posición (`POST /driver/update-location`), el modelo `Bus::updateLocation()` despacha el evento `App\Events\BusLocationUpdated` (`ShouldBroadcastNow`, se publica sin worker de colas) en el canal `buses` con el alias `bus.location.updated`:
+
+```json
+{
+  "id": 1,
+  "license_plate": "ABC123",
+  "latitude": 17.0654,
+  "longitude": -96.7256,
+  "status": "active",
+  "current_passengers": 12,
+  "available_seats": 33,
+  "route_id": 1,
+  "last_update": "2026-10-18T14:32:10.000000Z"
+}
+```
+
+El cliente (`resources/js/realtime.js`, importado desde `resources/js/app.js`) normaliza este evento y los elementos de `GET /api/buses/active` a un mismo payload:
+
+```json
+{
+  "id": 1,
+  "license_plate": "ABC123",
+  "latitude": 17.0654,
+  "longitude": -96.7256,
+  "status": "active",
+  "current_passengers": 12,
+  "available_seats": 33,
+  "route_id": 1,
+  "last_update": "hace 2 minutos",
+  "source": "websocket",
+  "received_at": "2026-10-18T14:32:12.003Z"
+}
+```
+
+`source` indica el origen del dato (`websocket` o `polling`) y `received_at` el momento en que el cliente lo recibió. El módulo arranca con una descarga HTTP inicial, intenta conectar el WebSocket y, si no conecta dentro de 4 s (o se desconecta), mantiene el polling de `/api/buses/active` cada 5 s; el estado resultante (`websocket`, `polling`, `offline`) lo exponen sus suscriptores.
+
+### Configuración de Laravel Reverb
+
+Variables de entorno (`.env` / `.env.example`), con su contraparte pública para Vite:
+
+| Variable | Uso |
+|----------|-----|
+| `BROADCAST_CONNECTION=reverb` | Conector de broadcasting activo. |
+| `REVERB_APP_ID`, `REVERB_APP_KEY`, `REVERB_APP_SECRET` | Credenciales de la aplicación Reverb. |
+| `REVERB_HOST`, `REVERB_PORT`, `REVERB_SCHEME` | Servidor WebSocket (`localhost:8080`, `http` en desarrollo). |
+| `VITE_REVERB_APP_KEY`, `VITE_REVERB_HOST`, `VITE_REVERB_PORT`, `VITE_REVERB_SCHEME` | Valores expuestos al navegador (referenciados desde `realtime.js` con `import.meta.env`). |
+
+La configuración del servidor vive en `config/reverb.php`; si falta `VITE_REVERB_APP_KEY`, el módulo `realtime.js` se queda solo en polling.

@@ -10,9 +10,16 @@
 <x-passenger-layout title="Ubicaditos · Inicio">
     <div class="space-y-4">
 
-        <div>
-            <h1 class="text-[27px] font-bold text-[#1e2a4a] leading-tight">Panel de Conductor</h1>
-            <p class="text-[11px] text-slate-500">Gestiona tu autobús</p>
+        <div class="flex flex-wrap items-end justify-between gap-3">
+            <div>
+                <h1 class="text-[27px] font-bold text-[#1e2a4a] leading-tight">Panel de Conductor</h1>
+                <p class="text-[11px] text-slate-500">Gestiona tu autobús</p>
+            </div>
+            <a href="{{ route('driver.statistics') }}"
+               class="inline-flex h-9 items-center justify-center gap-2 rounded-full bg-gradient-to-b from-[#7b88b8] to-[#4a5a8a] px-5 text-xs font-semibold text-white shadow-md shadow-[#4a5a8a]/25 transition hover:brightness-105">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9m5 10V5m5 14v-7m5 7V11"/></svg>
+                Mis estadísticas
+            </a>
         </div>
 
         @if(session('success'))
@@ -96,7 +103,8 @@
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="14" rx="3"></rect><path d="M4 11h16M8 21v-4M16 21v-4"></path><circle cx="8.5" cy="14" r=".6"></circle><circle cx="15.5" cy="14" r=".6"></circle></svg>
                             Ver Mapa
                         </a>
-                        <button type="button" class="sm:w-[183px] h-[41px] rounded-full bg-gradient-to-r from-[#d62f3a] to-[#e8a0a6] text-white text-[13px] font-medium hover:brightness-105 transition">
+                        <button type="button" onclick="openEmergencyModal()"
+                            class="sm:w-[183px] h-[41px] rounded-full bg-gradient-to-r from-[#d62f3a] to-[#e8a0a6] text-white text-[13px] font-medium hover:brightness-105 transition">
                             Reportar Emergencia
                         </button>
                     </div>
@@ -162,4 +170,87 @@
             </section>
         </div>
     </div>
+
+    {{-- Modal de reporte de incidencia/emergencia --}}
+    <div id="emergency-modal" class="fixed inset-0 z-50 hidden items-center justify-center overflow-y-auto bg-[#1e2a4a]/35 p-4 backdrop-blur-sm">
+        <div class="my-auto w-full max-w-md rounded-[28px] border border-white/70 bg-white p-6 shadow-2xl shadow-[#4a5a8a]/20">
+            <div class="mb-5 flex items-start justify-between gap-4">
+                <div>
+                    <h3 class="text-lg font-bold text-[#1e2a4a]">Reportar incidencia</h3>
+                    <p class="mt-1 text-xs text-[#5b6788]">
+                        El administrador recibirá el reporte con la ubicación de tu unidad.
+                    </p>
+                </div>
+                <button type="button" onclick="closeEmergencyModal()" aria-label="Cerrar modal"
+                    class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+
+            <form method="POST" action="{{ route('driver.emergency') }}" class="space-y-4">
+                @csrf
+
+                <div>
+                    <label for="emergency-type" class="mb-1.5 block text-xs font-semibold text-[#3d4a6b]">
+                        Tipo de incidencia
+                    </label>
+                    <select id="emergency-type" name="type" required
+                        class="h-11 w-full rounded-2xl border border-white/70 bg-[#f7f9fd] px-3.5 text-sm text-[#1e2a4a] focus:border-[#6b7bad] focus:ring-4 focus:ring-[#6b7bad]/25">
+                        <option value="accident">Accidente</option>
+                        <option value="breakdown">Avería mecánica</option>
+                        <option value="medical">Emergencia médica</option>
+                        <option value="security">Incidente de seguridad</option>
+                        <option value="other" selected>Otra incidencia</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="emergency-description" class="mb-1.5 block text-xs font-semibold text-[#3d4a6b]">
+                        Descripción
+                    </label>
+                    <textarea id="emergency-description" name="description" rows="4" maxlength="500" required
+                        oninput="document.getElementById('emergency-counter').textContent = this.value.length + '/500'"
+                        placeholder="Describe qué ocurrió..."
+                        class="w-full resize-none rounded-2xl border border-white/70 bg-[#f7f9fd] px-3.5 py-3 text-sm text-[#1e2a4a] placeholder:text-[#8a94b3] focus:border-[#6b7bad] focus:ring-4 focus:ring-[#6b7bad]/25"></textarea>
+                    <p class="mt-1 text-right text-[10px] text-[#8a94b3]"><span id="emergency-counter">0/500</span></p>
+                </div>
+
+                <p class="rounded-2xl bg-amber-50 px-3.5 py-2.5 text-[11px] leading-relaxed text-amber-700">
+                    Al enviar, tu unidad cambiará a estado <strong>emergencia</strong> y dejará de aparecer
+                    como en servicio hasta que el administrador lo resuelva.
+                </p>
+
+                <div class="flex flex-col gap-2 sm:flex-row">
+                    <button type="button" onclick="closeEmergencyModal()"
+                        class="h-10 flex-1 rounded-full border border-slate-200 bg-white px-5 text-xs font-semibold text-[#5b6788] transition hover:bg-slate-50">
+                        Cancelar
+                    </button>
+                    <button type="submit"
+                        class="h-10 flex-1 rounded-full bg-gradient-to-b from-[#e05a66] to-[#c02631] px-5 text-xs font-semibold text-white shadow-md shadow-[#c02631]/25 transition hover:brightness-105">
+                        Enviar reporte
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function openEmergencyModal() {
+            const modal = document.getElementById('emergency-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.getElementById('emergency-type').focus();
+        }
+
+        function closeEmergencyModal() {
+            const modal = document.getElementById('emergency-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // Cerrar con Escape
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape') closeEmergencyModal();
+        });
+    </script>
 </x-passenger-layout>
