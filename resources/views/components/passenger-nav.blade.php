@@ -19,6 +19,7 @@
             'Inicio'       => 'driver.dashboard',
             'Mapa'         => 'driver.map',
             'Estadísticas' => 'driver.statistics',
+            'Reportes'     => 'incidents.index',
         ];
     } elseif ($isAdmin) {
         $items = [
@@ -37,19 +38,27 @@
             'Mapa'      => 'passenger.dashboard',
             'Rutas'     => 'passenger.routes',
             'Autobuses' => 'passenger.buses',
+            'Reportes'  => 'incidents.index',
         ];
     }
 
 
     // La pestaña activa se detecta sola por la ruta actual.
     // Si pasas :active="'Rutas'" (o active="Rutas") se usa esa en su lugar.
-    $links = collect($items)->map(fn ($name, $label) => [
-        'label'  => $label,
-        'href'   => Route::has($name) ? route($name) : '#',
-        'active' => $active
+    $links = collect($items)->map(function ($name, $label) use ($active) {
+        $isActive = $active
             ? $active === $label
-            : (Route::has($name) && request()->routeIs($name, $name . '.*')),
-    ])->values();
+            : (Route::has($name) && (
+                request()->routeIs($name, $name . '.*')
+                || ($name === 'incidents.index' && request()->routeIs('incidents.*'))
+            ));
+
+        return [
+            'label'  => $label,
+            'href'   => Route::has($name) ? route($name) : '#',
+            'active' => $isActive,
+        ];
+    })->values();
 
     $user = Auth::user();
     $userName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')) ?: ($user->name ?? 'Usuario');

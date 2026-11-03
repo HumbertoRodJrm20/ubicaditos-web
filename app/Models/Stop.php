@@ -28,7 +28,7 @@ class Stop extends Model
     public function routes()
     {
         return $this->belongsToMany(Route::class, 'route_stop')
-            ->withPivot('order', 'estimated_time_from_previous')
+            ->withPivot('order', 'estimated_time_from_previous', 'is_frequent')
             ->withTimestamps();
     }
 

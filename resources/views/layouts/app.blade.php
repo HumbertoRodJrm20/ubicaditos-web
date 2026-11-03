@@ -11,9 +11,8 @@
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
-        <!-- Preconnect y Preload para Leaflet y OSRM -->
+        <!-- Preconnect para Leaflet y balanceo de tiles de OpenStreetMap -->
         <link rel="preconnect" href="https://unpkg.com" crossorigin>
-        <link rel="preconnect" href="https://router.project-osrm.org" crossorigin>
         <link rel="dns-prefetch" href="https://a.tile.openstreetmap.org">
         <link rel="dns-prefetch" href="https://b.tile.openstreetmap.org">
         <link rel="dns-prefetch" href="https://c.tile.openstreetmap.org">

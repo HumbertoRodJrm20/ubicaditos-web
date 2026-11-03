@@ -37,7 +37,10 @@ class DriverController extends Controller
         }
 
         $route = $bus->routes->first();
-        $stops = $route ? $route->getOrderedStops() : collect();
+        // En el mapa del conductor se muestran sólo las paradas principales:
+        // las de alta frecuencia son para el mapa de pasajero y saturarían la
+        // lista de próximas paradas.
+        $stops = $route ? $route->getOrderedStops(false) : collect();
 
         $currentTrip = Trip::where('driver_id', auth()->id())
             ->where('status', 'in_progress')
@@ -271,8 +274,8 @@ class DriverController extends Controller
     public function updateLocation(Request $request)
     {
         $request->validate([
-            'latitude' => 'required|numeric',
-            'longitude' => 'required|numeric',
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
         ]);
 
         $bus = auth()->user()->drivingBus;

@@ -36,7 +36,7 @@ class Route extends Model
     public function stops()
     {
         return $this->belongsToMany(Stop::class, 'route_stop')
-            ->withPivot('order', 'estimated_time_from_previous')
+            ->withPivot('order', 'estimated_time_from_previous', 'is_frequent')
             ->orderByPivot('order')
             ->withTimestamps();
     }
@@ -52,8 +52,14 @@ class Route extends Model
         return $this->buses()->where('status', 'active')->get();
     }
 
-    public function getOrderedStops()
+    public function getOrderedStops(bool $includeFrequent = true)
     {
-        return $this->stops()->orderBy('route_stop.order')->get();
+        $query = $this->stops()->orderBy('route_stop.order');
+
+        if (! $includeFrequent) {
+            $query->wherePivot('is_frequent', false);
+        }
+
+        return $query->get();
     }
 }

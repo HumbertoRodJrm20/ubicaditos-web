@@ -38,6 +38,9 @@ class="bg-gradient-to-r from-primary-400 to-accent-500 dark:from-primary-900 dar
                         <x-nav-link :href="route('passenger.menu')" :active="request()->routeIs('passenger.menu')">
                             {{ __('Opciones') }}
                         </x-nav-link>
+                        <x-nav-link :href="route('incidents.index')" :active="request()->routeIs('incidents.*')">
+                            {{ __('Reportes') }}
+                        </x-nav-link>
                     @else
                         <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                             {{ __('Dashboard') }}
@@ -121,6 +124,9 @@ class="bg-gradient-to-r from-primary-400 to-accent-500 dark:from-primary-900 dar
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('passenger.menu')" :active="request()->routeIs('passenger.menu')">
                     {{ __('Opciones') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('incidents.index')" :active="request()->routeIs('incidents.*')">
+                    {{ __('Reportes') }}
                 </x-responsive-nav-link>
             @else
                 <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">

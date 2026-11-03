@@ -98,6 +98,11 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
+    public function incidents()
+    {
+        return $this->hasMany(Incident::class);
+    }
+
     // Accessors
     public function getNameAttribute()
     {

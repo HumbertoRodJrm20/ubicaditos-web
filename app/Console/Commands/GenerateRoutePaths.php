@@ -13,81 +13,121 @@ class GenerateRoutePaths extends Command
      *
      * @var string
      */
-    protected $signature = 'routes:generate-paths';
+    protected $signature = 'routes:generate-paths
+                            {--force : Regenera el trazado aunque la ruta ya tenga path_coordinates}
+                            {--route= : Procesa únicamente la ruta con este código}
+                            {--sleep=1 : Segundos de espera entre peticiones a OSRM}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Genera path_coordinates para todas las rutas usando OSRM';
+    protected $description = 'Genera y guarda en la BD el trazado de las rutas usando OSRM (una sola vez)';
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        $routes = Route::with('stops')->get();
+        $query = Route::query();
 
-        $this->info('Generando rutas que siguen las calles...');
+        if ($code = $this->option('route')) {
+            $query->where('code', $code);
+        }
+
+        $routes = $query->orderBy('id')->get();
+
+        if ($routes->isEmpty()) {
+            $this->error('No se encontraron rutas para procesar.');
+            return self::FAILURE;
+        }
+
+        $force = (bool) $this->option('force');
+        $sleep = max(0, (int) $this->option('sleep'));
+
+        $generated = 0;
+        $skipped = 0;
+        $failed = 0;
+
+        $this->info('Generando trazados sobre calles (OSRM)...');
 
         foreach ($routes as $route) {
-            if ($route->stops->count() < 2) {
-                $this->warn("Ruta {$route->name} tiene menos de 2 paradas, saltando...");
+            // OSRM se calcula con las paradas principales. Las paradas de alta
+            // frecuencia están muestreadas sobre ese mismo trazado y harían
+            // demasiado grande la petición (hasta 180 waypoints por ruta).
+            $stops = $route->getOrderedStops(false);
+
+            if ($stops->count() < 2) {
+                $this->warn("⚠ {$route->code}: tiene menos de 2 paradas, se omite.");
+                $skipped++;
                 continue;
             }
 
-            $this->info("Procesando: {$route->name}");
+            $existingPath = is_array($route->path_coordinates) ? $route->path_coordinates : [];
 
-            // Ordenar paradas por orden
-            $stops = $route->stops->sortBy(function ($stop) use ($route) {
-                return $stop->pivot->order;
-            });
+            if (!$force && count($existingPath) >= 2) {
+                $this->line("• {$route->code}: ya tiene {$this->pointCount($existingPath)} puntos, se conserva.");
+                $skipped++;
+                continue;
+            }
 
-            // Crear lista de waypoints para OSRM
             $waypoints = $stops->map(function ($stop) {
                 return $stop->longitude . ',' . $stop->latitude;
             })->join(';');
 
+            $this->line("→ {$route->code}: consultando OSRM...");
+
             try {
-                // Consultar OSRM
                 $response = Http::timeout(30)->get(
                     "https://router.project-osrm.org/route/v1/driving/{$waypoints}",
                     [
                         'overview' => 'full',
-                        'geometries' => 'geojson'
+                        'geometries' => 'geojson',
                     ]
                 );
 
-                if ($response->successful() && $response->json('code') === 'Ok') {
-                    $geometry = $response->json('routes.0.geometry.coordinates');
+                $geometry = $response->json('routes.0.geometry.coordinates');
 
-                    // Convertir coordenadas [lng, lat] a formato {lat, lng}
-                    $pathCoordinates = collect($geometry)->map(function ($coord) {
-                        return [
-                            'lat' => $coord[1],
-                            'lng' => $coord[0]
-                        ];
-                    })->toArray();
-
-                    // Guardar en la ruta
-                    $route->path_coordinates = $pathCoordinates;
-                    $route->save();
-
-                    $pointCount = count($pathCoordinates);
-                    $this->info("✅ {$route->name}: {$pointCount} puntos generados");
-                } else {
-                    $this->error("❌ Error en OSRM para {$route->name}");
+                if (!$response->successful() || $response->json('code') !== 'Ok' || !is_array($geometry)) {
+                    $this->error("✗ {$route->code}: OSRM no devolvió un trazado válido.");
+                    $failed++;
+                    continue;
                 }
 
-                // Esperar un poco para no saturar OSRM
-                sleep(1);
-            } catch (\Exception $e) {
-                $this->error("❌ Excepción al procesar {$route->name}: {$e->getMessage()}");
+                $pathCoordinates = collect($geometry)->map(function ($coord) {
+                    return [
+                        'lat' => $coord[1],
+                        'lng' => $coord[0],
+                    ];
+                })->toArray();
+
+                $route->path_coordinates = $pathCoordinates;
+                $route->save();
+
+                $this->info("✓ {$route->code}: {$this->pointCount($pathCoordinates)} puntos guardados.");
+                $generated++;
+            } catch (\Throwable $e) {
+                $this->error("✗ {$route->code}: {$e->getMessage()}");
+                $failed++;
+            }
+
+            if ($sleep > 0) {
+                sleep($sleep);
             }
         }
 
-        $this->info('');
-        $this->info('🎉 Proceso completado!');
+        $this->newLine();
+        $this->table(
+            ['Generadas', 'Conservadas', 'Fallidas'],
+            [[$generated, $skipped, $failed]]
+        );
+
+        return $failed > 0 ? self::FAILURE : self::SUCCESS;
+    }
+
+    private function pointCount(array $path): int
+    {
+        return count($path);
     }
 }

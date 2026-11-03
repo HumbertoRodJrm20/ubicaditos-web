@@ -102,8 +102,12 @@ class PassengerController extends Controller
             return back()->with('error', 'Esta parada ya está en tus favoritos');
         }
 
+        // El alias es opcional: si no llega, se guarda el nombre real de la
+        // parada para que el pasajero no tenga que escribir nada.
+        $nickname = trim((string) request('nickname'));
+
         auth()->user()->favoriteStops()->attach($stop->id, [
-            'nickname' => request('nickname'),
+            'nickname' => $nickname !== '' ? $nickname : $stop->name,
         ]);
 
         if (request()->expectsJson()) {

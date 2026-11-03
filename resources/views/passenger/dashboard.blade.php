@@ -191,6 +191,10 @@
 
         map.attributionControl.setPosition('bottomleft');
 
+        // Al alejar el mapa se ocultan las paradas secundarias; al acercarse
+        // se vuelven a mostrar. Así el mapa no queda lleno de puntos.
+        map.on('zoomend moveend', refreshStopVisibility);
+
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors',
             maxZoom: 19,
@@ -235,8 +239,8 @@
         });
 
         // ===== Capa de carga del mapa =====
-        // Mientras se trazan los recorridos (puede tardar varios segundos si OSRM
-        // tarda), el mapa queda difuminado tras una ventana emergente de carga.
+        // Mientras se preparan los recorridos guardados y los autobuses, el mapa
+        // queda difuminado tras una ventana emergente de carga.
         const mapLoading = document.getElementById('map-loading');
 
         function showMapLoading(title, sub) {
@@ -252,11 +256,12 @@
         let busMarkers = {};
         let stopMarkers = {};
         let routePolylines = {};
-        let routePathsOSRM = {};
-        let simulationIntervals = {};
-        const simulationSpeed = 2;
+        let routePaths = {};
         let routesLoaded = {};
+        let routeManager = null;
         let currentFilteredRoute = null;
+        let stopsVisible = true;
+        let activeStopRouteIds = null;
         // Cuando es true el mapa NO sigue al GPS: queda "anclado" al elemento
         // consultado (ruta, parada o autobús llegado por URL ?route_id/?stop_id/?bus_id).
         let centerLocked = false;
@@ -292,6 +297,16 @@
             popupAnchor: [0, -8]
         });
 
+        // Marcador compacto para paradas de una sola ruta o poco concurridas.
+        // Se usa cuando el zoom está lejos para no saturar el mapa.
+        const stopMinorIcon = L.divIcon({
+            html: '<div style="background-color: #fff; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #6b7aa8; box-shadow: 0 1px 4px rgba(40,50,90,0.28); opacity: .88;"></div>',
+            className: 'stop-marker stop-marker--minor',
+            iconSize: [12, 12],
+            iconAnchor: [6, 6],
+            popupAnchor: [0, -6]
+        });
+
         const userLocationIcon = L.divIcon({
             html: `<div style="
                 width: 44px;
@@ -322,6 +337,37 @@
         const stops = @json($stops);
         const buses = @json($buses);
         const favoriteStopIds = @json(Auth::user()->favoriteStops->pluck('id'));
+
+        // Índice parada -> rutas que la usan. Se utiliza para mostrar el
+        // recorrido en el popup y para decidir qué paradas conviene enseñar
+        // según el zoom o el filtro activo.
+        const stopRoutesById = new Map();
+        const stopHasPrimaryRouteById = new Map();
+        routes.forEach(route => {
+            (route.stops || []).forEach(stop => {
+                const stopId = Number(stop.id);
+                const routeId = Number(route.id);
+                const isFrequent = Number(stop.pivot?.is_frequent ?? 0) === 1;
+
+                if (!isFrequent) {
+                    stopHasPrimaryRouteById.set(stopId, true);
+                }
+
+                if (!stopRoutesById.has(stopId)) {
+                    stopRoutesById.set(stopId, []);
+                }
+
+                const routeList = stopRoutesById.get(stopId);
+                if (!routeList.some(item => Number(item.id) === routeId)) {
+                    routeList.push({
+                        id: route.id,
+                        code: route.code,
+                        name: route.name,
+                        color: route.color,
+                    });
+                }
+            });
+        });
 
         console.log('Autobuses cargados:', buses.length);
         console.log('Rutas cargadas:', routes.length);
@@ -562,33 +608,33 @@
         function calculateArrivalTime(stop) {
             const arrivalTimes = [];
 
-            simulatedBuses.forEach(bus => {
+            activeBuses.forEach(bus => {
                 const busRoute = bus.route;
                 const stopInRoute = busRoute.stops && busRoute.stops.find(s => s.id === stop.id);
 
-                if (stopInRoute && bus.routePath) {
-                    const distanceAlongRoute = calculateDistanceAlongRoute(
-                        bus.routePath,
-                        bus.pathIndex,
-                        { lat: stop.latitude, lng: stop.longitude }
-                    );
-
-                    const avgSpeed = bus.avgSpeedKmh || 20;
-
-                    const timeInMinutes = (distanceAlongRoute / avgSpeed) * 60;
-
-                    const stopsUntilDestination = Math.floor(distanceAlongRoute * 2);
-                    const stopTimeMinutes = (stopsUntilDestination * 0.5);
-
-                    const totalTime = timeInMinutes + stopTimeMinutes;
-
-                    arrivalTimes.push({
-                        bus: bus,
-                        distance: distanceAlongRoute,
-                        time: Math.ceil(totalTime),
-                        route: busRoute
-                    });
+                if (!stopInRoute) {
+                    return;
                 }
+
+                const distance = calculateDistance(
+                    bus.currentPosition.lat,
+                    bus.currentPosition.lng,
+                    stop.latitude,
+                    stop.longitude
+                );
+
+                const avgSpeed = bus.avgSpeedKmh || 20;
+
+                const timeInMinutes = (distance / avgSpeed) * 60;
+
+                const totalTime = timeInMinutes;
+
+                arrivalTimes.push({
+                    bus: bus,
+                    distance: distance,
+                    time: Math.ceil(totalTime),
+                    route: busRoute
+                });
             });
 
             arrivalTimes.sort((a, b) => a.time - b.time);
@@ -649,7 +695,7 @@
             document.getElementById('arrival-title').textContent = route.name;
             document.getElementById('arrival-subtitle').textContent = route.code || 'Ruta';
 
-            const routeBuses = simulatedBuses.filter(bus => bus.route.id === route.id);
+            const routeBuses = activeBuses.filter(bus => bus.route.id === route.id);
 
             if (routeBuses.length === 0) {
                 arrivalTimesDiv.innerHTML = `
@@ -673,17 +719,16 @@
                 let minDistance = Infinity;
 
                 routeStops.forEach(stop => {
-                    if (bus.routePath) {
-                        const distanceAlongRoute = calculateDistanceAlongRoute(
-                            bus.routePath,
-                            bus.pathIndex,
-                            { lat: stop.latitude, lng: stop.longitude }
-                        );
+                    const distance = calculateDistance(
+                        bus.currentPosition.lat,
+                        bus.currentPosition.lng,
+                        stop.latitude,
+                        stop.longitude
+                    );
 
-                        if (distanceAlongRoute < minDistance && distanceAlongRoute > 0.05) {
-                            minDistance = distanceAlongRoute;
-                            nextStop = stop;
-                        }
+                    if (distance < minDistance && distance > 0.05) {
+                        minDistance = distance;
+                        nextStop = stop;
                     }
                 });
 
@@ -715,111 +760,86 @@
             arrivalTimesDiv.innerHTML = html;
         }
 
-        let simulatedBuses = [];
+        let activeBuses = [];
 
-        async function fetchWithTimeout(url, timeout = 3000) {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-            try {
-                const response = await fetch(url, { signal: controller.signal });
-                clearTimeout(timeoutId);
-                return response;
-            } catch (error) {
-                clearTimeout(timeoutId);
-                throw error;
+        function getRouteManager() {
+            if (!routeManager && typeof L !== 'undefined' && window.UbicaditosRouteLayer) {
+                routeManager = window.UbicaditosRouteLayer.createMapRoutes({
+                    map,
+                    routes,
+                    onRouteClick: showRouteInfo,
+                    options: { sharedColor: '#64748b' }
+                });
             }
+            return routeManager;
         }
 
         async function drawRoute(route) {
-            if (routesLoaded[route.id]) {
-                return;
+            if (!route) {
+                return null;
             }
 
-            const routeStops = stops.filter(stop =>
-                route.stops && route.stops.some(s => s.id === stop.id)
-            ).sort((a, b) => {
-                const aOrder = route.stops.find(s => s.id === a.id)?.pivot?.order || 0;
-                const bOrder = route.stops.find(s => s.id === b.id)?.pivot?.order || 0;
-                return aOrder - bOrder;
-            });
-
-            if (routeStops.length < 2) {
-                console.warn('Ruta sin suficientes paradas:', route.name);
-                return;
+            const manager = getRouteManager();
+            if (!manager) {
+                console.warn('La capa compartida de rutas no está disponible.');
+                return null;
             }
 
-            const waypoints = routeStops.map(stop =>
-                `${stop.longitude},${stop.latitude}`
-            ).join(';');
-
-            for (let attempt = 1; attempt <= 3; attempt++) {
-                try {
-                    console.log(`[${route.name}] Intento ${attempt}/3 de cargar ruta sobre calles...`);
-
-                    const response = await fetchWithTimeout(
-                        `https://router.project-osrm.org/route/v1/driving/${waypoints}?overview=full&geometries=geojson`,
-                        15000
-                    );
-                    const data = await response.json();
-
-                    if (data.code === 'Ok' && data.routes && data.routes[0]) {
-                        const pathCoords = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
-
-                        routePathsOSRM[route.id] = pathCoords;
-
-                        const polyline = L.polyline(pathCoords, {
-                            color: route.color || '#4b5a85',
-                            weight: 5,
-                            opacity: 0.9,
-                            lineCap: 'round',
-                            lineJoin: 'round'
-                        }).addTo(map);
-
-                        polyline.bindPopup(`
-                            <div class="font-semibold">${route.name}</div>
-                            <div class="text-sm text-gray-600">${route.code}</div>
-                            <div class="text-xs mt-1">${route.description}</div>
-                        `);
-
-                        polyline.on('click', function() {
-                            showRouteInfo(route);
-                        });
-
-                        routePolylines[route.id] = polyline;
-                        routesLoaded[route.id] = true;
-                        console.log(`✅ [${route.name}] Ruta cargada sobre calles correctamente`);
-                        return;
-                    } else {
-                        console.warn(`⚠ [${route.name}] OSRM retornó: ${data.code}`);
-                    }
-                } catch (error) {
-                    console.warn(`⚠ [${route.name}] Error en intento ${attempt}:`, error.message);
-                }
-
-                if (attempt < 3) {
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                }
+            // Si la red ya se dibujó, la línea individual puede no existir aún.
+            // `ensureRouteLine` la crea una sola vez y la cachea.
+            const polyline = manager.getRouteLine(route.id) || manager.ensureRouteLine(route.id);
+            if (!polyline) {
+                console.warn('Ruta sin trazado suficiente:', route.name);
+                return null;
             }
 
-            console.error(`❌ [${route.name}] No se pudo cargar sobre calles después de 3 intentos - LA RUTA NO SE MOSTRARÁ`);
+            routePolylines[route.id] = polyline;
+            routePaths[route.id] = manager.getPath(route.id);
+            routesLoaded[route.id] = true;
+
+            return polyline;
         }
 
         async function loadVisibleRoutes() {
-            const routesToLoad = new Set();
+            const manager = getRouteManager();
+            if (!manager) {
+                console.warn('No se pudo inicializar la capa de rutas.');
+                return;
+            }
 
+            const routeIds = new Set();
             buses.forEach(bus => {
                 if (bus.routes && bus.routes[0]) {
-                    routesToLoad.add(bus.routes[0].id);
+                    routeIds.add(bus.routes[0].id);
                 }
             });
 
-            for (const routeId of routesToLoad) {
-                const route = routes.find(r => r.id === routeId);
-                if (route && !routesLoaded[routeId]) {
-                    await drawRoute(route);
-                }
-            }
+            // Si no hay autobuses activos, se muestra la red completa.
+            const visibleIds = routeIds.size > 0
+                ? routeIds
+                : new Set(routes.map(route => route.id));
+
+            // Limita las paradas a la red realmente visible. Si están todas
+            // las rutas no hace falta filtrar.
+            activeStopRouteIds = routeIds.size > 0 && routeIds.size < routes.length
+                ? new Set([...visibleIds].map(Number))
+                : null;
+
+            // La red ya viene deduplicada por tramos: cada segmento se dibuja
+            // una sola vez aunque lo compartan varias rutas.
+            manager.showNetwork(visibleIds);
+            refreshStopVisibility();
+
+            routes.forEach(route => {
+                routePaths[route.id] = manager.getPath(route.id);
+                routesLoaded[route.id] = true;
+            });
+
+            const stats = manager.stats();
+            console.log(
+                `🧭 Red de rutas: ${stats.totalSegments} tramos únicos ` +
+                `(${stats.sharedSegments} compartidos, ${stats.deduplicatedSegments} dibujos evitados)`
+            );
         }
 
         function calculateRouteDistance(routePath) {
@@ -834,48 +854,27 @@
             return totalDistance;
         }
 
-        function initializeSimulatedBuses() {
-            simulatedBuses = buses.map((bus, index) => {
+        const STALENESS_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutos
+
+        function isLocationStale(lastUpdate) {
+            if (!lastUpdate) {
+                return true;
+            }
+            return Date.now() - new Date(lastUpdate).getTime() > STALENESS_THRESHOLD_MS;
+        }
+
+        function initializeBuses() {
+            // Solo se muestran autobuses que tengan coordenadas reales almacenadas.
+            // No se inventan posiciones ni se desplaza ningún autobús artificialmente.
+            activeBuses = buses.filter(bus => {
+                return bus.current_latitude != null && bus.current_longitude != null;
+            }).map(bus => {
                 const route = bus.routes && bus.routes[0];
-                if (!route) {
-                    console.warn('Autobús sin ruta válida:', bus.license_plate);
-                    return null;
-                }
-
-                const fullRoute = routes.find(r => r.id === route.id);
+                const fullRoute = route ? routes.find(r => r.id === route.id) : null;
                 if (!fullRoute) {
-                    console.warn('Ruta no encontrada:', bus.license_plate);
+                    console.warn('Ruta no encontrada para el autobús:', bus.license_plate);
                     return null;
                 }
-
-                const routePath = routePathsOSRM[route.id];
-                if (!routePath || routePath.length < 2) {
-                    console.warn('Ruta OSRM no disponible aún para:', bus.license_plate);
-                    return null;
-                }
-
-                const routeDistanceKm = calculateRouteDistance(routePath);
-
-                const avgSpeedKmh = 20;
-
-                const updateIntervalSeconds = 0.2;
-
-                const distancePerUpdate = (avgSpeedKmh * updateIntervalSeconds) / 3600;
-
-                const speedIncrement = (distancePerUpdate / routeDistanceKm) * routePath.length;
-
-                const startProgress = (index * 0.3) % 1;
-                const pathIndex = Math.floor(routePath.length * startProgress);
-
-                // Si el servidor reporta una posición real del autobús, se usa esa
-                // coordenada y el marcador deja de moverse por simulación (recibe
-                // actualizaciones en tiempo real en su lugar).
-                const hasRealPosition = bus.current_latitude != null && bus.current_longitude != null;
-                const startPoint = hasRealPosition
-                    ? [Number(bus.current_latitude), Number(bus.current_longitude)]
-                    : routePath[pathIndex];
-
-                console.log(`Autobús ${bus.license_plate}: Ruta ${routeDistanceKm.toFixed(2)}km, ${hasRealPosition ? 'posición real' : 'simulada'}`);
 
                 return {
                     id: bus.id,
@@ -884,53 +883,208 @@
                     capacity: bus.capacity,
                     current_passengers: bus.current_passengers ?? 0,
                     route: fullRoute,
-                    routePath: routePath,
-                    routeDistanceKm: routeDistanceKm,
-                    speedIncrement: speedIncrement,
-                    avgSpeedKmh: avgSpeedKmh,
-                    isReal: hasRealPosition,
                     currentPosition: {
-                        lat: startPoint[0],
-                        lng: startPoint[1]
+                        lat: Number(bus.current_latitude),
+                        lng: Number(bus.current_longitude)
                     },
-                    pathIndex: pathIndex,
-                    direction: 1
+                    last_update: bus.last_location_update ?? null,
+                    avgSpeedKmh: 20
                 };
             }).filter(bus => bus !== null);
 
-            console.log('✅ Autobuses simulados inicializados con velocidades realistas:', simulatedBuses.length);
+            console.log('✅ Autobuses con ubicación real inicializados:', activeBuses.length);
+        }
+
+        function routesForStop(stopId) {
+            return stopRoutesById.get(Number(stopId)) || [];
+        }
+
+        function stopPopupHtml(stop) {
+            const stopId = Number(stop.id);
+            const isFavorite = favoriteStopIds.includes(stopId);
+            const renderer = window.UbicaditosStopPopup?.render;
+
+            const actions = [
+                {
+                    label: 'Ver tiempos de llegada',
+                    icon: 'clock',
+                    variant: 'primary',
+                    onClick: `showArrivalTimesForStop(${stopId})`,
+                },
+                {
+                    label: isFavorite ? 'Quitar de favoritos' : 'Guardar en favoritos',
+                    icon: 'heart',
+                    variant: 'ghost',
+                    active: isFavorite,
+                    onClick: isFavorite
+                        ? `removeFromFavorites(${stopId})`
+                        : `addToFavorites(${stopId})`,
+                },
+            ];
+
+            if (typeof renderer === 'function') {
+                return renderer(stop, {
+                    routes: routesForStop(stopId),
+                    isFavorite,
+                    eyebrow: 'Parada del recorrido',
+                    actions,
+                    hint: 'Consulta los próximos autobuses o guarda esta parada.',
+                });
+            }
+
+            return `
+                <div class="font-semibold">${stop.name}</div>
+                <div class="text-sm text-gray-600">${stop.address || ''}</div>
+                <button onclick="showArrivalTimesForStop(${stopId})"
+                        class="mt-2 mr-1 px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">
+                    Ver tiempos de llegada
+                </button>
+            `;
+        }
+
+        function selectedRouteId() {
+            if (currentFilteredRoute) {
+                return Number(currentFilteredRoute);
+            }
+
+            const filterValue = parseInt(document.getElementById('route-filter')?.value || '', 10);
+            return Number.isFinite(filterValue) ? filterValue : null;
+        }
+
+        function stopRouteCount(stop) {
+            return routesForStop(stop.id).length;
+        }
+
+        function stopMatchesActiveNetwork(stop) {
+            if (!activeStopRouteIds) {
+                return true;
+            }
+
+            return routesForStop(stop.id).some(route => activeStopRouteIds.has(Number(route.id)));
+        }
+
+        function stopIsPrimary(stop) {
+            return stopHasPrimaryRouteById.get(Number(stop.id)) === true;
+        }
+
+        /**
+         * Filtro base por zoom. Las paradas de alta frecuencia se revelan al
+         * acercarse; después se aplica un adelgazamiento por distancia en
+         * pantalla para que nunca se encimen dos marcadores.
+         */
+        function shouldShowStop(stop, zoom) {
+            if (!stopsVisible) {
+                return false;
+            }
+
+            const routeId = selectedRouteId();
+            if (routeId) {
+                return routesForStop(stop.id).some(route => Number(route.id) === routeId);
+            }
+
+            if (!stopMatchesActiveNetwork(stop)) {
+                return false;
+            }
+
+            const routeCount = stopRouteCount(stop);
+
+            if (zoom >= 16) return true;
+            if (zoom >= 15) return routeCount >= 2;
+            if (zoom >= 14) return routeCount >= 3;
+
+            return routeCount >= 6;
+        }
+
+        function refreshStopVisibility() {
+            const zoom = map.getZoom();
+            const viewport = map.getBounds().pad(0.12);
+            const minScreenDistance = zoom >= 17 ? 0 : (zoom >= 16 ? 22 : (zoom >= 15 ? 26 : 34));
+            const candidates = [];
+
+            stops.forEach(stop => {
+                const marker = stopMarkers[stop.id];
+                if (!marker) return;
+
+                const icon = stopRouteCount(stop) >= 4
+                    ? stopIcon
+                    : stopMinorIcon;
+
+                if (marker.options.icon !== icon) {
+                    marker.setIcon(icon);
+                }
+
+                if (!shouldShowStop(stop, zoom)) {
+                    setMarkerVisible(marker, false);
+                    return;
+                }
+
+                const latlng = L.latLng(Number(stop.latitude), Number(stop.longitude));
+                if (!viewport.contains(latlng)) {
+                    setMarkerVisible(marker, false);
+                    return;
+                }
+
+                candidates.push({ stop, marker, latlng });
+            });
+
+            // Primero las paradas abiertas, luego las principales y las que
+            // comparten más rutas. Así el adelgazamiento conserva lo importante.
+            candidates.sort((a, b) => {
+                const aOpen = a.marker.isPopupOpen?.() ? 1 : 0;
+                const bOpen = b.marker.isPopupOpen?.() ? 1 : 0;
+                if (aOpen !== bOpen) return bOpen - aOpen;
+
+                const aPrimary = stopIsPrimary(a.stop) ? 1 : 0;
+                const bPrimary = stopIsPrimary(b.stop) ? 1 : 0;
+                if (aPrimary !== bPrimary) return bPrimary - aPrimary;
+
+                const countDiff = stopRouteCount(b.stop) - stopRouteCount(a.stop);
+                if (countDiff !== 0) return countDiff;
+
+                const aFavorite = favoriteStopIds.includes(Number(a.stop.id)) ? 1 : 0;
+                const bFavorite = favoriteStopIds.includes(Number(b.stop.id)) ? 1 : 0;
+
+                return bFavorite - aFavorite;
+            });
+
+            const shownPoints = [];
+
+            candidates.forEach(({ marker, latlng }) => {
+                const point = map.latLngToContainerPoint(latlng);
+                const isOpen = marker.isPopupOpen?.();
+
+                if (minScreenDistance > 0 && !isOpen) {
+                    const overlaps = shownPoints.some(shown => (
+                        Math.hypot(shown.x - point.x, shown.y - point.y) < minScreenDistance
+                    ));
+
+                    if (overlaps) {
+                        setMarkerVisible(marker, false);
+                        return;
+                    }
+                }
+
+                shownPoints.push(point);
+                setMarkerVisible(marker, true);
+            });
         }
 
         function drawStops() {
             stops.forEach(stop => {
                 if (!stopMarkers[stop.id]) {
-                    const isFavorite = favoriteStopIds.includes(stop.id);
-                    const favoriteButton = isFavorite
-                        ? `<button onclick="removeFromFavorites(${stop.id})"
-                                class="mt-2 px-3 py-1 bg-gray-400 text-white text-xs rounded hover:bg-gray-500"
-                                id="favorite-btn-${stop.id}">
-                                ✓ En favoritos
-                            </button>`
-                        : `<button onclick="addToFavorites(${stop.id}, '${stop.name.replace(/'/g, "\\'")}')"
-                                class="mt-2 px-3 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600"
-                                id="favorite-btn-${stop.id}">
-                                ⭐ Agregar a favoritos
-                            </button>`;
-
-                    const marker = L.marker([stop.latitude, stop.longitude], { icon: stopIcon })
+                    const marker = L.marker([stop.latitude, stop.longitude], { icon: stopMinorIcon })
                         .addTo(map)
-                        .bindPopup(`
-                            <div class="font-semibold">${stop.name}</div>
-                            <div class="text-sm text-gray-600">${stop.address || ''}</div>
-                            <button onclick="showArrivalTimesForStop(${stop.id})"
-                                    class="mt-2 mr-1 px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">
-                                🕐 Ver tiempos de llegada
-                            </button>
-                            ${favoriteButton}
-                        `);
+                        .bindPopup(stopPopupHtml(stop), {
+                            className: 'ub-stop-popup-wrap',
+                            maxWidth: 320,
+                            autoPanPadding: [24, 24],
+                        });
+
                     stopMarkers[stop.id] = marker;
                 }
             });
+
+            refreshStopVisibility();
         }
 
         window.showArrivalTimesForStop = function(stopId) {
@@ -941,7 +1095,7 @@
         };
 
         function drawBuses() {
-            simulatedBuses.forEach(bus => {
+            activeBuses.forEach(bus => {
                 const available = bus.capacity;
 
                 if (busMarkers[bus.id]) {
@@ -976,47 +1130,7 @@
             });
         }
 
-        function moveBus(bus) {
-            // Los buses con posición real no se simulan: los mueve el tiempo real.
-            if (bus.isReal || !bus.routePath || bus.routePath.length === 0) return;
 
-            const speed = bus.speedIncrement || 0.02;
-            bus.pathIndex += bus.direction * speed;
-
-            if (bus.pathIndex >= bus.routePath.length - 1) {
-                bus.pathIndex = bus.routePath.length - 1;
-                bus.direction = -1;
-            } else if (bus.pathIndex <= 0) {
-                bus.pathIndex = 0;
-                bus.direction = 1;
-            }
-
-            const currentIndex = Math.floor(bus.pathIndex);
-            const nextIndex = Math.min(currentIndex + 1, bus.routePath.length - 1);
-            const progress = bus.pathIndex - currentIndex;
-
-            const currentPoint = bus.routePath[currentIndex];
-            const nextPoint = bus.routePath[nextIndex];
-
-            bus.currentPosition = {
-                lat: currentPoint[0] + (nextPoint[0] - currentPoint[0]) * progress,
-                lng: currentPoint[1] + (nextPoint[1] - currentPoint[1]) * progress
-            };
-
-            if (busMarkers[bus.id]) {
-                busMarkers[bus.id].setLatLng([bus.currentPosition.lat, bus.currentPosition.lng]);
-            }
-        }
-
-        function startSimulation() {
-            simulatedBuses.forEach(bus => {
-                simulationIntervals[bus.id] = setInterval(() => {
-                    moveBus(bus);
-                }, 200);
-            });
-
-            console.log('✅ Simulación iniciada con', simulatedBuses.length, 'autobuses');
-        }
 
         // ===== Tiempo real (WebSocket con fallback a polling) =====
         // Mueve los marcadores con la posición reportada por los conductores.
@@ -1029,17 +1143,11 @@
             const realtime = window.UbicaditosRealtime.start({ pollInterval: 5000 });
 
             realtime.onBusLocation(payload => {
-                const bus = simulatedBuses.find(b => b.id === payload.id);
+                const bus = activeBuses.find(b => b.id === payload.id);
                 if (!bus) return;
 
-                bus.isReal = true;
-
-                if (simulationIntervals[bus.id]) {
-                    clearInterval(simulationIntervals[bus.id]);
-                    delete simulationIntervals[bus.id];
-                }
-
                 bus.currentPosition = { lat: payload.latitude, lng: payload.longitude };
+                bus.last_update = payload.last_update ?? bus.last_update;
 
                 if (payload.current_passengers != null) {
                     bus.current_passengers = payload.current_passengers;
@@ -1079,7 +1187,7 @@
                 const query = searchInput.value.trim().toLowerCase();
 
                 let busesShown = 0;
-                simulatedBuses.forEach(bus => {
+                activeBuses.forEach(bus => {
                     const matches = !query
                         || bus.license_plate.toLowerCase().includes(query)
                         || bus.route.name.toLowerCase().includes(query);
@@ -1087,12 +1195,20 @@
                     if (matches) busesShown++;
                 });
 
-                stops.forEach(stop => {
-                    const matches = !query
-                        || stop.name.toLowerCase().includes(query)
-                        || (stop.address || '').toLowerCase().includes(query);
-                    setMarkerVisible(stopMarkers[stop.id], matches);
-                });
+                if (query) {
+                    // Al buscar, se muestran las coincidencias aunque estén
+                    // ocultas por el nivel de zoom actual.
+                    stops.forEach(stop => {
+                        const matches = stopsVisible
+                            && (stop.name.toLowerCase().includes(query)
+                                || (stop.address || '').toLowerCase().includes(query));
+                        setMarkerVisible(stopMarkers[stop.id], matches);
+                    });
+                } else {
+                    // Al limpiar la búsqueda se recupera la visibilidad
+                    // progresiva normal.
+                    refreshStopVisibility();
+                }
 
                 const counter = document.getElementById('fleet-counter');
                 if (counter) {
@@ -1175,24 +1291,19 @@
 
             if (confirm(message)) {
                 const nearestRouteIds = nearestRoutes.map(r => r.route.id);
+                const manager = getRouteManager();
 
-                for (const routeId of nearestRouteIds) {
-                    const route = routes.find(r => r.id === routeId);
-                    if (route && !routesLoaded[routeId]) {
-                        await drawRoute(route);
+                if (manager) {
+                    if (currentFilteredRoute) {
+                        await applyRouteFilter(currentFilteredRoute, { focus: false, loading: false });
+                    } else {
+                        manager.showNetwork(nearestRouteIds);
+                        activeStopRouteIds = new Set(nearestRouteIds.map(Number));
+                        refreshStopVisibility();
                     }
                 }
 
-                Object.keys(routePolylines).forEach(key => {
-                    const rId = parseInt(key);
-                    if (nearestRouteIds.includes(rId)) {
-                        routePolylines[key].addTo(map);
-                    } else {
-                        map.removeLayer(routePolylines[key]);
-                    }
-                });
-
-                simulatedBuses.forEach(bus => {
+                activeBuses.forEach(bus => {
                     const shouldShow = nearestRouteIds.includes(bus.route.id);
                     if (shouldShow) {
                         if (busMarkers[bus.id]) {
@@ -1208,6 +1319,9 @@
                 nearestRoutes.forEach(item => {
                     const stopMarker = stopMarkers[item.closestStop.id];
                     if (stopMarker) {
+                        // La parada puede estar oculta por el nivel de zoom;
+                        // se muestra antes de abrir su popup.
+                        stopMarker.addTo(map);
                         stopMarker.openPopup();
                         setTimeout(() => {
                             map.setView([item.closestStop.latitude, item.closestStop.longitude], 15);
@@ -1220,37 +1334,37 @@
         };
 
         window.addToFavorites = function(stopId, stopName) {
-            const nickname = prompt('Dale un nombre a esta parada favorita:', stopName);
-            if (nickname) {
-                fetch(`/passenger/favorites/${stopId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: JSON.stringify({ nickname: nickname })
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        return response.json().then(err => { throw err; });
+            const stop = stops.find(s => Number(s.id) === Number(stopId));
+            const nickname = stopName || stop?.name || 'Parada';
+
+            fetch(`/passenger/favorites/${stopId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ nickname: nickname })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw err; });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    if (!favoriteStopIds.includes(stopId)) {
+                        favoriteStopIds.push(stopId);
                     }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.success) {
-                        if (!favoriteStopIds.includes(stopId)) {
-                            favoriteStopIds.push(stopId);
-                        }
-                        updateStopPopup(stopId);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('✗ Error: ' + (error.error || error.message || 'No se pudo agregar a favoritos'));
-                });
-            }
+                    updateStopPopup(stopId);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('✗ Error: ' + (error.error || error.message || 'No se pudo agregar a favoritos'));
+            });
         };
 
         window.removeFromFavorites = function(stopId) {
@@ -1281,41 +1395,15 @@
         };
 
         function updateStopPopup(stopId) {
-            const stop = stops.find(s => s.id === stopId);
+            const stop = stops.find(s => Number(s.id) === Number(stopId));
             if (stop && stopMarkers[stopId]) {
-                const isFavorite = favoriteStopIds.includes(stopId);
-                const favoriteButton = isFavorite
-                    ? `<button onclick="removeFromFavorites(${stopId})"
-                            class="mt-2 px-3 py-1 bg-gray-400 text-white text-xs rounded hover:bg-gray-500"
-                            id="favorite-btn-${stopId}">
-                            ✓ En favoritos
-                        </button>`
-                    : `<button onclick="addToFavorites(${stopId}, '${stop.name.replace(/'/g, "\\'")}')"
-                            class="mt-2 px-3 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600"
-                            id="favorite-btn-${stopId}">
-                            ⭐ Agregar a favoritos
-                        </button>`;
-
-                stopMarkers[stopId].setPopupContent(`
-                    <div class="font-semibold">${stop.name}</div>
-                    <div class="text-sm text-gray-600">${stop.address || ''}</div>
-                    <button onclick="showArrivalTimesForStop(${stopId})"
-                            class="mt-2 mr-1 px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">
-                        🕐 Ver tiempos de llegada
-                    </button>
-                    ${favoriteButton}
-                `);
+                stopMarkers[stopId].setPopupContent(stopPopupHtml(stop));
             }
         }
 
         document.getElementById('show-stops').addEventListener('change', function(e) {
-            Object.values(stopMarkers).forEach(marker => {
-                if (e.target.checked) {
-                    marker.addTo(map);
-                } else {
-                    map.removeLayer(marker);
-                }
-            });
+            stopsVisible = e.target.checked;
+            refreshStopVisibility();
         });
 
         let currentNearestRoutes = [];
@@ -1399,15 +1487,28 @@
         }
 
         async function filterNearestRoutes(show) {
+            const manager = getRouteManager();
+
             if (!show) {
-                Object.values(routePolylines).forEach(polyline => polyline.addTo(map));
-                simulatedBuses.forEach(bus => {
+                currentNearestRoutes = [];
+                document.getElementById('nearest-routes-list').innerHTML = NEAREST_EMPTY;
+
+                if (manager) {
+                    if (currentFilteredRoute) {
+                        await applyRouteFilter(currentFilteredRoute, { focus: false, loading: false });
+                    } else {
+                        manager.showAllRoutes();
+                    }
+                }
+
+                activeStopRouteIds = null;
+                refreshStopVisibility();
+
+                activeBuses.forEach(bus => {
                     if (busMarkers[bus.id]) {
                         busMarkers[bus.id].addTo(map);
                     }
                 });
-                document.getElementById('nearest-routes-list').innerHTML = NEAREST_EMPTY;
-                currentNearestRoutes = [];
                 return;
             }
 
@@ -1425,24 +1526,19 @@
 
             const nearestRouteIds = nearestRoutes.map(r => r.route.id);
 
-            const routePromises = nearestRouteIds.map(async routeId => {
-                const route = routes.find(r => r.id === routeId);
-                if (route && !routesLoaded[routeId]) {
-                    await drawRoute(route);
-                }
-            });
-            await Promise.all(routePromises);
-
-            Object.keys(routePolylines).forEach(key => {
-                const rId = parseInt(key);
-                if (nearestRouteIds.includes(rId)) {
-                    routePolylines[key].addTo(map);
+            if (manager) {
+                if (currentFilteredRoute) {
+                    await applyRouteFilter(currentFilteredRoute, { focus: false, loading: false });
                 } else {
-                    map.removeLayer(routePolylines[key]);
+                    // Sólo se muestran los tramos que pertenecen a esas rutas.
+                    manager.showNetwork(nearestRouteIds);
+                    activeStopRouteIds = new Set(nearestRouteIds.map(Number));
+                    refreshStopVisibility();
+                    console.log('🧭 Tramos visibles para rutas cercanas:', nearestRouteIds);
                 }
-            });
+            }
 
-            simulatedBuses.forEach(bus => {
+            activeBuses.forEach(bus => {
                 const shouldShow = nearestRouteIds.includes(bus.route.id);
                 if (shouldShow) {
                     if (busMarkers[bus.id]) {
@@ -1463,37 +1559,38 @@
             filterNearestRoutes(e.target.checked);
         });
 
-        // Aplica el filtro de ruta: carga su trazado si hace falta, la aísla de
-        // las demás rutas y encuadra el mapa en ella con fitBounds.
+        // Aplica el filtro de ruta: dibuja su trazado guardado, la aísla de las
+        // demás rutas y encuadra el mapa en ella con fitBounds.
         async function applyRouteFilter(routeId, { focus = true, loading = true } = {}) {
             currentFilteredRoute = routeId;
 
             if (routeId && loading) {
-                showMapLoading('Trazando la ruta…', 'Consultando el recorrido sobre las calles');
+                showMapLoading('Trazando la ruta…', 'Leyendo el recorrido guardado');
             }
 
-            if (routeId) {
-                const route = routes.find(r => r.id === routeId);
-                if (route && !routesLoaded[routeId]) {
-                    await drawRoute(route);
-                }
-            }
+            const manager = getRouteManager();
 
-            // Aislamiento: solo la ruta filtrada permanece visible en el mapa.
-            Object.keys(routePolylines).forEach(key => {
-                const rId = parseInt(key);
-                if (!routeId || rId === routeId) {
-                    routePolylines[key].addTo(map);
+            if (manager) {
+                if (routeId) {
+                    const route = routes.find(r => r.id === routeId);
+                    if (route) {
+                        await drawRoute(route);
+                    }
+                    manager.showOnlyRoute(routeId);
                 } else {
-                    map.removeLayer(routePolylines[key]);
+                    const nearestChecked = document.getElementById('show-nearest-routes')?.checked;
+                    const nearestIds = nearestChecked && currentNearestRoutes.length
+                        ? currentNearestRoutes.map(item => item.route.id)
+                        : null;
+                    manager.showAllRoutes(nearestIds);
                 }
-            });
+            }
 
             const urlParams = new URLSearchParams(window.location.search);
             const busIdFromUrl = urlParams.get('bus_id');
             const specificBusId = busIdFromUrl ? parseInt(busIdFromUrl) : null;
 
-            simulatedBuses.forEach(bus => {
+            activeBuses.forEach(bus => {
                 let shouldShow = false;
 
                 if (specificBusId) {
@@ -1514,14 +1611,23 @@
             });
 
             // Encuadre completo de la ruta consultada (ancla el centro del mapa).
-            if (routeId && focus && routePolylines[routeId]) {
+            if (routeId && focus && manager) {
                 centerLocked = true;
-                map.fitBounds(routePolylines[routeId].getBounds(), { padding: [40, 40], maxZoom: 16 });
+                manager.fitRoute(routeId, { padding: [40, 40], maxZoom: 16 });
             }
 
             if (routeId && loading) {
                 hideMapLoading();
             }
+
+            if (!routeId) {
+                const nearestChecked = document.getElementById('show-nearest-routes')?.checked;
+                activeStopRouteIds = nearestChecked && currentNearestRoutes.length
+                    ? new Set(currentNearestRoutes.map(item => Number(item.route.id)))
+                    : null;
+            }
+
+            refreshStopVisibility();
         }
 
         document.getElementById('route-filter').addEventListener('change', function(e) {
@@ -1571,9 +1677,8 @@
 
                 console.log('✅ Mapa base cargado');
 
-                initializeSimulatedBuses();
+                initializeBuses();
                 drawBuses();
-                startSimulation();
                 startRealtimeUpdates();
                 wireMapSearch();
 
@@ -1594,15 +1699,19 @@
                 if (target.stop) {
                     const selectedStop = stops.find(s => s.id === parseInt(target.stop));
                     if (selectedStop && stopMarkers[selectedStop.id]) {
+                        const stopMarker = stopMarkers[selectedStop.id];
+                        // Puede estar oculta por la divulgación progresiva;
+                        // se hace visible antes de abrir el popup.
+                        stopMarker.addTo(map);
                         map.flyTo([selectedStop.latitude, selectedStop.longitude], 16, { duration: 1.2 });
-                        stopMarkers[selectedStop.id].openPopup();
+                        setTimeout(() => stopMarker.openPopup(), 1250);
                         console.log('🚏 Parada seleccionada centrada:', selectedStop.name);
                     }
                 }
 
                 // 3) Autobús consultado: volar hacia él y abrir sus detalles (popup).
                 if (target.bus) {
-                    const selectedBus = simulatedBuses.find(b => b.id === parseInt(target.bus));
+                    const selectedBus = activeBuses.find(b => b.id === parseInt(target.bus));
                     if (selectedBus && busMarkers[selectedBus.id]) {
                         map.flyTo([selectedBus.currentPosition.lat, selectedBus.currentPosition.lng], 16, { duration: 1.2 });
                         busMarkers[selectedBus.id].openPopup();

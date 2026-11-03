@@ -54,7 +54,8 @@ Abre `http://localhost:8000` e inicia sesión con alguna de las cuentas de prueb
 | 11 | [Diagramas y diccionario de datos](11-diagramas.md) | Diagramas de clases, de objetos, E-R y relacional, y diccionario de datos. |
 | 12 | [API Swagger — Iteración 1](12-swagger-api.md) | Especificación OpenAPI, modelos, seguridad y informe de pruebas de la iteración 1. |
 | 13 | [Iteración 3 — Tiempo real, búsqueda e incidencias](13-iteracion-3.md) | WebSockets con Reverb, búsqueda y filtros de autobuses, estadísticas de conductor, ciclo de incidencias, pruebas E2E y de carga. |
-| 14 | [Registro técnico de desarrollo (_devlog)](_devlog.md) | Bitácora técnica de lo realizado en cada iteración. |
+| 14 | [Diagnóstico y optimización del dibujo de rutas](14-diagnostico-y-optimizacion-rutas.md) | Fuente de los trazados, deduplicación por tramos, comandos `routes:diagnose` y `routes:generate-paths`, y correcciones de seeders. |
+| 15 | [Registro técnico de desarrollo (_devlog)](_devlog.md) | Bitácora técnica de lo realizado en cada iteración. |
 
 ## Resumen funcional
 

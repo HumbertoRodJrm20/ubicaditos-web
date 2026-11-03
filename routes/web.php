@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\IncidentController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Driver\DriverController;
 use App\Http\Controllers\Passenger\PassengerController;
@@ -91,6 +92,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Reportes de incidencias del usuario autenticado
+    Route::get('/incidents', [IncidentController::class, 'index'])->name('incidents.index');
+    Route::get('/incidents/create', [IncidentController::class, 'create'])->name('incidents.create');
+    Route::post('/incidents', [IncidentController::class, 'store'])->name('incidents.store');
 });
 
 require __DIR__.'/auth.php';
