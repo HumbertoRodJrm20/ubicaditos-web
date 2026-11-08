@@ -1,37 +1,74 @@
 # Comandos de consola
 
-Además de los comandos estándar de Laravel, el proyecto incluye dos comandos Artisan propios en `app/Console/Commands`. Laravel 12 los descubre automáticamente, sin necesidad de registrarlos.
+Además de los comandos estándar de Laravel, el proyecto incluye tres comandos Artisan propios en `app/Console/Commands`. Laravel 12 los descubre automáticamente, sin necesidad de registrarlos.
 
 ## routes:generate-paths
 
 ```bash
 php artisan routes:generate-paths
+php artisan routes:generate-paths --force
+php artisan routes:generate-paths --route=OAX-101 --force
 ```
 
 **Clase:** `App\Console\Commands\GenerateRoutePaths`
 
 Genera el trazo geográfico (`path_coordinates`) de cada ruta siguiendo las calles reales, usando el servicio público de OSRM.
 
+| Opción | Por defecto | Descripción |
+|---|---|---|
+| `--force` | `false` | Regenera el trazado aunque la ruta ya tenga `path_coordinates`. |
+| `--route=` | — | Procesa únicamente la ruta con ese código. |
+| `--sleep=` | `1` | Segundos de espera entre peticiones a OSRM. |
+
 Funcionamiento:
 
-1. Carga todas las rutas con sus paradas.
-2. Omite las rutas con menos de 2 paradas.
-3. Ordena las paradas por `pivot.order` y arma la lista de *waypoints* `lng,lat;lng,lat;...`.
-4. Consulta `https://router.project-osrm.org/route/v1/driving/{waypoints}?overview=full&geometries=geojson` con un *timeout* de 30 segundos.
-5. Convierte las coordenadas GeoJSON `[lng, lat]` al formato `{lat, lng}` y las guarda en la ruta.
-6. Espera 1 segundo entre rutas para no saturar el servicio.
+1. Carga las rutas y sus **paradas principales** (`route_stop.is_frequent = false`).
+2. Omite las rutas con menos de 2 paradas principales.
+3. **Conserva el trazado existente** salvo que se use `--force`.
+4. Ordena las paradas principales por `pivot.order` y arma la lista de *waypoints* `lng,lat;lng,lat;...`. Las paradas de alta frecuencia no se envían a OSRM porque ya están muestreadas sobre ese trazado.
+5. Consulta `https://router.project-osrm.org/route/v1/driving/{waypoints}?overview=full&geometries=geojson` con un *timeout* de 30 segundos.
+6. Convierte las coordenadas GeoJSON `[lng, lat]` al formato `{lat, lng}` y las guarda en la ruta.
+7. Espera `--sleep` segundos entre rutas para no saturar el servicio.
 
-Salida de ejemplo:
+Se recomienda ejecutarlo **una sola vez** después de `php artisan db:seed` o cuando se modifiquen las paradas de una ruta. Requiere conexión a internet. A partir de ese momento el navegador dibuja las rutas desde la base de datos y ya no consulta OSRM.
 
-```text
-Generando rutas que siguen las calles...
-Procesando: Ruta 1 - Centro - Tule
-✅ Ruta 1 - Centro - Tule: 812 puntos generados
-...
-🎉 Proceso completado!
+El seeder `FrequentRouteStopsSeeder` agrega paradas aproximadamente cada 500 m sobre el trazado guardado y las marca con `is_frequent = true`. Es idempotente y se ejecuta automáticamente al final de `DatabaseSeeder`; en una base existente puede ejecutarse con `php artisan db:seed --class=FrequentRouteStopsSeeder`.
+
+> Los seeders ya **no inventan** trazados: dejan `path_coordinates` vacío para
+> no dibujar líneas rectas sobre edificios. Después de poblar la base ejecuta:
+>
+> ```bash
+> php artisan routes:generate-paths --force
+> ```
+>
+> Sin ese paso verás líneas rectas entre paradas (o rutas sin dibujar) hasta
+> que se regeneren los trazados.
+
+## routes:diagnose
+
+```bash
+php artisan routes:diagnose
+php artisan routes:diagnose --threshold=0.8
 ```
 
-Se recomienda ejecutarlo después de `php artisan db:seed` o cada vez que se modifiquen las paradas de una ruta. Requiere conexión a internet.
+**Clase:** `App\Console\Commands\DiagnoseRoutes`
+
+Reporta el estado de las rutas antes de optimizar o depurar el mapa:
+
+- rutas sin `path_coordinates` o con menos de 2 paradas;
+- autobuses asignados y puntos de trazado por ruta;
+- pares de rutas con paradas en común (similitud Jaccard, configurable con `--threshold`);
+- tramos compartidos por varias rutas y cuántos dibujos se evitan al deduplicarlos.
+
+Ejemplo de salida:
+
+```text
+🧩 Tramos compartidos
+  Instancias de tramo (suma de todas las rutas): 257
+  Tramos únicos: 90
+  Tramos compartidos por 2+ rutas: 49
+  Dibujos que se evitan al deduplicar: 167
+```
 
 ## buses:simulate
 

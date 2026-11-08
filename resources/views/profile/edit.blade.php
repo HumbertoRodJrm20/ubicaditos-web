@@ -1,16 +1,19 @@
 @php
     $user = Auth::user();
-    $attrs = $user->getAttributes();
 
-    $firstField = collect(['first_name', 'nombres', 'nombre', 'name'])->first(fn ($c) => array_key_exists($c, $attrs)) ?? 'name';
-    $lastField = collect(['last_name', 'apellidos', 'apellido', 'surname'])->first(fn ($c) => array_key_exists($c, $attrs));
-
-    $firstName = $user->{$firstField};
-    $lastName = $lastField ? $user->{$lastField} : '';
-    $fullName = trim($firstName . ' ' . $lastName) ?: $user->name;
+    $firstName = $user->first_name ?? '';
+    $lastName = $user->last_name ?? '';
+    $maternalLastName = $user->maternal_last_name ?? '';
+    $fullName = trim((string) $user->name) ?: 'Usuario';
 
     $initials = collect(explode(' ', $fullName))->filter()->map(fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)))->take(2)->implode('');
-    $favoritesCount = $user->favoriteStops->count();
+    $favoriteStops = $favoriteStops ?? $user->favoriteStops;
+    $favoriteRoutes = $favoriteRoutes ?? collect();
+    $favoritesCount = $favoriteStops->count();
+    $favoriteRoutesCount = $favoriteRoutes->count();
+    $ratingsGivenCount = $ratingsGivenCount ?? $user->ratingsGiven()->count();
+    $likesGivenCount = $likesGivenCount ?? $user->likes()->count();
+    $incidentsCount = $incidentsCount ?? $user->incidents()->count();
 
     $inputClass = 'w-full px-3 py-2.5 rounded-xl bg-white dark:bg-gray-700 border border-slate-200/80 dark:border-gray-600 text-sm text-slate-700 dark:text-gray-100 placeholder-slate-400 shadow-sm focus:ring-2 focus:ring-[#6b7aa8]/40 focus:border-transparent';
     $labelClass = 'block text-[11px] font-medium text-slate-500 dark:text-gray-400 mb-1';
@@ -42,8 +45,20 @@
                     {{ $favoritesCount }} {{ $favoritesCount === 1 ? 'parada favorita' : 'paradas favoritas' }}
                 </div>
                 <div class="flex items-center gap-2.5">
+                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="6" cy="18" r="2.2" stroke-width="2"></circle><circle cx="18" cy="6" r="2.2" stroke-width="2"></circle><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.2 18H14a3 3 0 000-6h-4a3 3 0 010-6h5.8"></path></svg>
+                    {{ $favoriteRoutesCount }} {{ $favoriteRoutesCount === 1 ? 'ruta favorita' : 'rutas favoritas' }}
+                </div>
+                <div class="flex items-center gap-2.5">
                     <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>
-                    5 calificaciones emitidas
+                    {{ $ratingsGivenCount }} {{ $ratingsGivenCount === 1 ? 'calificación emitida' : 'calificaciones emitidas' }}
+                </div>
+                <div class="flex items-center gap-2.5">
+                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 20s-7-4.35-7-9a4 4 0 017-2.65A4 4 0 0119 11c0 4.65-7 9-7 9z"></path></svg>
+                    {{ $likesGivenCount }} {{ $likesGivenCount === 1 ? 'me gusta' : 'me gusta' }}
+                </div>
+                <div class="flex items-center gap-2.5">
+                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6M9 16h6M9 8h6"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 3h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2z"></path></svg>
+                    {{ $incidentsCount }} {{ $incidentsCount === 1 ? 'reporte enviado' : 'reportes enviados' }}
                 </div>
             </div>
 
@@ -55,6 +70,9 @@
                         Cerrar sesión
                     </button>
                 </form>
+                <p class="mt-2 text-center text-[10px] leading-4 text-slate-400 dark:text-gray-500">
+                    Al cerrar sesión se invalida tu sesión y se desactivan los enlaces de ubicación activos.
+                </p>
             </div>
         </aside>
 
@@ -71,16 +89,30 @@
                     <div class="grid gap-4 md:grid-cols-3">
                         <div>
                             <label for="first_name" class="{{ $labelClass }}">Nombre</label>
-                            <input id="first_name" name="{{ $firstField }}" type="text" value="{{ old($firstField, $firstName) }}" required autocomplete="given-name" class="{{ $inputClass }}">
-                            @error($firstField)<p class="mt-1 text-xs text-rose-500">{{ $message }}</p>@enderror
+                            <input id="first_name" name="first_name" type="text" value="{{ old('first_name', $firstName) }}" required autocomplete="given-name" class="{{ $inputClass }}">
+                            @error('first_name')<p class="mt-1 text-xs text-rose-500">{{ $message }}</p>@enderror
                         </div>
                         <div>
-                            <label for="last_name" class="{{ $labelClass }}">Apellidos</label>
-                            <input id="last_name" @if($lastField) name="{{ $lastField }}" @endif type="text" value="{{ $lastField ? old($lastField, $lastName) : '' }}" placeholder="Apellidos" autocomplete="family-name" class="{{ $inputClass }}">
-                            @if($lastField) @error($lastField)<p class="mt-1 text-xs text-rose-500">{{ $message }}</p>@enderror @endif
+                            <label for="last_name" class="{{ $labelClass }}">Apellido paterno</label>
+                            <input id="last_name" name="last_name" type="text" value="{{ old('last_name', $lastName) }}" required autocomplete="family-name" class="{{ $inputClass }}">
+                            @error('last_name')<p class="mt-1 text-xs text-rose-500">{{ $message }}</p>@enderror
                         </div>
                         <div>
-                            <label for="email" class="{{ $labelClass }}">Correo</label>
+                            <label for="maternal_last_name" class="{{ $labelClass }}">Apellido materno</label>
+                            <input id="maternal_last_name" name="maternal_last_name" type="text" value="{{ old('maternal_last_name', $maternalLastName) }}" required autocomplete="additional-name" class="{{ $inputClass }}">
+                            @error('maternal_last_name')<p class="mt-1 text-xs text-rose-500">{{ $message }}</p>@enderror
+                        </div>
+                    </div>
+
+                    <div class="mt-4 grid gap-4 md:grid-cols-2">
+                        <div>
+                            <label for="phone" class="{{ $labelClass }}">Teléfono</label>
+                            <input id="phone" name="phone" type="tel" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" value="{{ old('phone', $user->phone) }}" placeholder="10 dígitos" autocomplete="tel" class="{{ $inputClass }}">
+                            <p class="mt-1 text-[11px] text-slate-500 dark:text-gray-400">Opcional. Si lo escribes, deben ser exactamente 10 dígitos.</p>
+                            @error('phone')<p class="mt-1 text-xs text-rose-500">{{ $message }}</p>@enderror
+                        </div>
+                        <div>
+                            <label for="email" class="{{ $labelClass }}">Correo electrónico</label>
                             <input id="email" name="email" type="email" value="{{ old('email', $user->email) }}" required autocomplete="username" class="{{ $inputClass }}">
                             @error('email')<p class="mt-1 text-xs text-rose-500">{{ $message }}</p>@enderror
                         </div>
@@ -96,6 +128,74 @@
             </section>
 
             <section class="{{ $cardClass }} p-6">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <h2 class="text-[15px] font-semibold text-[#2f3a5f] dark:text-gray-100">Tus favoritos</h2>
+                        <p class="text-[11px] text-slate-500 dark:text-gray-400">Rutas y paradas que guardaste para consultarlas rápido.</p>
+                    </div>
+                    <a href="{{ route('passenger.routes') }}"
+                        class="inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white/60 px-4 text-[12px] font-semibold text-[#4b5a85] transition hover:bg-white dark:border-gray-600 dark:bg-gray-700/60 dark:text-gray-200">
+                        Explorar rutas
+                    </a>
+                </div>
+
+                <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                    <div class="rounded-2xl border border-slate-200/70 bg-white/60 p-4 dark:border-white/10 dark:bg-gray-800/40">
+                        <div class="flex items-center justify-between gap-2">
+                            <h3 class="text-[12px] font-bold uppercase tracking-[.1em] text-slate-500 dark:text-gray-400">Rutas favoritas</h3>
+                            <span class="rounded-full bg-[#eef2fa] px-2 py-0.5 text-[11px] font-semibold text-[#3d4a6b] dark:bg-gray-700 dark:text-gray-300">{{ $favoriteRoutesCount }}</span>
+                        </div>
+
+                        @if ($favoriteRoutesCount > 0)
+                            <ul class="mt-3 space-y-2">
+                                @foreach ($favoriteRoutes as $route)
+                                    <li class="flex items-center gap-2.5 rounded-xl bg-white px-3 py-2 shadow-sm ring-1 ring-slate-100 dark:bg-gray-800 dark:ring-gray-700">
+                                        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white"
+                                            style="background-color: {{ $route->color ?: '#6b7bad' }};">
+                                            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="2.2" /><circle cx="18" cy="6" r="2.2" /><path d="M8.2 18H14a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h5.8" /></svg>
+                                        </span>
+                                        <div class="min-w-0 flex-1">
+                                            <p class="truncate text-[12px] font-semibold text-[#1e2a4a] dark:text-gray-100">{{ $route->name }}</p>
+                                            <p class="truncate text-[10px] text-slate-500 dark:text-gray-400">{{ $route->code ? 'Código ' . $route->code : 'Ruta de Ubicaditos' }}</p>
+                                        </div>
+                                        <a href="{{ route('passenger.dashboard', ['route_id' => $route->id]) }}" class="text-[11px] font-semibold text-[#4b5a85] hover:underline dark:text-gray-300">Ver</a>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @else
+                            <p class="mt-3 text-[11px] text-slate-500 dark:text-gray-400">Todavía no guardaste rutas. Toca el corazón en la lista de rutas.</p>
+                        @endif
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200/70 bg-white/60 p-4 dark:border-white/10 dark:bg-gray-800/40">
+                        <div class="flex items-center justify-between gap-2">
+                            <h3 class="text-[12px] font-bold uppercase tracking-[.1em] text-slate-500 dark:text-gray-400">Paradas favoritas</h3>
+                            <span class="rounded-full bg-[#eef2fa] px-2 py-0.5 text-[11px] font-semibold text-[#3d4a6b] dark:bg-gray-700 dark:text-gray-300">{{ $favoritesCount }}</span>
+                        </div>
+
+                        @if ($favoritesCount > 0)
+                            <ul class="mt-3 space-y-2">
+                                @foreach ($favoriteStops as $stop)
+                                    <li class="flex items-center gap-2.5 rounded-xl bg-white px-3 py-2 shadow-sm ring-1 ring-slate-100 dark:bg-gray-800 dark:ring-gray-700">
+                                        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#7b88b8] to-[#4a5a8a] text-white">
+                                            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21Z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
+                                        </span>
+                                        <div class="min-w-0 flex-1">
+                                            <p class="truncate text-[12px] font-semibold text-[#1e2a4a] dark:text-gray-100">{{ $stop->pivot->nickname ?: $stop->name }}</p>
+                                            <p class="truncate text-[10px] text-slate-500 dark:text-gray-400">{{ $stop->name }}</p>
+                                        </div>
+                                        <a href="{{ route('passenger.dashboard', ['stop_id' => $stop->id]) }}" class="text-[11px] font-semibold text-[#4b5a85] hover:underline dark:text-gray-300">Ver</a>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @else
+                            <p class="mt-3 text-[11px] text-slate-500 dark:text-gray-400">Todavía no guardaste paradas. Toca una parada en el mapa para agregarla.</p>
+                        @endif
+                    </div>
+                </div>
+            </section>
+
+            <section class="{{ $cardClass }} p-6">
                 <h2 class="text-[15px] font-semibold text-[#2f3a5f] dark:text-gray-100">Actualizar contraseña</h2>
                 <p class="text-[11px] text-slate-500 dark:text-gray-400 mb-4">Usa una contraseña larga y segura.</p>
 
@@ -108,7 +208,7 @@
                             <label for="current_password" class="{{ $labelClass }}">Contraseña actual</label>
                             <div class="relative">
                                 <input id="current_password" name="current_password" type="password" autocomplete="current-password" placeholder="••••••••" class="{{ $inputClass }} pr-10">
-                                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">{!! $eye !!}</span>
+                                <button type="button" data-toggle-password aria-pressed="false" aria-label="Mostrar u ocultar contraseña" title="Mostrar u ocultar contraseña" class="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#6b7aa8]/40 dark:hover:bg-gray-600 dark:hover:text-gray-200">{!! $eye !!}</button>
                             </div>
                             @if($errors->updatePassword->has('current_password'))<p class="mt-1 text-xs text-rose-500">{{ $errors->updatePassword->first('current_password') }}</p>@endif
                         </div>
@@ -116,7 +216,7 @@
                             <label for="password" class="{{ $labelClass }}">Nueva contraseña</label>
                             <div class="relative">
                                 <input id="password" name="password" type="password" autocomplete="new-password" placeholder="Nueva contraseña" class="{{ $inputClass }} pr-10">
-                                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">{!! $eye !!}</span>
+                                <button type="button" data-toggle-password aria-pressed="false" aria-label="Mostrar u ocultar contraseña" title="Mostrar u ocultar contraseña" class="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#6b7aa8]/40 dark:hover:bg-gray-600 dark:hover:text-gray-200">{!! $eye !!}</button>
                             </div>
                             @if($errors->updatePassword->has('password'))<p class="mt-1 text-xs text-rose-500">{{ $errors->updatePassword->first('password') }}</p>@endif
                         </div>
@@ -124,7 +224,7 @@
                             <label for="password_confirmation" class="{{ $labelClass }}">Confirmar contraseña</label>
                             <div class="relative">
                                 <input id="password_confirmation" name="password_confirmation" type="password" autocomplete="new-password" placeholder="Repite la contraseña" class="{{ $inputClass }} pr-10">
-                                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">{!! $eye !!}</span>
+                                <button type="button" data-toggle-password aria-pressed="false" aria-label="Mostrar u ocultar contraseña" title="Mostrar u ocultar contraseña" class="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#6b7aa8]/40 dark:hover:bg-gray-600 dark:hover:text-gray-200">{!! $eye !!}</button>
                             </div>
                             @if($errors->updatePassword->has('password_confirmation'))<p class="mt-1 text-xs text-rose-500">{{ $errors->updatePassword->first('password_confirmation') }}</p>@endif
                         </div>
@@ -180,5 +280,17 @@
         @if($errors->userDeletion->isNotEmpty())
             deleteDialog.showModal();
         @endif
+
+        // Mostrar u ocultar contraseñas sin enviar el formulario.
+        document.querySelectorAll('[data-toggle-password]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                const input = button.closest('div')?.querySelector('input');
+                if (!input) return;
+
+                const showing = input.type === 'text';
+                input.type = showing ? 'password' : 'text';
+                button.setAttribute('aria-pressed', showing ? 'false' : 'true');
+            });
+        });
     </script>
 </x-passenger-layout>

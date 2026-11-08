@@ -11,9 +11,8 @@
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
-        <!-- Preconnect y Preload para Leaflet y OSRM -->
+        <!-- Preconnect para Leaflet y balanceo de tiles de OpenStreetMap -->
         <link rel="preconnect" href="https://unpkg.com" crossorigin>
-        <link rel="preconnect" href="https://router.project-osrm.org" crossorigin>
         <link rel="dns-prefetch" href="https://a.tile.openstreetmap.org">
         <link rel="dns-prefetch" href="https://b.tile.openstreetmap.org">
         <link rel="dns-prefetch" href="https://c.tile.openstreetmap.org">
@@ -26,14 +25,14 @@
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="font-sans antialiased">
-        <div class="min-h-screen bg-gradient-to-br from-primary-50 via-accent-50 to-primary-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+    <body class="font-sans antialiased text-[#1e2a4a]">
+        <div class="min-h-screen bg-gradient-to-br from-[#eef2f9] via-[#e8edf7] to-[#f7f9fc] dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
             @include('layouts.navigation')
 
             <!-- Page Heading -->
             @isset($header)
-                <header class="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm shadow-md border-b-2 border-primary-200 dark:border-primary-800">
-                    <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                <header class="border-b border-white/60 bg-white/60 backdrop-blur-xl dark:border-white/10 dark:bg-slate-800/60">
+                    <div class="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
                         {{ $header }}
                     </div>
                 </header>

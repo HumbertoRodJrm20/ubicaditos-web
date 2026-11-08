@@ -331,3 +331,43 @@ Sin ejecutar en la iteración 3: el entorno de desarrollo de esta rama no tiene 
 disponible. El script queda preparado para la rama de pruebas con el mismo procedimiento
 documentado en las secciones 4–11 (servidor local, datos del seeder, resultados en
 `tests/load/results/`).
+
+## 14. Script de la iteración 4 (social, ubicación compartida y reportes)
+
+Script: `tests/load/ubicaditos-iteration4-load.js`
+
+Extiende el script de la iteración 3 con las lecturas nuevas: rutas y menú del pasajero
+(donde se exponen likes y favoritos), estado del enlace de ubicación compartida y listado
+de reportes ciudadanos con filtros. Sigue siendo **solo de lectura**.
+
+### 14.1 Alcance añadido
+
+| Rol | Endpoints nuevos medidos (GET) |
+|---|---|
+| Pasajero | `/passenger/routes`, `/passenger/menu`, `/passenger/share-location/current` (JSON) |
+| Admin | `/admin/incidents`, `/admin/incidents?status=pending`, `/admin/incidents?category=service` |
+
+Se mantienen todas las lecturas de la iteración 3. Excluido a propósito: likes,
+favoritos, `share-location` de escritura, resolución de emergencias y actualización de
+reportes ciudadanos.
+
+### 14.2 Ejecución
+
+```bash
+# suite completa (3 roles mezclados):
+k6 run tests/load/ubicaditos-iteration4-load.js -e K6_VUS=15 -e K6_DURATION=30s
+
+# un solo rol:
+k6 run tests/load/ubicaditos-iteration4-load.js -e K6_ROLE=passenger -e K6_VUS=25
+```
+
+### 14.3 Umbrales y métricas
+
+- `i4_read_duration` p(95) < 800 ms.
+- `http_req_failed{kind:read}` < 1 %; `checks` > 99 %.
+- Métricas propias: `i4_logins`, `i4_auth_failures`, `i4_read_duration`.
+
+### 14.4 Resultados
+
+Sin ejecutar en este entorno: no hay k6 instalado. El script queda preparado para la rama
+de pruebas con el procedimiento de las secciones 4–11.

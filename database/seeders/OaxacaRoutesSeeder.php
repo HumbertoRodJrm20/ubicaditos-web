@@ -101,7 +101,12 @@ class OaxacaRoutesSeeder extends Seeder
                 }
             }
 
-            // Crear 2 autobuses por ruta
+            // Crear 2 autobuses por ruta sólo si aún no tiene unidades.
+            // Evita duplicar autobuses al re-ejecutar el seeder.
+            if ($route->buses()->exists()) {
+                continue;
+            }
+
             for ($i = 1; $i <= 2; $i++) {
                 $busNumber++;
                 $driver = $drivers->random();

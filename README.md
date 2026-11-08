@@ -8,7 +8,7 @@ El proyecto está construido sobre **Laravel 12** siguiendo el patrón **MVC (Mo
 
 ```bash
 # 1. Clonar el repositorio
-git clone <url-del-repositorio> ubicaditos-web
+git clone git@github.com:HumbertoRodJrm20/ubicaditos-web.git ubicaditos-web
 cd ubicaditos-web
 
 # 2. Instalar dependencias de PHP y JavaScript
@@ -22,6 +22,9 @@ php artisan key:generate
 # 4. Crear la base de datos SQLite, migrar y poblar con datos de prueba
 touch database/database.sqlite
 php artisan migrate --seed
+
+# 4.5 Generar las rutas
+php artisan routes:generate-paths
 
 # 5. Levantar el entorno de desarrollo (servidor + cola + Vite)
 composer run dev
@@ -44,8 +47,8 @@ Abre `http://localhost:8000` e inicia sesión con alguna de las cuentas de prueb
 
 ```bash
 php artisan test          # suite Feature/Unit (SQLite en memoria)
-cd tests/selenium && bun install && bun test   # E2E con Chrome headless (rama de pruebas)
-k6 run tests/load/ubicaditos-iteration3-load.js -e K6_VUS=15   # carga, solo lectura (rama de pruebas)
+cd tests/selenium && pip install -r requirements.txt && python3 -m pytest   # E2E con Chrome headless (rama de pruebas)
+k6 run tests/load/ubicaditos-iteration4-load.js -e K6_VUS=15   # carga, solo lectura (rama de pruebas)
 ```
 
 ## Documentación
@@ -67,12 +70,16 @@ La documentación técnica completa vive en [`docs/`](docs/README.md):
 | 11 | [Diagramas y diccionario de datos](docs/11-diagramas.md) | Diagramas de clases, de objetos, E-R y relacional, y diccionario de datos. |
 | 12 | [API Swagger](docs/12-swagger-api.md) | Especificación OpenAPI (`docs/swagger.yaml`), modelos y seguridad. |
 | 13 | [Iteración 3](docs/13-iteracion-3.md) | Tiempo real con Reverb, búsqueda y filtros, estadísticas de conductor e incidencias. |
-| 14 | [Registro técnico (_devlog)](docs/_devlog.md) | Bitácora técnica de lo realizado en cada iteración. |
+| 14 | [Diagnóstico y optimización de rutas](docs/14-diagnostico-y-optimizacion-rutas.md) | Trazados OSRM, deduplicación de tramos y comandos de diagnóstico. |
+| 15 | [Auditoría técnica de mapas](docs/15-auditoria-mapas.md) | Informe histórico de diagnóstico de los mapas de pasajero y conductor. |
+| 16 | [Iteración 4](docs/16-iteracion-4.md) | Likes, rutas favoritas, ubicación compartida y gestión de reportes ciudadanos. |
+| 17 | [Iteración 5 y 6](docs/17-iteracion-5-6.md) | Reportes de incidencias, rutas con recorrido completo, perfil y sesión segura. |
+| 18 | [Registro técnico (_devlog)](docs/_devlog.md) | Bitácora técnica de lo realizado en cada iteración. |
 
 ## Resumen funcional
 
 | Rol | Funcionalidades principales |
 |-----|-----------------------------|
-| **Pasajero** | Mapa en tiempo real (WebSocket con fallback de sondeo) con rutas, paradas y autobuses; búsqueda y filtros de autobuses (estado, ruta, ocupación); rutas más cercanas a su ubicación; paradas favoritas; calificación de conductores. |
-| **Conductor** | Panel con su autobús asignado y viajes recientes; mapa de su ruta con GPS (interruptor de compartir ubicación); inicio y fin de viaje (validando turno y cercanía a una parada); pasajeros a bordo; estadísticas propias; reporte de incidencias con 5 tipos. |
-| **Administrador** | Dashboard con estadísticas y mapa en vivo; detalle de autobús (KPIs, viajes, incidencias); gestión de incidencias con filtros y resolución (la unidad vuelve a servicio); CRUD de autobuses, rutas y usuarios; reportes con gráficas; exportación a PDF y CSV. |
+| **Pasajero** | Mapa en tiempo real (WebSocket con fallback de sondeo) con rutas, paradas y autobuses; búsqueda y filtros de autobuses (estado, ruta, ocupación); rutas más cercanas a su ubicación; paradas y rutas favoritas; listado completo de rutas con todas sus paradas; reportes de incidencias con tipo y comentarios; perfil editable con teléfono y cierre de sesión seguro; calificación de conductores. |
+| **Conductor** | Panel con su autobús asignado y viajes recientes; mapa de su ruta con GPS (interruptor de compartir ubicación); inicio y fin de viaje (validando turno y cercanía a una parada); pasajeros a bordo; estadísticas propias; reporte de emergencias y acceso a reportes de incidencias. |
+| **Administrador** | Dashboard con estadísticas y mapa en vivo; detalle de autobús (KPIs, viajes, incidencias); gestión de emergencias con filtros y resolución (la unidad vuelve a servicio); gestión de reportes ciudadanos con estados; CRUD de autobuses, rutas y usuarios; reportes con gráficas; exportación a PDF y CSV. |

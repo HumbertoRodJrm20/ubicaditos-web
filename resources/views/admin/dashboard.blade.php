@@ -245,6 +245,8 @@
             maxZoom: 19,
         }).addTo(adminMap);
 
+        adminMap.on('zoomend moveend', refreshStopVisibility);
+
         // ===== Paneles flotantes colapsables (data-collapse-target) =====
         document.querySelectorAll('[data-collapse-target]').forEach(function(button) {
             const body = document.getElementById(button.dataset.collapseTarget);
@@ -260,7 +262,7 @@
         let busMarkers = {};
         let stopMarkers = {};
         let routePolylines = {};
-        let routePathsOSRM = {};
+        let routePaths = {};
         let simulationIntervals = {};
         let routesLoaded = {};
 
@@ -291,6 +293,14 @@
             iconSize: [16, 16],
             iconAnchor: [8, 8],
             popupAnchor: [0, -8]
+        });
+
+        const stopMinorIcon = L.divIcon({
+            html: '<div style="background-color: #fff; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #6b7aa8; box-shadow: 0 1px 4px rgba(40,50,90,0.28); opacity: .88;"></div>',
+            className: 'stop-marker stop-marker--minor',
+            iconSize: [12, 12],
+            iconAnchor: [6, 6],
+            popupAnchor: [0, -6]
         });
 
         const userLocationIcon = L.divIcon({
@@ -331,101 +341,105 @@
         const stops = @json($stops);
         const buses = @json($buses);
 
+        const stopRoutesById = new Map();
+        routes.forEach(route => {
+            (route.stops || []).forEach(stop => {
+                const stopId = Number(stop.id);
+                const routeId = Number(route.id);
+
+                if (!stopRoutesById.has(stopId)) {
+                    stopRoutesById.set(stopId, []);
+                }
+
+                const routeList = stopRoutesById.get(stopId);
+                if (!routeList.some(item => Number(item.id) === routeId)) {
+                    routeList.push({
+                        id: route.id,
+                        code: route.code,
+                        name: route.name,
+                        color: route.color,
+                    });
+                }
+            });
+        });
+
         console.log('Autobuses cargados:', buses.length);
         console.log('Rutas cargadas:', routes.length);
         console.log('Paradas cargadas:', stops.length);
 
         let simulatedBuses = [];
 
+        let routeManager = null;
+
+        async function waitForRouteLayer(timeout = 3000) {
+            const startedAt = Date.now();
+            while (!window.UbicaditosRouteLayer && Date.now() - startedAt < timeout) {
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+            return window.UbicaditosRouteLayer || null;
+        }
+
+        function getRouteManager() {
+            if (!routeManager && typeof L !== 'undefined' && window.UbicaditosRouteLayer) {
+                routeManager = window.UbicaditosRouteLayer.createMapRoutes({
+                    map: adminMap,
+                    routes,
+                    options: { sharedColor: '#64748b' }
+                });
+            }
+            return routeManager;
+        }
+
         async function drawRoute(route) {
-            if (routesLoaded[route.id]) {
-                return;
+            const manager = getRouteManager();
+            if (!manager || !route) {
+                return null;
             }
 
-            const routeStops = stops.filter(stop =>
-                route.stops && route.stops.some(s => s.id === stop.id)
-            ).sort((a, b) => {
-                const aOrder = route.stops.find(s => s.id === a.id)?.pivot?.order || 0;
-                const bOrder = route.stops.find(s => s.id === b.id)?.pivot?.order || 0;
-                return aOrder - bOrder;
-            });
-
-            if (routeStops.length < 2) {
-                console.warn('Ruta sin suficientes paradas:', route.name);
-                return;
+            const polyline = manager.getRouteLine(route.id) || manager.ensureRouteLine(route.id);
+            if (!polyline) {
+                console.warn('Ruta sin trazado suficiente:', route.name);
+                return null;
             }
 
-            const waypoints = routeStops.map(stop =>
-                `${stop.longitude},${stop.latitude}`
-            ).join(';');
+            polyline.addTo(adminMap);
+            routePolylines[route.id] = polyline;
+            routePaths[route.id] = manager.getPath(route.id);
+            routesLoaded[route.id] = true;
 
-            for (let attempt = 1; attempt <= 3; attempt++) {
-                try {
-                    console.log(`[Admin - ${route.name}] Intento ${attempt}/3 de cargar ruta sobre calles...`);
-
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-                    const response = await fetch(
-                        `https://router.project-osrm.org/route/v1/driving/${waypoints}?overview=full&geometries=geojson`,
-                        { signal: controller.signal }
-                    );
-                    clearTimeout(timeoutId);
-                    const data = await response.json();
-
-                    if (data.code === 'Ok' && data.routes && data.routes[0]) {
-                        const pathCoords = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
-
-                        routePathsOSRM[route.id] = pathCoords;
-
-                        const polyline = L.polyline(pathCoords, {
-                            color: route.color || '#4b5a85',
-                            weight: 5,
-                            opacity: 0.9,
-                            lineCap: 'round',
-                            lineJoin: 'round'
-                        }).addTo(adminMap);
-
-                        polyline.bindPopup(`
-                            <div class="font-semibold">${route.name}</div>
-                            <div class="text-sm text-gray-600">${route.code}</div>
-                            <div class="text-xs mt-1">${route.description}</div>
-                        `);
-
-                        routePolylines[route.id] = polyline;
-                        routesLoaded[route.id] = true;
-                        console.log(`✅ [Admin - ${route.name}] Ruta cargada sobre calles correctamente`);
-                        return;
-                    } else {
-                        console.warn(`⚠ [Admin - ${route.name}] OSRM retornó: ${data.code}`);
-                    }
-                } catch (error) {
-                    console.warn(`⚠ [Admin - ${route.name}] Error en intento ${attempt}:`, error.message);
-                }
-
-                if (attempt < 3) {
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                }
-            }
-
-            console.error(`❌ [Admin - ${route.name}] No se pudo cargar sobre calles después de 3 intentos - LA RUTA NO SE MOSTRARÁ`);
+            return polyline;
         }
 
         async function loadVisibleRoutes() {
-            const routesToLoad = new Set();
+            const manager = getRouteManager();
+            if (!manager) {
+                console.warn('No se pudo inicializar la capa de rutas del administrador.');
+                return;
+            }
 
+            const routeIds = new Set();
             buses.forEach(bus => {
                 if (bus.routes && bus.routes[0]) {
-                    routesToLoad.add(bus.routes[0].id);
+                    routeIds.add(bus.routes[0].id);
                 }
             });
 
-            for (const routeId of routesToLoad) {
-                const route = routes.find(r => r.id === routeId);
-                if (route && !routesLoaded[routeId]) {
-                    await drawRoute(route);
-                }
-            }
+            const visibleIds = routeIds.size > 0
+                ? routeIds
+                : new Set(routes.map(route => route.id));
+
+            manager.showNetwork(visibleIds);
+
+            routes.forEach(route => {
+                routePaths[route.id] = manager.getPath(route.id);
+                routesLoaded[route.id] = true;
+            });
+
+            const stats = manager.stats();
+            console.log(
+                `🧭 Red de rutas (admin): ${stats.totalSegments} tramos únicos ` +
+                `(${stats.sharedSegments} compartidos, ${stats.deduplicatedSegments} dibujos evitados)`
+            );
         }
 
         function initializeSimulatedBuses() {
@@ -442,9 +456,9 @@
                     return null;
                 }
 
-                const routePath = routePathsOSRM[route.id];
+                const routePath = routePaths[route.id];
                 if (!routePath || routePath.length < 2) {
-                    console.warn('Ruta OSRM no disponible aún para:', bus.license_plate);
+                    console.warn('Trazado no disponible aún para:', bus.license_plate);
                     return null;
                 }
 
@@ -476,21 +490,115 @@
                 };
             }).filter(bus => bus !== null);
 
-            console.log('Autobuses inicializados sobre rutas OSRM:', simulatedBuses.length);
+            console.log('Autobuses inicializados sobre rutas:', simulatedBuses.length);
+        }
+
+        function routesForStop(stopId) {
+            return stopRoutesById.get(Number(stopId)) || [];
+        }
+
+        function stopPopupHtml(stop) {
+            const renderer = window.UbicaditosStopPopup?.render;
+            const routeList = routesForStop(stop.id);
+
+            if (typeof renderer === 'function') {
+                return renderer(stop, {
+                    routes: routeList,
+                    eyebrow: 'Parada del recorrido',
+                    hint: 'Vista administrativa de la red de transporte.',
+                });
+            }
+
+            return `
+                <div class="font-semibold">${stop.name}</div>
+                <div class="text-sm text-gray-600">${stop.address || ''}</div>
+            `;
+        }
+
+        function shouldShowStop(stop, zoom) {
+            const routeCount = routesForStop(stop.id).length;
+
+            if (zoom >= 16) return true;
+            if (zoom >= 15) return routeCount >= 2;
+            if (zoom >= 14) return routeCount >= 3;
+
+            return routeCount >= 6;
+        }
+
+        function refreshStopVisibility() {
+            const zoom = adminMap.getZoom();
+            const viewport = adminMap.getBounds().pad(0.12);
+            const minScreenDistance = zoom >= 17 ? 0 : (zoom >= 16 ? 22 : (zoom >= 15 ? 26 : 34));
+            const candidates = [];
+
+            stops.forEach(stop => {
+                const marker = stopMarkers[stop.id];
+                if (!marker) return;
+
+                const icon = routesForStop(stop.id).length >= 4
+                    ? stopIcon
+                    : stopMinorIcon;
+
+                if (marker.options.icon !== icon) {
+                    marker.setIcon(icon);
+                }
+
+                if (!shouldShowStop(stop, zoom)) {
+                    if (adminMap.hasLayer(marker)) adminMap.removeLayer(marker);
+                    return;
+                }
+
+                const latlng = L.latLng(Number(stop.latitude), Number(stop.longitude));
+                if (!viewport.contains(latlng)) {
+                    if (adminMap.hasLayer(marker)) adminMap.removeLayer(marker);
+                    return;
+                }
+
+                candidates.push({ stop, marker, latlng });
+            });
+
+            candidates.sort((a, b) => (
+                routesForStop(b.stop.id).length - routesForStop(a.stop.id).length
+            ));
+
+            const shownPoints = [];
+
+            candidates.forEach(({ marker, latlng }) => {
+                const point = adminMap.latLngToContainerPoint(latlng);
+                const isOpen = marker.isPopupOpen?.();
+
+                if (minScreenDistance > 0 && !isOpen) {
+                    const overlaps = shownPoints.some(shown => (
+                        Math.hypot(shown.x - point.x, shown.y - point.y) < minScreenDistance
+                    ));
+
+                    if (overlaps) {
+                        if (adminMap.hasLayer(marker)) adminMap.removeLayer(marker);
+                        return;
+                    }
+                }
+
+                shownPoints.push(point);
+                if (!adminMap.hasLayer(marker)) marker.addTo(adminMap);
+            });
         }
 
         function drawStops() {
             stops.forEach(stop => {
                 if (!stopMarkers[stop.id]) {
-                    const marker = L.marker([stop.latitude, stop.longitude], { icon: stopIcon })
+                    const marker = L.marker([stop.latitude, stop.longitude], { icon: stopMinorIcon })
                         .addTo(adminMap)
-                        .bindPopup(`
-                            <div class="font-semibold">${stop.name}</div>
-                            <div class="text-sm text-gray-600">${stop.address || ''}</div>
-                        `);
+                        .bindPopup(stopPopupHtml(stop), {
+                            className: 'ub-stop-popup-wrap',
+                            maxWidth: 320,
+                            autoPanPadding: [24, 24],
+                        });
+
                     stopMarkers[stop.id] = marker;
                 }
             });
+
+            refreshStopVisibility();
         }
 
         function drawBuses() {
@@ -738,6 +846,11 @@
         console.log('🚀 Inicializando mapa de administrador...');
 
         (async function init() {
+            // El módulo de rutas se carga con Vite (script type="module"), que
+            // puede ejecutarse después de este script inline. Esperamos un
+            // instante acotado para no dibujar rutas sin la capa compartida.
+            await waitForRouteLayer();
+
             drawStops();
 
             await loadVisibleRoutes();

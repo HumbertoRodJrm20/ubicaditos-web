@@ -36,7 +36,7 @@ class Route extends Model
     public function stops()
     {
         return $this->belongsToMany(Stop::class, 'route_stop')
-            ->withPivot('order', 'estimated_time_from_previous')
+            ->withPivot('order', 'estimated_time_from_previous', 'is_frequent')
             ->orderByPivot('order')
             ->withTimestamps();
     }
@@ -46,14 +46,43 @@ class Route extends Model
         return $this->hasMany(Trip::class);
     }
 
+    public function likes()
+    {
+        return $this->morphMany(Like::class, 'likeable');
+    }
+
+    public function favoritedByUsers()
+    {
+        return $this->belongsToMany(User::class, 'favorite_routes')
+            ->withTimestamps();
+    }
+
     // Helper methods
+    public function isLikedBy(?User $user): bool
+    {
+        return $user !== null
+            && $this->likes()->where('user_id', $user->id)->exists();
+    }
+
+    public function isFavoritedBy(?User $user): bool
+    {
+        return $user !== null
+            && $this->favoritedByUsers()->where('user_id', $user->id)->exists();
+    }
+
     public function getActiveBuses()
     {
         return $this->buses()->where('status', 'active')->get();
     }
 
-    public function getOrderedStops()
+    public function getOrderedStops(bool $includeFrequent = true)
     {
-        return $this->stops()->orderBy('route_stop.order')->get();
+        $query = $this->stops()->orderBy('route_stop.order');
+
+        if (! $includeFrequent) {
+            $query->wherePivot('is_frequent', false);
+        }
+
+        return $query->get();
     }
 }

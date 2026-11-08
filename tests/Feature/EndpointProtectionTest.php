@@ -37,6 +37,9 @@ class EndpointProtectionTest extends TestCase
         '/passenger/menu',
         '/passenger/routes',
         '/passenger/buses',
+        // Incidencias del usuario
+        '/incidents',
+        '/incidents/create',
     ];
 
     private array $privateApiEndpoints = [

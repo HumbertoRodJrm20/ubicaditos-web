@@ -28,7 +28,7 @@ class Stop extends Model
     public function routes()
     {
         return $this->belongsToMany(Route::class, 'route_stop')
-            ->withPivot('order', 'estimated_time_from_previous')
+            ->withPivot('order', 'estimated_time_from_previous', 'is_frequent')
             ->withTimestamps();
     }
 
@@ -39,7 +39,18 @@ class Stop extends Model
             ->withTimestamps();
     }
 
+    public function likes()
+    {
+        return $this->morphMany(Like::class, 'likeable');
+    }
+
     // Helper methods
+    public function isLikedBy(?User $user): bool
+    {
+        return $user !== null
+            && $this->likes()->where('user_id', $user->id)->exists();
+    }
+
     public function getCoordinatesAttribute()
     {
         return [

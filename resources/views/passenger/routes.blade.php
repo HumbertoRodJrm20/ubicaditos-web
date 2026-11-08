@@ -1,4 +1,7 @@
 @php
+    $favoriteRouteIds = collect($favoriteRouteIds);
+    $likedRouteIds = collect($likedRouteIds);
+
     // Una consulta por ruta: autobuses activos + paradas ordenadas por su posición en la ruta
     $cards = $routes->map(function ($route) {
         return [
@@ -10,9 +13,11 @@
 
     // Datos mínimos para filtrar del lado del cliente (búsqueda + chips)
     $filterData = $cards->map(fn ($c) => [
-        'name'   => mb_strtolower($c['route']->name ?? ''),
-        'code'   => mb_strtolower($c['route']->code ?? ''),
-        'active' => $c['active'] > 0,
+        'id'       => $c['route']->id,
+        'name'     => mb_strtolower($c['route']->name ?? ''),
+        'code'     => mb_strtolower($c['route']->code ?? ''),
+        'active'   => $c['active'] > 0,
+        'favorite' => $favoriteRouteIds->contains($c['route']->id),
     ])->values();
 
     $pill = 'inline-flex items-center gap-1.5 rounded-full bg-[#eef2fa] px-2.5 py-1 text-[11px] font-medium text-[#3d4a6b]';
@@ -35,7 +40,7 @@
             <p class="mt-1 text-xs text-[#5b6788]">Las rutas aparecerán aquí una vez que el administrador las configure.</p>
         </div>
     @else
-        <div x-data="routeList(@js($filterData))">
+        <div x-data="routeList(@js($filterData))" @route-favorite-toggled.window="setFavorite($event.detail.id, $event.detail.favorite)">
 
             {{-- Encabezado + búsqueda --}}
             <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -68,13 +73,15 @@
                     Con autobuses activos
                 </button>
 
-                {{-- TODO: conectar la lógica de "Más cercanas" y "Favoritas" más adelante (por ahora solo visuales) --}}
-                <button type="button" title="Próximamente" class="{{ $chipBase }} {{ $chipOff }}">
+                {{-- TODO: conectar la lógica de "Más cercanas" más adelante (por ahora solo visual) --}}
+                <button type="button" title="Próximamente" class="{{ $chipBase }} {{ $chipOff }} cursor-not-allowed opacity-70">
                     <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3" /><circle cx="12" cy="12" r="7.5" /><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22" /></svg>
                     Más cercanas
                 </button>
 
-                <button type="button" title="Próximamente" class="{{ $chipBase }} {{ $chipOff }}">
+                <button type="button" @click="chip = 'favorites'"
+                    :class="chip === 'favorites' ? '{{ $chipOn }}' : '{{ $chipOff }}'"
+                    class="{{ $chipBase }}">
                     <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 5.6a5.2 5.2 0 0 0-7.4 0L12 7l-1.4-1.4a5.2 5.2 0 0 0-7.4 7.4L12 21.8l8.8-8.8a5.2 5.2 0 0 0 0-7.4Z" /></svg>
                     Favoritas
                 </button>
@@ -89,6 +96,9 @@
                         $stops = $card['stops'];
                         $n = $stops->count();
                         $busCount = $card['active'];
+                        $isLiked = $likedRouteIds->contains($route->id);
+                        $isFavorite = $favoriteRouteIds->contains($route->id);
+                        $likeCount = (int) ($route->likes_count ?? 0);
 
                         // Primera, intermedia y última parada (si hay 3 o menos, todas)
                         $preview = $n <= 3
@@ -142,17 +152,58 @@
                             @endforelse
                         </div>
 
-                        {{-- Pie: conteos + botón --}}
-                        <div class="flex items-center justify-between gap-2">
+                        {{-- Recorrido completo: se despliega sin salir de la tarjeta --}}
+                        @if ($n > 3)
+                            <details class="group -mt-2 rounded-2xl border border-slate-100 bg-white/60 px-3 py-2">
+                                <summary class="flex cursor-pointer list-none items-center justify-between gap-2 text-[11px] font-semibold text-[#4b5a85] marker:hidden">
+                                    <span>Ver las {{ $n }} paradas</span>
+                                    <svg class="h-3.5 w-3.5 transition group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                                </summary>
+                                <ol class="mt-2 space-y-1.5">
+                                    @foreach ($stops as $stop)
+                                        <li class="flex items-start gap-2 text-[11px] text-[#5b6788]">
+                                            <span class="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white" style="background-color: {{ $color }}">{{ $loop->iteration }}</span>
+                                            <span class="min-w-0">{{ $stop->name }}</span>
+                                        </li>
+                                    @endforeach
+                                </ol>
+                            </details>
+                        @endif
+
+                        {{-- Pie: conteos + acciones + botón --}}
+                        <div class="flex flex-wrap items-center justify-between gap-2">
                             <div class="flex flex-wrap items-center gap-2">
                                 <span class="{{ $pill }}"><span class="h-1 w-1 rounded-full bg-[#6b7bad]"></span>{{ $n }} {{ $n == 1 ? 'parada' : 'paradas' }}</span>
                                 <span class="{{ $pill }}"><span class="h-1 w-1 rounded-full bg-[#6b7bad]"></span>{{ $busCount }} {{ $busCount == 1 ? 'autobús' : 'autobuses' }}</span>
                             </div>
 
-                            <a href="{{ route('passenger.dashboard', ['route_id' => $route->id]) }}"
-                                class="inline-flex h-8 shrink-0 items-center rounded-full border border-slate-200 bg-white px-4 text-xs font-semibold text-[#1e2a4a] shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#6b7bad]/25">
-                                Ver mapa
-                            </a>
+                            <div class="flex shrink-0 items-center gap-1.5">
+                                <button type="button"
+                                    data-like-route="{{ $route->id }}"
+                                    data-liked="{{ $isLiked ? 'true' : 'false' }}"
+                                    aria-pressed="{{ $isLiked ? 'true' : 'false' }}"
+                                    aria-label="Me gusta de {{ $route->name }}"
+                                    onclick="toggleRouteLike({{ $route->id }}, this)"
+                                    class="inline-flex h-8 items-center gap-1 rounded-full border px-2.5 text-[11px] font-semibold transition focus:outline-none focus:ring-4 focus:ring-[#6b7bad]/25 {{ $isLiked ? 'border-amber-200 bg-amber-50 text-amber-600' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50' }}">
+                                    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" /></svg>
+                                    <span data-like-count>{{ $likeCount }}</span>
+                                </button>
+
+                                <button type="button"
+                                    data-favorite-route="{{ $route->id }}"
+                                    data-favorite="{{ $isFavorite ? 'true' : 'false' }}"
+                                    aria-pressed="{{ $isFavorite ? 'true' : 'false' }}"
+                                    aria-label="Ruta favorita {{ $route->name }}"
+                                    onclick="toggleFavoriteRoute({{ $route->id }}, this)"
+                                    class="inline-flex h-8 w-8 items-center justify-center rounded-full border transition focus:outline-none focus:ring-4 focus:ring-[#6b7bad]/25 {{ $isFavorite ? 'border-rose-200 bg-rose-50 text-rose-500' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50' }}">
+                                    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 5.6a5.2 5.2 0 0 0-7.4 0L12 7l-1.4-1.4a5.2 5.2 0 0 0-7.4 7.4L12 21.8l8.8-8.8a5.2 5.2 0 0 0 0-7.4Z" /></svg>
+                                </button>
+
+                                <a href="{{ route('passenger.dashboard', ['route_id' => $route->id]) }}"
+                                    class="inline-flex h-8 shrink-0 items-center rounded-full border border-slate-200 bg-white px-4 text-xs font-semibold text-[#1e2a4a] shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#6b7bad]/25">
+                                    Ver mapa
+                                </a>
+                            </div>
                         </div>
                     </article>
                 @endforeach
@@ -165,20 +216,33 @@
         </div>
     @endif
 
+    <style>
+        [data-liked="true"] svg,
+        [data-favorite="true"] svg { fill: currentColor; }
+    </style>
+
     <script>
+        const ROUTES_CSRF = '{{ csrf_token() }}';
+
         // Filtro del lado del cliente: búsqueda por nombre o código + chips
         function routeList(items) {
             return {
                 items: items,
                 q: '',
-                chip: 'all', // 'all' | 'active'
+                chip: 'all', // 'all' | 'active' | 'favorites'
 
                 show(i) {
                     const item = this.items[i];
                     if (this.chip === 'active' && !item.active) return false;
+                    if (this.chip === 'favorites' && !item.favorite) return false;
 
                     const q = this.q.trim().toLowerCase();
                     return !q || item.name.includes(q) || item.code.includes(q);
+                },
+
+                setFavorite(id, favorite) {
+                    const item = this.items.find(entry => entry.id === id);
+                    if (item) item.favorite = favorite;
                 },
 
                 get empty() {
@@ -186,5 +250,82 @@
                 }
             }
         }
+
+        function paintRouteLikeButton(button, liked) {
+            const active = ['border-amber-200', 'bg-amber-50', 'text-amber-600'];
+            const idle = ['border-slate-200', 'bg-white', 'text-slate-500', 'hover:bg-slate-50'];
+
+            (liked ? idle : active).forEach(clazz => button.classList.remove(clazz));
+            (liked ? active : idle).forEach(clazz => button.classList.add(clazz));
+
+            button.dataset.liked = liked ? 'true' : 'false';
+            button.setAttribute('aria-pressed', liked ? 'true' : 'false');
+        }
+
+        function paintRouteFavoriteButton(button, favorite) {
+            const active = ['border-rose-200', 'bg-rose-50', 'text-rose-500'];
+            const idle = ['border-slate-200', 'bg-white', 'text-slate-500', 'hover:bg-slate-50'];
+
+            (favorite ? idle : active).forEach(clazz => button.classList.remove(clazz));
+            (favorite ? active : idle).forEach(clazz => button.classList.add(clazz));
+
+            button.dataset.favorite = favorite ? 'true' : 'false';
+            button.setAttribute('aria-pressed', favorite ? 'true' : 'false');
+        }
+
+        window.toggleRouteLike = function (routeId, button) {
+            button.disabled = true;
+
+            fetch(`/likes/routes/${routeId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': ROUTES_CSRF,
+                },
+            })
+                .then(response => {
+                    if (!response.ok) throw new Error('No se pudo actualizar el like');
+                    return response.json();
+                })
+                .then(data => {
+                    paintRouteLikeButton(button, data.liked);
+                    const counter = button.querySelector('[data-like-count]');
+                    if (counter) counter.textContent = data.count;
+                })
+                .catch(error => console.error('Like de ruta:', error))
+                .finally(() => { button.disabled = false; });
+        };
+
+        window.toggleFavoriteRoute = function (routeId, button) {
+            const isFavorite = button.dataset.favorite === 'true';
+            button.disabled = true;
+
+            fetch(`/passenger/favorite-routes/${routeId}`, {
+                method: isFavorite ? 'DELETE' : 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': ROUTES_CSRF,
+                },
+            })
+                .then(response => response.json().then(data => ({ ok: response.ok, data })))
+                .then(({ ok, data }) => {
+                    if (!ok || data.error) {
+                        throw new Error(data.error || 'No se pudo actualizar la ruta favorita');
+                    }
+
+                    paintRouteFavoriteButton(button, data.favorite);
+
+                    window.dispatchEvent(new CustomEvent('route-favorite-toggled', {
+                        detail: { id: routeId, favorite: data.favorite },
+                    }));
+                })
+                .catch(error => {
+                    console.error('Ruta favorita:', error);
+                    alert('No se pudo actualizar la ruta favorita.');
+                })
+                .finally(() => { button.disabled = false; });
+        };
     </script>
 </x-passenger-layout>

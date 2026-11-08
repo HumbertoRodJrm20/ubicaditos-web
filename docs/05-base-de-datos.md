@@ -13,13 +13,20 @@ erDiagram
     users ||--o{ ratings : "califica (passenger_id)"
     users ||--o{ ratings : "recibe (driver_id)"
     users ||--o{ favorite_stops : "marca"
+    users ||--o{ favorite_routes : "guarda"
+    users ||--o{ likes : "emite"
+    users ||--o{ location_shares : "comparte"
+    users ||--o{ incidents : "reporta"
     users ||--o{ messages : "envía / recibe"
     users ||--o{ emergency_reports : "reporta"
     buses ||--o{ bus_route : ""
     routes ||--o{ bus_route : ""
     routes ||--o{ route_stop : ""
+    routes ||--o{ favorite_routes : ""
+    routes ||--o{ likes : "recibe"
     stops ||--o{ route_stop : ""
     stops ||--o{ favorite_stops : ""
+    stops ||--o{ likes : "recibe"
     buses ||--o{ trips : ""
     routes ||--o{ trips : ""
     trips ||--o{ ratings : ""
@@ -101,6 +108,35 @@ erDiagram
         bigint stop_id FK
         string nickname
     }
+    favorite_routes {
+        bigint id PK
+        bigint user_id FK
+        bigint route_id FK
+    }
+    likes {
+        bigint id PK
+        bigint user_id FK
+        string likeable_type
+        bigint likeable_id
+    }
+    location_shares {
+        bigint id PK
+        bigint user_id FK
+        string token UK
+        decimal latitude
+        decimal longitude
+        int accuracy
+        timestamp expires_at
+        timestamp revoked_at
+    }
+    incidents {
+        bigint id PK
+        bigint user_id FK
+        string category
+        text description
+        string status
+        timestamp resolved_at
+    }
     emergency_reports {
         bigint id PK
         bigint reporter_id FK
@@ -132,6 +168,10 @@ erDiagram
 | `trips` | Viajes. | `bus_id`, `route_id`, `driver_id → users` (**cascade**) |
 | `ratings` | Calificaciones. | `passenger_id`, `driver_id` (**cascade**); `trip_id` (**set null**) |
 | `favorite_stops` | Paradas favoritas. Índice único (`user_id`, `stop_id`). | `user_id`, `stop_id` (**cascade**) |
+| `favorite_routes` | Rutas favoritas. Índice único (`user_id`, `route_id`). | `user_id`, `route_id` (**cascade**) |
+| `likes` | Me gusta polimórfico (`route` o `stop`). Índice único (`user_id`, `likeable_type`, `likeable_id`). | `user_id` (**cascade**); la entidad destino se elimina por la relación polimórfica. |
+| `location_shares` | Enlaces temporales de ubicación. Token único, caducidad y revocación. | `user_id` (**cascade**) |
+| `incidents` | Reportes ciudadanos de incidencias. | `user_id` (**cascade**) |
 | `emergency_reports` | Reportes de emergencia. | `reporter_id` (**cascade**); `bus_id` (**set null**) |
 | `messages` | Mensajes entre usuarios. | `sender_id`, `receiver_id`, `bus_id` (**cascade**) |
 
@@ -153,6 +193,8 @@ erDiagram
 | `users.work_shift` | `morning` (6:00–14:00), `afternoon` (14:00–22:00) |
 | `buses.status` | `active`, `inactive`, `maintenance`, `emergency` |
 | `trips.status` | `in_progress`, `completed`, `cancelled` |
+| `incidents.category` | `route`, `bus`, `service`, `driver`, `stop`, `other` |
+| `incidents.status` | `pending`, `in_review`, `resolved` |
 | `emergency_reports.type` | `accident`, `breakdown`, `medical`, `security`, `other` |
 | `emergency_reports.status` | `pending`, `in_progress`, `resolved` |
 
@@ -180,6 +222,11 @@ Se ejecutan en orden cronológico según el prefijo del nombre del archivo:
 | `2025_12_10_201805_create_emergency_reports_table` | Crea `emergency_reports`. |
 | `2025_12_15_000001_update_users_table_split_name` | Divide `name` en `first_name`, `last_name` y `maternal_last_name`, migrando los datos existentes, y elimina `name`. Es reversible. |
 | `2025_12_15_215605_add_work_shift_to_users_table` | Agrega `work_shift` a `users`. |
+| `2026_11_02_000001_create_incidents_table` | Crea `incidents` (reportes ciudadanos). |
+| `2026_11_08_000001_create_likes_table` | Crea `likes` con relación polimórfica. |
+| `2026_11_08_000002_create_favorite_routes_table` | Crea `favorite_routes`. |
+| `2026_11_08_000003_create_location_shares_table` | Crea `location_shares`. |
+| `2026_11_08_000004_add_resolved_at_to_incidents_table` | Agrega `resolved_at` a `incidents`. |
 
 Comandos útiles:
 

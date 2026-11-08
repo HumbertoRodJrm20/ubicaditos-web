@@ -12,7 +12,9 @@
     </x-slot>
 
     <style>
-        #map { background: #e8edf8; }
+        /* Tamaño explícito del contenedor: si la hoja de estilos de Vite no
+           llegara a cargar, el mapa seguiría teniendo área visible. */
+        #map { position: absolute; inset: 0; height: 100%; background: #e8edf8; }
         #map .leaflet-tile-pane { filter: saturate(.3) brightness(1.08) contrast(.88); opacity: .8; }
         .leaflet-popup-content-wrapper { border-radius: 16px; box-shadow: 0 12px 30px rgba(60, 70, 110, .25); }
         .panel-scroll::-webkit-scrollbar { width: 6px; }
@@ -177,17 +179,7 @@
                     <p class="text-[11px] text-slate-500 dark:text-gray-400">
                         Se envía automáticamente a los pasajeros mientras esté activo.
                     </p>
-                    <label class="flex items-center cursor-pointer" id="simulated-location-label">
-                        <input type="checkbox" id="simulated-location-toggle" class="sr-only peer">
-                        <div class="relative w-11 h-6 bg-slate-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#4b5a85]"></div>
-                        <span class="ml-3 text-xs font-medium text-slate-700 dark:text-gray-300">Ubicación Simulada</span>
-                    </label>
-                    <p id="simulated-hint" class="text-[11px] text-slate-500 dark:text-gray-400 hidden">
-                        Haz clic en el mapa para establecer tu posición
-                    </p>
-                    <p id="trip-active-warning" class="text-[11px] text-amber-600 dark:text-amber-400 hidden">
-                        ⚠️ No puedes cambiar la ubicación durante un viaje
-                    </p>
+
                     <div class="text-[11px] text-slate-500 dark:text-gray-400">
                         Última actualización: <span id="last-update">Iniciando...</span>
                     </div>
@@ -220,13 +212,54 @@
             defer></script>
 
     <script defer>
+        let leafletAttempts = 0;
+
         function initMap() {
             if (typeof L === 'undefined') {
+                // El CDN de Leaflet puede tardar o no estar disponible. Se
+                // reintenta durante un tiempo acotado y, si nunca carga, se
+                // avisa en pantalla en vez de dejar el mapa en blanco.
+                leafletAttempts += 1;
+                if (leafletAttempts > 120) {
+                    const mapElement = document.getElementById('map');
+                    if (mapElement) {
+                        mapElement.innerHTML = '<div style="display:flex;height:100%;align-items:center;justify-content:center;padding:24px;text-align:center;font-size:14px;color:#475569;">No se pudo cargar la librería del mapa (Leaflet). Revisa tu conexión a internet y recarga la página.</div>';
+                    }
+                    console.error('Leaflet no está disponible; el mapa del conductor no se puede inicializar.');
+                    return;
+                }
                 setTimeout(initMap, 50);
                 return;
             }
 
-        const map = L.map('map', { zoomControl: false }).setView([{{ $bus->current_latitude ?? 19.4326 }}, {{ $bus->current_longitude ?? -99.1332 }}], 14);
+        const stops = @json($stops ?? []);
+        const route = @json($route ?? null);
+        const busData = {
+            id: {{ $bus->id }},
+            license_plate: '{{ $bus->license_plate }}',
+            latitude: {{ $bus->current_latitude ?? 'null' }},
+            longitude: {{ $bus->current_longitude ?? 'null' }}
+        };
+
+        // Una posición GPS válida debe ser numérica, estar dentro de rango y no
+        // ser el par (0, 0), que es la lectura "vacía" típica de un GPS sin fix.
+        function isValidPosition(lat, lng) {
+            const latitude = Number(lat);
+            const longitude = Number(lng);
+            if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return false;
+            if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return false;
+            return !(latitude === 0 && longitude === 0);
+        }
+
+        const hasStoredCoords = isValidPosition(busData.latitude, busData.longitude);
+        // Centro inicial del mapa. Si el autobús aún no tiene una posición GPS
+        // guardada NO se inventa su ubicación (no se dibuja marcador): solo se
+        // usa Oaxaca como vista de referencia para que el mapa no quede en un
+        // punto vacío del océano. Cuando hay ruta, generateRoute() o
+        // fallbackStraightLine() ajustan la vista a las paradas reales.
+        const DEFAULT_CENTER = [17.0654, -96.7256];
+        const initialCenter = hasStoredCoords ? [busData.latitude, busData.longitude] : DEFAULT_CENTER;
+        const map = L.map('map', { zoomControl: false }).setView(initialCenter, hasStoredCoords ? 14 : 12);
 
         map.attributionControl.setPosition('bottomright');
 
@@ -252,11 +285,7 @@
 
         // Leaflet emite estos eventos cuando se llama a map.locate().
         map.on('locationfound', function(e) {
-            if (busMarker) {
-                busMarker.setLatLng(e.latlng);
-            } else {
-                createBusMarker(e.latlng.lat, e.latlng.lng);
-            }
+            updateBusMarker(e.latlng.lat, e.latlng.lng);
         });
 
         map.on('locationerror', function(e) {
@@ -276,8 +305,8 @@
         });
 
         // ===== Capa de carga del mapa =====
-        // Mientras OSRM traza la ruta sobre las calles, el mapa queda difuminado
-        // tras una ventana emergente de carga.
+        // Mientras se pinta la ruta guardada sobre las calles, el mapa queda
+        // difuminado tras una ventana emergente de carga.
         const mapLoading = document.getElementById('map-loading');
 
         function showMapLoading(title, sub) {
@@ -289,15 +318,6 @@
         function hideMapLoading() {
             mapLoading.classList.add('hidden');
         }
-
-        const stops = @json($stops ?? []);
-        const route = @json($route ?? null);
-        const busData = {
-            id: {{ $bus->id }},
-            license_plate: '{{ $bus->license_plate }}',
-            latitude: {{ $bus->current_latitude ?? 19.4326 }},
-            longitude: {{ $bus->current_longitude ?? -99.1332 }}
-        };
 
         const BUS_SVG = (size = 18) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="14" rx="3"></rect><path d="M4 11h16M8 21v-4M16 21v-4"></path><circle cx="8.5" cy="14" r=".6"></circle><circle cx="15.5" cy="14" r=".6"></circle></svg>`;
 
@@ -334,30 +354,8 @@
         let stopMarkers = [];
         let watchId = null;
         let lastPosition = null;
-        let simulatedLocationInterval = null;
-        let isSimulatedMode = false;
-        let customSimulatedLocation = null;
-        const hasTripActive = {{ isset($currentTrip) && $currentTrip ? 'true' : 'false' }};
-
-        const SIMULATED_LOCATION = {
-            lat: 17.076323,
-            lng: -96.744676,
-            accuracy: 20
-        };
-
-        async function fetchWithTimeout(url, timeout = 3000) {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-            try {
-                const response = await fetch(url, { signal: controller.signal });
-                clearTimeout(timeoutId);
-                return response;
-            } catch (error) {
-                clearTimeout(timeoutId);
-                throw error;
-            }
-        }
+        let lastSendTime = null;
+        const MIN_SEND_INTERVAL_MS = 5000;
 
         async function generateRoute() {
             if (!stops || stops.length < 2) {
@@ -365,40 +363,42 @@
                 return;
             }
 
-            const waypoints = stops.map(stop =>
-                `${stop.longitude},${stop.latitude}`
-            ).join(';');
+            // El trazado ya se genera una vez en el servidor
+            // (`php artisan routes:generate-paths`) y se guarda en
+            // routes.path_coordinates. Aquí sólo se pinta: no se llama a OSRM
+            // desde el navegador.
+            let routePathCoords = [];
 
-            try {
-                const response = await fetchWithTimeout(
-                    `https://router.project-osrm.org/route/v1/driving/${waypoints}?overview=full&geometries=geojson`,
-                    3000
-                );
-                const data = await response.json();
-
-                if (data.code === 'Ok' && data.routes && data.routes[0]) {
-                    routePath = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
-
-                    const color = route?.color || '#4b5a85';
-                    routePolyline = L.polyline(routePath, {
-                        color: color,
-                        weight: 5,
-                        opacity: 0.9,
-                        lineCap: 'round',
-                        lineJoin: 'round'
-                    }).addTo(map);
-
-                    map.fitBounds(routePolyline.getBounds(), { padding: [50, 50] });
-
-                    console.log('Ruta generada exitosamente');
-                } else {
-                    console.error('Error al generar ruta:', data);
-                    fallbackStraightLine();
-                }
-            } catch (error) {
-                console.error('Error al consultar OSRM:', error);
-                fallbackStraightLine();
+            if (window.UbicaditosRouteLayer) {
+                routePathCoords = window.UbicaditosRouteLayer.normalizePath(route);
             }
+
+            if (routePathCoords.length < 2) {
+                routePathCoords = stops
+                    .map(stop => [parseFloat(stop.latitude), parseFloat(stop.longitude)])
+                    .filter(([lat, lng]) => Number.isFinite(lat) && Number.isFinite(lng));
+            }
+
+            if (routePathCoords.length < 2) {
+                console.warn('La ruta no tiene un trazado válido; usando líneas rectas.');
+                fallbackStraightLine();
+                return;
+            }
+
+            routePath = routePathCoords;
+
+            const color = route?.color || '#4b5a85';
+            routePolyline = L.polyline(routePath, {
+                color: color,
+                weight: 5,
+                opacity: 0.9,
+                lineCap: 'round',
+                lineJoin: 'round'
+            }).addTo(map);
+
+            map.fitBounds(routePolyline.getBounds(), { padding: [50, 50] });
+
+            console.log('Ruta dibujada desde el trazado guardado en la base de datos');
         }
 
         function fallbackStraightLine() {
@@ -420,14 +420,31 @@
         }
 
         function drawStops() {
+            const routeInfo = route
+                ? [{ id: route.id, code: route.code, name: route.name, color: route.color }]
+                : [];
+
             stops.forEach((stop, index) => {
-                const marker = L.marker([stop.latitude, stop.longitude], { icon: stopIcon })
-                    .addTo(map)
-                    .bindPopup(`
+                const renderer = window.UbicaditosStopPopup?.render;
+                const popup = typeof renderer === 'function'
+                    ? renderer(stop, {
+                        routes: routeInfo,
+                        eyebrow: `Parada ${index + 1}`,
+                        hint: 'Parada del recorrido asignado a tu unidad.',
+                    })
+                    : `
                         <div class="font-semibold">Parada ${index + 1}</div>
                         <div class="text-sm">${stop.name}</div>
                         <div class="text-xs text-gray-500">${stop.address || ''}</div>
-                    `);
+                    `;
+
+                const marker = L.marker([stop.latitude, stop.longitude], { icon: stopIcon })
+                    .addTo(map)
+                    .bindPopup(popup, {
+                        className: 'ub-stop-popup-wrap',
+                        maxWidth: 320,
+                        autoPanPadding: [24, 24],
+                    });
 
                 stopMarkers.push({
                     id: stop.id,
@@ -438,12 +455,33 @@
         }
 
         function createBusMarker(lat, lng) {
+            if (!isValidPosition(lat, lng)) return null;
+
             busMarker = L.marker([lat, lng], { icon: busIcon })
                 .addTo(map)
                 .bindPopup(`
                     <div class="font-semibold">${busData.license_plate}</div>
                     <div class="text-sm">Mi ubicación actual</div>
                 `);
+
+            busMarker.setZIndexOffset(1000);
+            return busMarker;
+        }
+
+        // Crea el marcador si todavía no existe y, si ya existe, solo mueve su
+        // posición. Así una lectura GPS que llega después de cargar el mapa
+        // también se dibuja.
+        function updateBusMarker(lat, lng) {
+            if (!isValidPosition(lat, lng)) return false;
+
+            if (busMarker) {
+                busMarker.setLatLng([lat, lng]);
+                busMarker.setZIndexOffset(1000);
+            } else {
+                createBusMarker(lat, lng);
+            }
+
+            return true;
         }
 
         function calculateSpeed(oldPos, newPos, timeElapsed) {
@@ -483,113 +521,125 @@
             });
         }
 
-        function applySimulatedPosition(lat, lng) {
-            if (busMarker) {
-                busMarker.setLatLng([lat, lng]);
-            } else {
-                createBusMarker(lat, lng);
+
+
+        // Aviso comprensible mientras no existe ninguna posición del autobús:
+        // ni guardada en la base de datos ni recibida del GPS del dispositivo.
+        function showWaitingLocation(waiting) {
+            if (!waiting) return;
+
+            const gpsIndicator = document.getElementById('gps-indicator');
+            const gpsText = document.getElementById('gps-text');
+            if (gpsIndicator) {
+                gpsIndicator.className = 'w-2 h-2 bg-amber-400 rounded-full animate-pulse';
             }
-
-            map.panTo([lat, lng]);
-
-            document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
-            document.getElementById('current-speed').textContent = '0';
-
-            lastPosition = { lat, lng, timestamp: Date.now() };
-
-            checkProximityToStops(lat, lng);
+            if (gpsText) {
+                gpsText.textContent = 'Esperando ubicación GPS';
+            }
         }
 
-        function useSimulatedLocationDriver() {
-            const location = customSimulatedLocation || SIMULATED_LOCATION;
-            console.log('🎯 Usando ubicación GPS simulada para conductor:', location);
-
-            applySimulatedPosition(location.lat, location.lng);
-            sendLocationToServer(location.lat, location.lng);
-
-            // Auto-actualización: reenvía la posición cada 5 s con una deriva mínima
-            // para que los pasajeros vean la ubicación "viva" también en modo simulado.
-            if (simulatedLocationInterval) {
-                clearInterval(simulatedLocationInterval);
+        function showGpsError(message) {
+            const gpsIndicator = document.getElementById('gps-indicator');
+            const gpsText = document.getElementById('gps-text');
+            if (gpsIndicator) {
+                gpsIndicator.className = 'w-2 h-2 bg-rose-500 rounded-full';
             }
+            if (gpsText) {
+                gpsText.textContent = 'GPS No Disponible';
+            }
+            console.warn('⚠ GPS:', message);
+        }
 
-            simulatedLocationInterval = setInterval(() => {
-                const drift = 0.0003;
-                location.lat += (Math.random() - 0.5) * drift;
-                location.lng += (Math.random() - 0.5) * drift;
+        function getGpsErrorMessage(error) {
+            switch (error.code) {
+                case 1:
+                    return 'Permiso de ubicación denegado. Habilita el acceso a la ubicación en la configuración del navegador.';
+                case 2:
+                    return 'Posición no disponible. El GPS no pudo obtener una ubicación.';
+                case 3:
+                    return 'Tiempo de espera agotado al obtener la ubicación.';
+                default:
+                    return 'No se pudo obtener la ubicación GPS.';
+            }
+        }
 
-                applySimulatedPosition(location.lat, location.lng);
-                sendLocationToServer(location.lat, location.lng);
-            }, 5000);
-
-            console.log('✅ Ubicación GPS simulada con auto-actualización cada 5 s');
+        function shouldSendLocation(timestamp) {
+            if (lastSendTime === null) {
+                return true;
+            }
+            return timestamp - lastSendTime >= MIN_SEND_INTERVAL_MS;
         }
 
         function updateLocation() {
             if (!navigator.geolocation) {
-                console.warn('⚠ Navegador no soporta geolocalización. Usando ubicación simulada.');
-                useSimulatedLocationDriver();
+                console.warn('⚠ Navegador no soporta geolocalización.');
+                showGpsError('Tu navegador no soporta geolocalización. No se puede compartir la ubicación.');
                 return;
             }
 
-            if (navigator.geolocation) {
-                watchId = navigator.geolocation.watchPosition(
-                    function(position) {
-                        if (hasTripActive && isSimulatedMode) {
-                            console.log('🔒 Viaje activo: ignorando actualizaciones de GPS en modo simulado');
-                            return;
-                        }
+            const gpsIndicator = document.getElementById('gps-indicator');
+            const gpsText = document.getElementById('gps-text');
 
-                        const lat = position.coords.latitude;
-                        const lng = position.coords.longitude;
-                        const timestamp = Date.now();
+            watchId = navigator.geolocation.watchPosition(
+                function(position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    const timestamp = Date.now();
 
-                        let speed = 0;
-                        if (lastPosition) {
-                            const timeElapsed = timestamp - lastPosition.timestamp;
-                            speed = calculateSpeed(
-                                { lat: lastPosition.lat, lng: lastPosition.lng },
-                                { lat, lng },
-                                timeElapsed
-                            );
-                        }
-
-                        if (busMarker) {
-                            busMarker.setLatLng([lat, lng]);
-                        } else {
-                            createBusMarker(lat, lng);
-                        }
-
-                        map.panTo([lat, lng]);
-
-                        document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
-                        document.getElementById('current-speed').textContent = speed;
-                        document.getElementById('gps-indicator').className = 'w-2 h-2 bg-green-500 rounded-full animate-pulse';
-
-                        lastPosition = { lat, lng, timestamp };
-
-                        sendLocationToServer(lat, lng);
-
-                        checkProximityToStops(lat, lng);
-                    },
-                    function(error) {
-                        console.warn('⚠ Error al obtener ubicación GPS del conductor:', {
-                            code: error.code,
-                            message: error.message
-                        });
-
-                        console.log('🔄 Cambiando a ubicación GPS simulada para conductor...');
-                        useSimulatedLocationDriver();
-                    },
-                    {
-                        enableHighAccuracy: true,
-                        maximumAge: 2000,
-                        timeout: 5000
+                    let speed = 0;
+                    if (lastPosition) {
+                        const timeElapsed = timestamp - lastPosition.timestamp;
+                        speed = calculateSpeed(
+                            { lat: lastPosition.lat, lng: lastPosition.lng },
+                            { lat, lng },
+                            timeElapsed
+                        );
                     }
-                );
-            } else {
-                alert('Tu navegador no soporta geolocalización');
-            }
+
+                    if (!isValidPosition(lat, lng)) {
+                        console.warn('⚠ Lectura GPS descartada por no ser válida:', lat, lng);
+                        return;
+                    }
+
+                    // Crea el marcador si aún no existe (p. ej. el autobús no
+                    // tenía coordenadas en BD) o mueve el que ya existe.
+                    updateBusMarker(lat, lng);
+
+                    // Centrar el mapa en la primera posición GPS real válida recibida.
+                    map.panTo([lat, lng]);
+
+                    document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+                    document.getElementById('current-speed').textContent = Math.round(speed);
+                    if (gpsIndicator) {
+                        gpsIndicator.className = 'w-2 h-2 bg-green-500 rounded-full animate-pulse';
+                    }
+                    if (gpsText) {
+                        gpsText.textContent = 'GPS Activo';
+                    }
+
+                    lastPosition = { lat, lng, timestamp };
+
+                    // Enviar al servidor solo si se comparte ubicación y se respeta el intervalo mínimo.
+                    if (isSharingEnabled() && shouldSendLocation(timestamp)) {
+                        lastSendTime = timestamp;
+                        sendLocationToServer(lat, lng);
+                    }
+
+                    checkProximityToStops(lat, lng);
+                },
+                function(error) {
+                    console.warn('⚠ Error al obtener ubicación GPS del conductor:', {
+                        code: error.code,
+                        message: error.message
+                    });
+                    showGpsError(getGpsErrorMessage(error));
+                },
+                {
+                    enableHighAccuracy: true,
+                    maximumAge: 2000,
+                    timeout: 5000
+                }
+            );
         }
 
         function checkProximityToStops(lat, lng) {
@@ -622,64 +672,29 @@
 
         showMapLoading('Cargando tu ruta…', 'Trazando el recorrido sobre las calles');
 
-        Promise.all([
-            generateRoute(),
-            Promise.resolve(drawStops()),
-            Promise.resolve(createBusMarker(busData.latitude, busData.longitude))
-        ]).then(() => {
-            hideMapLoading();
-            console.log('✅ Mapa inicializado y listo');
-        }).catch(error => {
-            // Aunque falle el trazado (p. ej. OSRM caído), la capa se retira
-            // para no dejar el mapa bloqueado.
+        try {
+            Promise.all([
+                generateRoute(),
+                Promise.resolve(drawStops()),
+                Promise.resolve(hasStoredCoords ? createBusMarker(busData.latitude, busData.longitude) : null)
+            ]).then(() => {
+                hideMapLoading();
+                console.log('✅ Mapa inicializado y listo');
+            }).catch(error => {
+                // Aunque falle el trazado, la capa se retira para no dejar el
+                // mapa bloqueado.
+                hideMapLoading();
+                console.error('Error al inicializar el mapa:', error);
+            });
+        } catch (error) {
+            // Si el dibujo de paradas/marcadores falla de forma síncrona, la
+            // capa de carga no debe quedarse tapando el mapa.
             hideMapLoading();
             console.error('Error al inicializar el mapa:', error);
-        });
-
-        const simulatedToggle = document.getElementById('simulated-location-toggle');
-        const simulatedHint = document.getElementById('simulated-hint');
-        const gpsIndicator = document.getElementById('gps-indicator');
-        const gpsText = document.getElementById('gps-text');
-        const tripActiveWarning = document.getElementById('trip-active-warning');
-        const simulatedLabel = document.getElementById('simulated-location-label');
-
-        if (hasTripActive) {
-            simulatedToggle.disabled = true;
-            simulatedLabel.classList.add('opacity-50', 'cursor-not-allowed');
-            simulatedLabel.classList.remove('cursor-pointer');
-            tripActiveWarning.classList.remove('hidden');
-            simulatedHint.classList.add('hidden');
         }
 
-        simulatedToggle.addEventListener('change', function() {
-            if (hasTripActive) {
-                this.checked = isSimulatedMode;
-                alert('No puedes cambiar el modo de ubicación mientras hay un viaje activo');
-                return;
-            }
-
-            isSimulatedMode = this.checked;
-
-            if (isSimulatedMode) {
-                simulatedHint.classList.remove('hidden');
-                customSimulatedLocation = null;
-
-                if (simulatedLocationInterval) {
-                    clearInterval(simulatedLocationInterval);
-                    simulatedLocationInterval = null;
-                }
-            } else {
-                simulatedHint.classList.add('hidden');
-                customSimulatedLocation = null;
-
-                if (simulatedLocationInterval) {
-                    clearInterval(simulatedLocationInterval);
-                    simulatedLocationInterval = null;
-                }
-            }
-
-            applySharingState();
-        });
+        const gpsIndicator = document.getElementById('gps-indicator');
+        const gpsText = document.getElementById('gps-text');
 
         // ===== Compartir ubicación (estado persistente entre sesiones) =====
         const shareToggle = document.getElementById('share-location-toggle');
@@ -694,10 +709,6 @@
                 navigator.geolocation.clearWatch(watchId);
                 watchId = null;
             }
-            if (simulatedLocationInterval) {
-                clearInterval(simulatedLocationInterval);
-                simulatedLocationInterval = null;
-            }
             gpsIndicator.className = 'w-2 h-2 bg-slate-400 rounded-full';
             gpsText.textContent = 'GPS Inactivo';
         }
@@ -711,18 +722,11 @@
                 return;
             }
 
-            if (isSimulatedMode) {
-                gpsIndicator.className = 'w-2 h-2 bg-blue-500 rounded-full animate-pulse';
-                gpsText.textContent = 'Modo Simulado';
-
-                if (customSimulatedLocation) {
-                    useSimulatedLocationDriver();
-                }
-            } else {
-                gpsIndicator.className = 'w-2 h-2 bg-green-500 rounded-full animate-pulse';
-                gpsText.textContent = 'GPS Activo';
-                updateLocation();
-            }
+            // Todavía no hay ninguna lectura GPS: el estado honesto es
+            // "esperando", no "activo". La primera posición válida (o el error
+            // de permisos) actualiza este indicador.
+            showWaitingLocation(true);
+            updateLocation();
         }
 
         shareToggle.addEventListener('change', function() {
@@ -730,42 +734,6 @@
             applySharingState();
         });
 
-        map.on('click', function(e) {
-            if (isSimulatedMode) {
-                if (hasTripActive) {
-                    alert('No puedes cambiar la ubicación mientras hay un viaje activo');
-                    return;
-                }
-
-                const lat = e.latlng.lat;
-                const lng = e.latlng.lng;
-
-                customSimulatedLocation = { lat, lng, accuracy: 20 };
-
-                console.log('📍 Nueva ubicación simulada establecida:', customSimulatedLocation);
-
-                if (simulatedLocationInterval) {
-                    clearInterval(simulatedLocationInterval);
-                    simulatedLocationInterval = null;
-                }
-
-                if (isSharingEnabled()) {
-                    useSimulatedLocationDriver();
-                } else {
-                    // Sin compartir: solo se mueve el marcador local, no se envía al servidor.
-                    applySimulatedPosition(lat, lng);
-                }
-
-                L.circleMarker([lat, lng], {
-                    radius: 8,
-                    fillColor: '#4b5a85',
-                    color: '#fff',
-                    weight: 2,
-                    opacity: 1,
-                    fillOpacity: 0.8
-                }).addTo(map).bindPopup('Ubicación simulada establecida').openPopup();
-            }
-        });
 
         // Arranque: respeta la preferencia de compartir ubicación guardada.
         applySharingState();
@@ -774,10 +742,6 @@
             if (watchId) {
                 navigator.geolocation.clearWatch(watchId);
                 console.log('✓ Rastreo de ubicación detenido');
-            }
-            if (simulatedLocationInterval) {
-                clearInterval(simulatedLocationInterval);
-                console.log('✓ Ubicación simulada detenida');
             }
         });
 

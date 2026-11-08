@@ -158,7 +158,7 @@ Rama de trabajo: `develop`. Enfoque **TDD** (tests en rojo primero, implementaci
 | 6 | Incidencias (ciclo completo) | Formulario del conductor (5 tipos), listado con filtros del admin, resolución solo de pendientes y **vuelta de la unidad a servicio**. | ✅ Hecho |
 | 7 | Restyle responsive | Todas las vistas restantes al estilo cristal y mobile-first (objetivo 375×667). | ✅ Hecho |
 | 8 | Pruebas (TDD) | Suites nuevas: tiempo real, filtros del pasajero, ciclo de viaje, estadísticas, incidencias y detalle de autobús. | ✅ Hecho |
-| 9 | Scripts E2E (Selenium) | `tests/selenium/` (bun + selenium-webdriver, Chrome headless, 5 specs). No se ejecutan en esta rama. | ✅ Hecho (ejecución pendiente en la rama de pruebas) |
+| 9 | Scripts E2E (Selenium) | `tests/selenium/` (Python + pytest + selenium, Chrome headless, 5 specs). No se ejecutan en esta rama. | ✅ Hecho (ejecución pendiente en la rama de pruebas) |
 | 10 | Pruebas de carga (k6) | `tests/load/ubicaditos-iteration3-load.js` (solo lectura, 3 roles). No se ejecutó: k6 no está disponible en este entorno. | ✅ Hecho (ejecución pendiente) |
 | 11 | Documentación y swagger | `06`, `07`, `08`, `10`, nuevo `13-iteracion-3.md`, `_devlog`, `swagger.yaml` y `12-swagger-api.md`. | ✅ Hecho |
 
@@ -174,7 +174,7 @@ Rama de trabajo: `develop`. Enfoque **TDD** (tests en rojo primero, implementaci
 | Filtros de lista en servidor (query string) + búsqueda instantánea en cliente | Los filtros son compartibles/enlazables (chips como enlaces) y la búsqueda no recarga; el cliente solo refina `q`. |
 | La resolución de una incidencia devuelve la unidad a `active` | Regla de dominio incorporada en la iteración 3 (con pruebas): resolver el incidente restaura el servicio de la unidad. |
 | Interruptor de compartir ubicación persistido en `localStorage` | El conductor controla el envío de su GPS; el estado sobrevive a recargas (por defecto activo). |
-| Pruebas E2E con `bun test` + `selenium-webdriver` y localizadores `By.*` | Consistencia con el stack (bun); los localizadores string (`css=…`) no existen en selenium-webdriver 4.x para JS. |
+| Pruebas E2E con `pytest` + `selenium` y localizadores `By.*` | `pytest` es el runner estándar de Python; los localizadores se construyen con la API `By.*` de Selenium, ya que las cadenas tipo `css=…` no son válidas en la API de Python. |
 
 ### Ciclo de incidencias (nuevo comportamiento)
 
@@ -203,7 +203,7 @@ Se maquetaron al nuevo estilo (cristal + mobile-first): `admin/buses/index|creat
 - `app/Events/BusLocationUpdated.php`, `routes/channels.php`, `resources/js/realtime.js`
 - `resources/views/admin/emergencies.blade.php`, `resources/views/driver/statistics.blade.php`, `resources/views/admin/buses/show.blade.php`
 - `tests/Feature/RealTime/BusLocationUpdatedTest.php` y las suites indicadas arriba
-- `tests/selenium/` (`package.json`, `config.js`, 5 specs, `README.md`, `.gitignore`)
+- `tests/selenium/` (`config.py`, `conftest.py`, 5 specs, `requirements.txt`, `README.md`, `.gitignore`)
 - `tests/load/ubicaditos-iteration3-load.js`
 - `docs/13-iteracion-3.md`
 - `.env.production.example`, `.env.staging.example` (bloques Reverb; `.env.example` ampliado)
@@ -222,3 +222,213 @@ Se maquetaron al nuevo estilo (cristal + mobile-first): `admin/buses/index|creat
 - Incidencias preexistentes sin resolver (ver `10-pruebas-y-estado.md`): `Admin\StopController`, `strftime`→`EXTRACT` para PostgreSQL en `ReportController`, enum `work_shift` con turno `night`, límites de `Route::resource`, seeders obsoletos y validaciones de autorización (calificaciones, `driver_id`, coordenadas acotadas).
 - Despliegue: proceso de Reverb en segundo plano (supervisor/systemd) y WSS con certificado TLS en producción/staging.
 - Limpieza: eliminar o reutilizar los partials de perfil heredados; extraer el JavaScript de los mapas a módulos (parcialmente avanzado con `realtime.js`).
+
+## Iteración 4 — Likes, favoritos, ubicación compartida y reportes ciudadanos
+
+Rama de trabajo: `test`. Enfoque **TDD** (pruebas en rojo primero, implementación, verde; suite completa al final): **134 pruebas / 503 aserciones en verde**. Gestor de paquetes JS: **bun**.
+
+### Resumen
+
+| # | Tarea | Descripción | Estado |
+|---|-------|-------------|:------:|
+| 1 | Likes polimórficos | Me gusta públicos sobre rutas y paradas, con contador y estado por usuario. | ✅ |
+| 2 | Rutas favoritas | Tabla `favorite_routes`, endpoints de alta/baja y listas en menú, rutas y perfil. | ✅ |
+| 3 | Ubicación compartida | Enlace temporal `/share/{token}` con token de 48 caracteres, TTL de 30 min y revocación. | ✅ |
+| 4 | Reportes ciudadanos | Listado global, filtros, búsqueda y transiciones `pending`/`in_review`/`resolved`. | ✅ |
+| 5 | Perfil enriquecido | Métricas reales de favoritos, calificaciones, likes y reportes. | ✅ |
+| 6 | Restilizado glass | Navegación, componentes Breeze, layouts y vistas heredadas. | ✅ |
+| 7 | Documentación y Swagger | Secciones 04–12, 15 y 16, `swagger.yaml` y este devlog. | ✅ |
+| 8 | Pruebas E2E y carga | Selenium y k6 actualizados (no ejecutados en este entorno). | ✅ |
+
+### Decisiones
+
+| Decisión | Motivo |
+|----------|--------|
+| Likes polimórficos (`likeable_type`/`likeable_id`) | Una sola tabla y contadores homogéneos para rutas y paradas. |
+| Favoritos separados de likes | Los likes son públicos; los favoritos son privados y personales. |
+| Un enlace activo por pasajero | Al iniciar uno nuevo se revoca el anterior; evita enlaces olvidados. |
+| Token aleatorio de 48 caracteres | No expone el ID del pasajero y es inviable de adivinar. |
+| TTL de 30 minutos | Suficiente para un viaje urbano y limita la exposición. |
+| `resolved_at` gestionado en el controlador | Mantiene consistencia al resolver y reabrir reportes. |
+| Reutilizar `<x-passenger-nav>` | Una navegación única para los tres roles y un solo lugar para el modo oscuro. |
+
+### Cambios por capa
+
+| Capa | Cambios |
+|------|---------|
+| Migraciones | `create_likes_table`, `create_favorite_routes_table`, `create_location_shares_table`, `add_resolved_at_to_incidents_table`. |
+| Modelos | Nuevos `Like`, `FavoriteRoute` y `LocationShare`; relaciones y helpers en `User`, `Route`, `Stop` e `Incident`. |
+| Controladores | `LikeController`, `Passenger\FavoriteRouteController`, `LocationShareController`, `Admin\IncidentManagementController`. |
+| Rutas | `likes.*`, `passenger.favorite-routes.*`, `passenger.share-location.*`, `share.show`, `api.share.data`, `admin.incidents.*`. |
+| Vistas | Mapa del pasajero (like por parada + panel de ubicación), rutas (like/favorito/filtro), menú, perfil, reportes de administración y página pública. |
+| Estilo | Navegación sticky glass, componentes Breeze, `layouts/guest`, `layouts/app`, `welcome`, `dashboard` y parciales de perfil. |
+| Pruebas | `Likes/LikeTest`, `Passenger/FavoriteRouteTest`, `Passenger/LocationShareTest`, `Admin/IncidentManagementTest`. |
+| Documentación | `docs/04`, `05`, `06`, `07`, `08`, `10`, `12`, `15`, `16`, `README.md`, `swagger.yaml` y este devlog. |
+
+### Pruebas nuevas (fase roja → verde)
+
+| Archivo | Enfoque |
+|---------|---------|
+| `tests/Feature/Likes/LikeTest.php` | Alternancia de likes, contador público, unicidad por usuario y estado personal en rutas y paradas. |
+| `tests/Feature/Passenger/FavoriteRouteTest.php` | Alta/baja, duplicado (400), acceso por rol y exposición en rutas, menú y perfil. |
+| `tests/Feature/Passenger/LocationShareTest.php` | Token y caducidad, revocación del enlace anterior, actualización solo del dueño, endpoints públicos y 404 al caducar. |
+| `tests/Feature/Admin/IncidentManagementTest.php` | Listado, filtros, búsqueda, transiciones de estado y gestión de `resolved_at`. |
+
+### Archivos creados
+
+- `app/Models/Like.php`, `app/Models/FavoriteRoute.php`, `app/Models/LocationShare.php`
+- `app/Http/Controllers/LikeController.php`, `app/Http/Controllers/Passenger/FavoriteRouteController.php`, `app/Http/Controllers/LocationShareController.php`, `app/Http/Controllers/Admin/IncidentManagementController.php`
+- `database/migrations/2026_11_08_000001_…` a `…000004_…`
+- `resources/views/admin/incidents/index.blade.php`, `resources/views/share/show.blade.php`
+- `tests/Feature/Likes/LikeTest.php`, `tests/Feature/Passenger/FavoriteRouteTest.php`, `tests/Feature/Passenger/LocationShareTest.php`, `tests/Feature/Admin/IncidentManagementTest.php`
+- `tests/load/ubicaditos-iteration4-load.js`
+- `docs/15-auditoria-mapas.md` (movido desde la raíz), `docs/16-iteracion-4.md`
+
+### Archivos modificados (principales)
+
+- Modelos `User`, `Route`, `Stop`, `Incident` (relaciones, `resolved_at` en `$fillable` y casts).
+- Controladores `Passenger\PassengerController` y `ProfileController` (conteos, listas y métricas reales).
+- Vistas `passenger/dashboard`, `passenger/routes`, `passenger/menu`, `profile/edit`, `layouts/navigation`, `layouts/app`, `layouts/guest`, `dashboard`, `welcome`, `components/*` y `profile/partials/*`.
+- `routes/web.php`, `docs/swagger.yaml` y secciones de documentación 04–12.
+
+### Verificación
+
+| Comando | Resultado |
+|---------|-----------|
+| `php artisan test` | 134 pruebas, 503 aserciones, 0 fallos. |
+| `bun run build` | Vite compila CSS y JS correctamente. |
+| `php artisan migrate --force` | Nuevas migraciones aplicadas en la base local. |
+
+### Pendientes para la siguiente iteración
+
+- Ejecutar Selenium y k6 en un entorno con Chrome y k6, y archivar resultados.
+- Cobertura dedicada del CRUD de administración.
+- Revisar el límite de 30 minutos o permitir configurarlo por usuario.
+- Extraer el JavaScript del mapa y del panel de ubicación a módulos si el archivo crece más.
+- Regenerar trazados reales en la base local con `php artisan routes:generate-paths --force` (requiere internet).
+
+## Iteración 5 y 6 — Reportes, rutas, perfil y sesión
+
+Se auditaron las iteraciones 5 y 6 contra el código existente y se corrigieron los huecos que impedían cerrar el flujo de extremo a extremo. El trabajo siguió TDD: pruebas en rojo primero, implementación después y suite completa en verde al final.
+
+### Resumen
+
+| #   | Tarea                     | Descripción                                                                                          | Estado |
+| --- | ------------------------- | ---------------------------------------------------------------------------------------------------- | :----: |
+| 1   | Acceso a reportes         | Tarjeta en el menú del pasajero, enlace en la navegación y rutas `incidents.*`.                      |   ✅    |
+| 2   | Captura y envío           | Selector de categoría, comentarios con contador, validación y estado inicial `pending`.              |   ✅    |
+| 3   | Listado completo de rutas | Recorrido completo desplegable con todas las paradas de cada ruta activa.                            |   ✅    |
+| 4   | Perfil alineado           | El formulario ahora envía apellido materno y teléfono, además de nombre, apellido paterno y correo.  |   ✅    |
+| 5   | Sesión segura             | Logout con CSRF, invalidación de sesión, regeneración de token y revocación de enlaces de ubicación. |   ✅    |
+| 6   | Pruebas y documentación   | Nuevas pruebas de flujo, sección 17, Swagger y actualización de esta bitácora.                       |   ✅    |
+|     |                           |                                                                                                      |        |
+
+### Decisiones
+
+| Decisión | Motivo |
+|----------|--------|
+| El teléfono es opcional en la actualización del perfil | Hay usuarios heredados sin teléfono; si se captura, se exigen exactamente 10 dígitos. |
+| El apellido materno sigue siendo obligatorio | Coincide con el registro y completa el nombre en los componentes de navegación y perfil. |
+| Revocar enlaces de ubicación al cerrar sesión | Evita que un enlace público siga exponiendo la posición después del logout. |
+| Desplegar las paradas dentro de la tarjeta | Satisface el listado completo sin introducir una página de detalle adicional. |
+| Mantener el formulario de reportes accesible a cualquier rol | La ruta usa `auth`; conductores y administradores también pueden reportar si lo necesitan. |
+
+### Cambios por capa
+
+| Capa | Cambios |
+|------|---------|
+| Controladores | `AuthenticatedSessionController` revoca enlaces activos antes del logout; `PassengerController` calcula reportes enviados y pendientes. |
+| Requests | `ProfileUpdateRequest` valida `phone` y añade mensajes en español. |
+| Vistas | `passenger/menu` (tarjeta de reportes), `passenger/routes` (recorrido completo) y `profile/edit` (apellido materno, teléfono, visibilidad de contraseñas y nota de seguridad). |
+| Pruebas | `Incidents/IncidentTest`, `Passenger/RouteListingTest`, `ProfileTest` y `Auth/AuthenticationTest`. |
+| Documentación | `docs/17-iteracion-5-6.md`, `README.md`, `docs/README.md`, `06`, `07`, `08`, `10`, `12` y `swagger.yaml`. |
+
+### Verificación
+
+| Comando | Resultado |
+|---------|-----------|
+| `php artisan test` | 143 pruebas, 554 aserciones, 0 fallos. |
+| `php artisan view:cache` | Todas las plantillas Blade compilan. |
+| `bun run build` | Vite compila CSS y JS correctamente. |
+
+### Pendientes
+
+- Ejecutar Selenium y k6 en un entorno con Chrome y k6.
+- Regenerar los trazados con `php artisan routes:generate-paths --force` cuando haya conectividad.
+- Añadir una prueba E2E específica del formulario de perfil y del logout con revocación de ubicación.
+
+**Objective**
+
+
+- Maintain the Laravel app "Ubicaditos" (branch test, TDD); verify and complete iterations 5 and 6, which the user says are incomplete.
+Requirements
+- Iteración 5: Reportes de Incidencias — acceso al formulario de reportes; selección de tipo y comentarios; registro y envío de incidencias; validación funcional del flujo de reportes.
+- Iteración 6: Rutas, Perfil y Sesión — listado completo y rutas favoritas; perfil personal y configuración; cierre de sesión seguro; integración frontend-backend.
+- TDD workflow: tests first, full suite green at the end.
+- Use bun for JS tooling/build (bun run build), not npm.
+- Final docs in Spanish (sections, tables, Mermaid, no --- separators) + swagger updates.
+- Selenium E2E and k6 scripts written but not executed here (no Chrome/k6).
+- Teaching-oriented, step-by-step explanations.
+- Glass mobile-first style (375×667) across all views.
+Decisions
+- Likes are polymorphic on routes and stops: public count, per-user toggle, separate from personal favorites.
+- Passenger location sharing = temporary live link /share/{token}, public map polling every 5 s, 30-min TTL, revoke previous active share on start.
+- Favorite routes stored in favorite_routes (distinct from favorite_stops).
+- Admin incidents: global list with filters/search and status transitions pending/in_review/resolved; resolved_at set/cleared automatically.
+- Realtime via Laravel Reverb private channel buses, BusLocationUpdated; 5 s polling fallback /api/buses/active.
+- Incidents remain per-user self-service with status forced to pending server-side; only driver/passenger nav shows "Reportes".
+- Seeder route paths remain null; regenerate via php artisan routes:generate-paths --force.
+- layouts/navigation.blade.php reuses <x-passenger-nav /> inside a sticky glass wrapper.
+- Admin nav gained "Incidencias" (admin.incidents.index); responsive breakpoint changed to lg.
+- Selenium specs extended for likes, favorite routes, share panel, citizen reports and responsive checks.
+- k6 iteration 4 script created as a read-only extension of iteration 3.
+Work State
+Completed
+- Iteration 4 delivered: likes, favorite routes, passenger live-location sharing, admin incident management, profile enrichment, glass restyling.
+- New test suites pass: LikeTest (8), FavoriteRouteTest (7), LocationShareTest (11), IncidentManagementTest (11).
+- Full suite green: 134 tests / 503 assertions.
+- bun run build succeeds; php artisan view:cache compiles all Blade templates.
+- Local DB migrated with the four new migrations.
+- Docs updated: docs/README.md, 04–12, _devlog.md, docs/15-auditoria-mapas.md, docs/16-iteracion-4.md.
+- Swagger updated and validated: 41 paths / 26 schemas, YAML OK.
+- Selenium and k6 artifacts updated (tests/selenium/*, tests/load/ubicaditos-iteration4-load.js, READMEs).
+- package-lock.json removed.
+- All iteration 4 work committed: bbbb85d.
+Active
+- Auditing iterations 5 and 6 against existing code to identify gaps before implementing.
+- Reviewed so far: IncidentController, IncidentTest, incident views, passenger-nav, auth routes, ProfileController, ProfileTest, PassengerController, passenger/menu, profile/edit, ProfileUpdateRequest, AuthenticationTest, RoleAccessTest.
+- No code changes made yet in this turn; working tree was clean at bbbb85d.
+Blocked
+- (none)
+Next Move
+1. Finish the iteration 5/6 audit (routes listing/favorites filter, profile/settings UI, logout flow, nav links, frontend-backend wiring).
+2. Write failing feature tests for any missing behavior.
+3. Implement missing iteration 5/6 functionality.
+4. Re-run full suite, bun run build, and php artisan view:cache.
+5. Update Spanish docs/swagger and commit.
+Relevant Files
+- app/Http/Controllers/IncidentController.php: incident list/create/store flow.
+- app/Http/Controllers/ProfileController.php: profile edit/update/destroy.
+- app/Http/Requests/ProfileUpdateRequest.php: profile validation rules.
+- app/Http/Controllers/Passenger/PassengerController.php: routes listing, favorites, menu data.
+- resources/views/passenger/menu.blade.php: passenger home with favorites.
+- resources/views/incidents/index.blade.php / create.blade.php: report list/form UI.
+- resources/views/profile/edit.blade.php: profile/settings UI.
+- resources/views/components/passenger-nav.blade.php: role nav incl. "Reportes"/"Incidencias".
+- routes/web.php / routes/auth.php: likes, favorites, share, incidents, profile, logout routes.
+- tests/Feature/Incidents/IncidentTest.php: iteration 5 coverage.
+- tests/Feature/ProfileTest.php: profile coverage.
+- tests/Feature/Auth/AuthenticationTest.php: login/logout coverage.
+- tests/Feature/RoleAccessTest.php: role-based access coverage.
+- docs/swagger.yaml: OpenAPI spec to extend.
+- docs/16-iteracion-4.md: format template for new iteration docs.
+Important Context
+- Branch test; latest commit bbbb85d; tree clean before this audit.
+- Iterations 5/6 appear largely implemented already; user insists they are incomplete, so gaps must be verified rather than assumed.
+- Selenium and k6 remain unexecuted (no Chrome/k6).
+- Local DB has 18 routes with 0 path_coordinates; regenerate with php artisan routes:generate-paths --force (needs internet).
+- Seed logins: admin@ubicaditos.com, chofer1@ubicaditos.com, pasajero1@ubicaditos.com; password password.
+- phpunit.xml sets BROADCAST_CONNECTION=null; local .env uses Reverb.
+- public/build is gitignored; rebuild with bun run build.
+- k6 command: k6 run tests/load/ubicaditos-iteration4-load.js -e K6_VUS=15.
+

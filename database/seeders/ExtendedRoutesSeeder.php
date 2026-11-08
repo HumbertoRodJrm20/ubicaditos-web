@@ -126,16 +126,11 @@ class ExtendedRoutesSeeder extends Seeder
                 ]
             );
 
-            // Generar coordenadas de ruta
-            $pathCoordinates = [];
-            foreach ($routeData['stops'] as $stopData) {
-                $pathCoordinates[] = [
-                    'lat' => $stopData['lat'],
-                    'lng' => $stopData['lng']
-                ];
-            }
-            $route->path_coordinates = $pathCoordinates;
-            $route->save();
+            // No sobrescribir nunca el trazado de una ruta existente y no
+            // inventar líneas rectas entre paradas: éstas atraviesan casas.
+            // Los trazados se generan sobre calles con:
+            //   php artisan routes:generate-paths --force
+            // Si la ruta es nueva, `path_coordinates` queda vacío hasta entonces.
 
             // Crear paradas y vincularlas a la ruta
             foreach ($routeData['stops'] as $index => $stopData) {
@@ -160,7 +155,13 @@ class ExtendedRoutesSeeder extends Seeder
                 }
             }
 
-            // Crear 2-3 autobuses por ruta (más para rutas largas)
+            // Crear 2-3 autobuses por ruta (más para rutas largas), sólo si la
+            // ruta todavía no tiene unidades asignadas. Así el seeder es
+            // idempotente y no duplica autobuses en cada ejecución.
+            if ($route->buses()->exists()) {
+                continue;
+            }
+
             $busCount = count($routeData['stops']) >= 6 ? 3 : 2;
 
             for ($i = 1; $i <= $busCount; $i++) {

@@ -1,3 +1,258 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ===== Popup de paradas (mapas) ===== */
+.ub-stop-popup-wrap .leaflet-popup-content-wrapper {
+    padding: 0;
+    overflow: hidden;
+    border-radius: 22px;
+    background: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    box-shadow:
+        0 26px 60px -26px rgba(30, 42, 74, 0.58),
+        0 10px 24px -18px rgba(30, 42, 74, 0.36);
+}
+
+.ub-stop-popup-wrap .leaflet-popup-content {
+    width: auto !important;
+    margin: 0;
+}
+
+.ub-stop-popup-wrap .leaflet-popup-tip {
+    background: #fff;
+    box-shadow: 0 8px 18px rgba(30, 42, 74, 0.16);
+}
+
+.ub-stop-popup-wrap a.leaflet-popup-close-button {
+    top: 9px;
+    right: 9px;
+    z-index: 3;
+    width: 24px;
+    height: 24px;
+    line-height: 23px;
+    border-radius: 9999px;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.18);
+    font-size: 18px;
+    text-shadow: none;
+    transition: background 0.15s ease;
+}
+
+.ub-stop-popup-wrap a.leaflet-popup-close-button:hover {
+    background: rgba(255, 255, 255, 0.3);
+    color: #fff;
+}
+
+.ub-stop-popup {
+    width: 292px;
+    max-width: calc(100vw - 56px);
+    font-family: Figtree, ui-sans-serif, system-ui, sans-serif;
+    color: #1e2a4a;
+}
+
+.ub-stop-popup__hero {
+    position: relative;
+    overflow: hidden;
+    padding: 16px 18px 15px;
+    color: #fff;
+    background:
+        radial-gradient(circle at 84% 14%, rgba(255, 255, 255, 0.18), transparent 28%),
+        linear-gradient(135deg, #3f4c75 0%, #4b5a85 52%, #6b7aa8 100%);
+}
+
+.ub-stop-popup__glow {
+    position: absolute;
+    right: -34px;
+    bottom: -46px;
+    width: 118px;
+    height: 118px;
+    border-radius: 9999px;
+    border: 18px solid rgba(255, 255, 255, 0.07);
+    pointer-events: none;
+}
+
+.ub-stop-popup__eyebrow-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-right: 28px;
+}
+
+.ub-stop-popup__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    border-radius: 11px;
+    background: rgba(255, 255, 255, 0.17);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.ub-stop-popup__eyebrow {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.ub-stop-popup__title {
+    position: relative;
+    margin: 10px 0 0;
+    font-size: 15px;
+    line-height: 1.25;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: #fff;
+}
+
+.ub-stop-popup__address {
+    position: relative;
+    margin: 4px 0 0;
+    font-size: 11px;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.72);
+}
+
+.ub-stop-popup__body {
+    padding: 13px 16px 15px;
+    background: #fff;
+}
+
+.ub-stop-popup__chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+}
+
+.ub-stop-popup__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 23px;
+    padding: 3px 8px;
+    border-radius: 9999px;
+    border: 1px solid #e5eaf5;
+    background: #f4f7fc;
+    color: #4a5a8a;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.ub-stop-popup__chip-dot {
+    width: 6px;
+    height: 6px;
+    flex-shrink: 0;
+    border-radius: 9999px;
+    background: var(--route-color, #4b5a85);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--route-color, #4b5a85) 18%, white);
+}
+
+.ub-stop-popup__chip--neutral {
+    color: #64748b;
+    background: #f8fafc;
+}
+
+.ub-stop-popup__chip--favorite {
+    color: #be123c;
+    background: #fff1f2;
+    border-color: #fecdd3;
+}
+
+.ub-stop-popup__chip--more {
+    color: #64748b;
+    background: #fff;
+}
+
+.ub-stop-popup__actions {
+    display: grid;
+    gap: 7px;
+    margin-top: 12px;
+}
+
+.ub-stop-popup__action {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    width: 100%;
+    min-height: 38px;
+    padding: 8px 12px;
+    border-radius: 13px;
+    border: 1px solid transparent;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: left;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.ub-stop-popup__action:active {
+    transform: scale(0.985);
+}
+
+.ub-stop-popup__action--primary {
+    color: #fff;
+    background: linear-gradient(135deg, #6b7aa8, #3f4c75);
+    box-shadow: 0 8px 16px -10px rgba(63, 76, 117, 0.7);
+}
+
+.ub-stop-popup__action--primary:hover {
+    box-shadow: 0 10px 20px -10px rgba(63, 76, 117, 0.8);
+    filter: brightness(1.06);
+}
+
+.ub-stop-popup__action--ghost {
+    color: #4a5a8a;
+    background: #f8fafc;
+    border-color: #e2e8f4;
+}
+
+.ub-stop-popup__action--ghost:hover {
+    background: #f1f5fb;
+}
+
+.ub-stop-popup__action--ghost.is-active {
+    color: #be123c;
+    background: #fff1f2;
+    border-color: #fecdd3;
+}
+
+.ub-stop-popup__svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+.ub-stop-popup__svg--arrow {
+    width: 13px;
+    height: 13px;
+    margin-left: auto;
+    opacity: 0.8;
+}
+
+.ub-stop-popup__hint {
+    margin: 9px 0 0;
+    font-size: 10px;
+    line-height: 1.4;
+    color: #94a3b8;
+}
+
+.stop-marker > div {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stop-marker:hover > div {
+    transform: scale(1.18);
+    box-shadow: 0 3px 10px rgba(40, 50, 90, 0.45);
+}

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\LocationShare;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -46,9 +47,28 @@ class AuthenticationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->post('/logout');
+        $response = $this
+            ->actingAs($user)
+            ->withSession(['sensitive_data' => 'should-be-flushed'])
+            ->post('/logout');
 
         $this->assertGuest();
         $response->assertRedirect('/');
+        $response->assertSessionMissing('sensitive_data');
+    }
+
+    public function test_logout_revokes_active_location_shares(): void
+    {
+        $user = User::factory()->create(['role' => 'passenger']);
+        $share = LocationShare::startFor($user, [
+            'latitude' => 17.0600000,
+            'longitude' => -96.7250000,
+        ]);
+
+        $this->actingAs($user)->post('/logout')->assertRedirect('/');
+
+        $this->assertGuest();
+        $this->assertNotNull($share->fresh()->revoked_at);
+        $this->assertFalse($share->fresh()->isActive());
     }
 }

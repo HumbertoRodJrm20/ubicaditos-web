@@ -281,40 +281,12 @@ class DatabaseSeeder extends Seeder
             $estimatedTimes = $routeData['times'] ?? [];
             unset($routeData['stops'], $routeData['times']);
 
-            // Generate path coordinates with intermediate points for smoother routes
-            $pathCoordinates = [];
-            for ($i = 0; $i < count($stopIndices); $i++) {
-                $currentStop = $stopModels[$stopIndices[$i]];
-                $pathCoordinates[] = [
-                    'lat' => (float) $currentStop->latitude,
-                    'lng' => (float) $currentStop->longitude,
-                ];
-
-                // Add intermediate points between stops (except for last stop)
-                if ($i < count($stopIndices) - 1) {
-                    $nextStop = $stopModels[$stopIndices[$i + 1]];
-                    $lat1 = (float) $currentStop->latitude;
-                    $lng1 = (float) $currentStop->longitude;
-                    $lat2 = (float) $nextStop->latitude;
-                    $lng2 = (float) $nextStop->longitude;
-
-                    // Add 3-5 intermediate points between each pair of stops
-                    $numPoints = rand(3, 5);
-                    for ($j = 1; $j <= $numPoints; $j++) {
-                        $ratio = $j / ($numPoints + 1);
-                        // Add some random offset to simulate following streets
-                        $latOffset = (rand(-20, 20) / 10000);
-                        $lngOffset = (rand(-20, 20) / 10000);
-                        $pathCoordinates[] = [
-                            'lat' => $lat1 + ($lat2 - $lat1) * $ratio + $latOffset,
-                            'lng' => $lng1 + ($lng2 - $lng1) * $ratio + $lngOffset,
-                        ];
-                    }
-                }
-            }
-
+            // El trazado NO se inventa aquí. Las líneas rectas con ruido
+            // aleatorio cruzaban edificios. Se deja vacío para que se genere
+            // con calles reales:
+            //   php artisan routes:generate-paths --force
             $route = Route::create(array_merge($routeData, [
-                'path_coordinates' => $pathCoordinates,
+                'path_coordinates' => null,
                 'description' => 'Ruta de transporte público en Oaxaca',
                 'is_active' => true,
             ]));
@@ -459,6 +431,11 @@ class DatabaseSeeder extends Seeder
         $this->command->info('✅ Base de datos poblada con datos ampliados de Oaxaca');
         $this->command->info('📊 Estadísticas:');
         $this->command->info('   - Rutas creadas: ' . Route::count());
+        // Paradas intermedias sobre el trazado real de cada ruta.
+        $this->call(AdditionalRouteStopsSeeder::class);
+        // Densificación: una parada aproximadamente cada 500 m por ruta.
+        $this->call(FrequentRouteStopsSeeder::class);
+
         $this->command->info('   - Paradas creadas: ' . Stop::count());
         $this->command->info('   - Autobuses creados: ' . Bus::count());
         $this->command->info('   - Conductores: ' . count($drivers));
@@ -470,5 +447,8 @@ class DatabaseSeeder extends Seeder
         $this->command->info('   Admin: admin@ubicaditos.com / password');
         $this->command->info('   Choferes: chofer1@ubicaditos.com - chofer100@ubicaditos.com / password');
         $this->command->info('   Pasajeros: pasajero1@ubicaditos.com - pasajero600@ubicaditos.com / password');
+        $this->command->info('');
+        $this->command->warn('Las rutas se crearon sin trazado. Genera las calles reales con:');
+        $this->command->line('   php artisan routes:generate-paths --force');
     }
 }
