@@ -29,6 +29,18 @@ php artisan route:list --except-vendor
 | DELETE | `/profile` | `profile.destroy` | `ProfileController@destroy` | `auth` |
 | GET | `/up` | — | Health check de Laravel | — |
 
+## Rutas de reportes ciudadanos
+
+Prefijo `/incidents`, middleware `auth` (cualquier rol autenticado). Cada usuario ve y crea únicamente sus propios reportes.
+
+| Método | URI | Nombre | Acción | Parámetros |
+|--------|-----|--------|--------|------------|
+| GET | `/incidents` | `incidents.index` | `IncidentController@index` | — |
+| GET | `/incidents/create` | `incidents.create` | `IncidentController@create` | — |
+| POST | `/incidents` | `incidents.store` | `IncidentController@store` | `category` (route, bus, service, driver, stop, other), `description` (máx. 1000) |
+
+El estado inicial siempre es `pending` y el dueño se toma de la sesión; el formulario no puede enviar `status`, `user_id` ni `resolved_at`.
+
 ## Rutas del administrador
 
 Prefijo `/admin`, nombre `admin.*`, middleware `auth` + `admin`.
@@ -145,6 +157,8 @@ Sin sesión. Devuelven 404 si el token no existe, caducó o fue revocado.
 | GET / POST | `/confirm-password` | `password.confirm` | `auth` |
 | PUT | `/password` | `password.update` | `auth` |
 | POST | `/logout` | `logout` | `auth` |
+
+El cierre de sesión exige `POST` con token CSRF. Antes de destruir la sesión, el controlador revoca los enlaces de ubicación activos del usuario, invalida los datos de sesión y regenera el token CSRF.
 
 ## Endpoints JSON
 

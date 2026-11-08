@@ -56,6 +56,7 @@ La aplicación usa **autenticación por sesión (Laravel Breeze)** para todo, in
 | `/passenger/*` | ➜ login | ✅ | 🔒 403 | 🔒 403 |
 | `/api/*` | ➜ login | ✅ | ✅ | ✅ |
 | `/profile` | ➜ login | ✅ | ✅ | ✅ |
+| `/incidents*` | ➜ login | ✅ | ✅ | ✅ |
 
 ## Modelos
 
@@ -174,7 +175,7 @@ La **iteración 3** amplía `swagger.yaml` con nuevas rutas web (vista de KPIs d
 | `EmergencyReport.status` con `in_progress` | Enum actualizado | Tabla "Cambios en schemas existentes" |
 | `info.description` | Párrafo de ampliaciones de iteración 3 | Párrafo introductorio de esta sección |
 
-Validación de la especificación tras la ampliación: `python3 -c "import yaml; yaml.safe_load(open('docs/swagger.yaml'))"` → **YAML OK** (OpenAPI 3.0.3, 41 paths, 26 schemas, todas las referencias `$ref` resueltas).
+Validación de la especificación tras la ampliación: `python3 -c "import yaml; yaml.safe_load(open('docs/swagger.yaml'))"` → **YAML OK** (OpenAPI 3.0.3, 43 paths, 27 schemas, todas las referencias `$ref` resueltas).
 
 ## Informe de ejecución de pruebas
 
@@ -246,3 +247,31 @@ Schemas añadidos: `LikeToggleResponse` (`liked`, `count`), `FavoriteRouteRespon
 | Integridad | Los índices únicos evitan likes duplicados y rutas favoritas repetidas. |
 
 Validación de la especificación tras la ampliación: `python3 -c "import yaml; yaml.safe_load(open('docs/swagger.yaml'))"` → **YAML OK** (OpenAPI 3.0.3, todas las referencias `$ref` resueltas).
+
+## Ampliaciones de las iteraciones 5 y 6
+
+La **iteración 5** documenta el flujo de reportes ciudadanos del propio usuario. La **iteración 6** precisa el comportamiento del listado de rutas, la actualización del perfil y el cierre de sesión seguro.
+
+### Nuevos endpoints
+
+| Método | URI | Tag | Descripción | Respuestas clave |
+|--------|-----|-----|-------------|------------------|
+| GET | `/incidents` | Incidencias ciudadanas | Listado de los reportes del usuario autenticado. | 200 (HTML), 302 a login |
+| GET | `/incidents/create` | Incidencias ciudadanas | Formulario con categorías y comentarios. | 200 (HTML), 302 a login |
+| POST | `/incidents` | Incidencias ciudadanas | Registra un reporte con estado inicial `pending`. | 302 (flash), 422 |
+
+### Cambios en schemas existentes
+
+| Schema | Cambio (Iteraciones 5 y 6) |
+|--------|----------------------------|
+| `ProfileUpdateRequest` | `phone` se documenta como opcional, con longitud exacta de 10 y patrón numérico; se mantienen obligatorios los tres campos de nombre y el correo. |
+| `IncidentCreateRequest` | Nuevo schema con `category` (enum cerrado) y `description` (máximo 1000). No admite `status`, `user_id` ni `resolved_at`. |
+| `Incident` | Se reutiliza para describir la respuesta de los reportes; el estado inicial siempre es `pending`. |
+
+### Seguridad del cierre de sesión
+
+`POST /logout` exige token CSRF. Antes de destruir la sesión, el backend revoca los enlaces `location_shares` activos del usuario, invalida la sesión y regenera el token CSRF. Esto evita que un enlace público de ubicación siga activo después de que el pasajero cierre sesión.
+
+### Verificación
+
+Validación de la especificación tras la ampliación: `python3 -c "import yaml; yaml.safe_load(open('docs/swagger.yaml'))"` → **YAML OK** (OpenAPI 3.0.3, 43 paths, 27 schemas, todas las referencias `$ref` resueltas). Suite completa: **143 pruebas / 554 aserciones en verde**.

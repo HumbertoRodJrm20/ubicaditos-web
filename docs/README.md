@@ -23,8 +23,12 @@ php artisan key:generate
 touch database/database.sqlite
 php artisan migrate --seed
 
+php artisan routes:generate-paths --force
+
 # 5. Levantar el entorno de desarrollo (servidor + cola + Vite)
 composer run dev
+
+
 ```
 
 Abre `http://localhost:8000` e inicia sesión con alguna de las cuentas de prueba:
@@ -57,12 +61,13 @@ Abre `http://localhost:8000` e inicia sesión con alguna de las cuentas de prueb
 | 14 | [Diagnóstico y optimización del dibujo de rutas](14-diagnostico-y-optimizacion-rutas.md) | Fuente de los trazados, deduplicación por tramos, comandos `routes:diagnose` y `routes:generate-paths`, y correcciones de seeders. |
 | 15 | [Auditoría técnica de mapas (histórica)](15-auditoria-mapas.md) | Informe de diagnóstico de octubre de 2026 sobre los mapas de pasajero y conductor. Se conserva como antecedente; las correcciones aplicadas están en las secciones 13 y 14. |
 | 16 | [Iteración 4 — Likes, favoritos, ubicación compartida y reportes](16-iteracion-4.md) | Me gusta polimórficos, rutas favoritas, enlaces temporales de ubicación, gestión administrativa de reportes ciudadanos, métricas del perfil y restilizado glass. |
-| 17 | [Registro técnico de desarrollo (_devlog)](_devlog.md) | Bitácora técnica de lo realizado en cada iteración. |
+| 17 | [Iteración 5 y 6 — Reportes, rutas, perfil y sesión](17-iteracion-5-6.md) | Flujo completo de reportes ciudadanos, listado de rutas con recorrido completo, configuración del perfil y cierre de sesión seguro. |
+| 18 | [Registro técnico de desarrollo (_devlog)](_devlog.md) | Bitácora técnica de lo realizado en cada iteración. |
 
 ## Resumen funcional
 
 | Rol               | Funcionalidades principales                                                                                                                                                                                 |
 | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Pasajero**      | Mapa en tiempo real con rutas, paradas y autobuses; rutas más cercanas a su ubicación; tiempos estimados de llegada; me gusta en rutas y paradas; paradas y rutas favoritas; enlace temporal para compartir su ubicación; listado de rutas y autobuses; calificación de conductores. |
-| **Conductor**     | Panel con su autobús asignado y viajes recientes; mapa de su ruta con GPS; inicio y fin de viaje (validando turno y cercanía a una parada); actualización de pasajeros a bordo; reporte de emergencias.     |
+| **Pasajero**      | Mapa en tiempo real con rutas, paradas y autobuses; rutas más cercanas a su ubicación; tiempos estimados de llegada; me gusta en rutas y paradas; paradas y rutas favoritas; listado completo de rutas con todas sus paradas; enlace temporal para compartir su ubicación; reportes de incidencias con tipo y comentarios; perfil editable con teléfono y cierre de sesión seguro; calificación de conductores. |
+| **Conductor**     | Panel con su autobús asignado y viajes recientes; mapa de su ruta con GPS; inicio y fin de viaje (validando turno y cercanía a una parada); actualización de pasajeros a bordo; reporte de emergencias y acceso a reportes de incidencias. |
 | **Administrador** | Dashboard con estadísticas y mapa en vivo; CRUD de autobuses, rutas y usuarios; asignación de autobuses a conductores; gestión de pasajeros; gestión de reportes ciudadanos con filtros y estados; estadísticas y reportes con gráficas; exportación a PDF y CSV. |

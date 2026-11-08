@@ -23,10 +23,11 @@ Convenciones comunes:
 | `Admin\IncidentManagementController` | `auth`, `admin` | Listado global, filtros y cambio de estado de los reportes ciudadanos. |
 | `Admin\StopController` | `auth`, `admin` | CRUD de paradas (**sin implementar**). |
 | `Driver\DriverController` | `auth`, `driver` | Panel, mapa, estadísticas, viajes, GPS, pasajeros y emergencias. |
-| `Passenger\PassengerController` | `auth`, `passenger` | Mapa, rutas, autobuses, favoritos y calificaciones. |
+| `Passenger\PassengerController` | `auth`, `passenger` | Mapa, rutas, autobuses, favoritos, calificaciones y accesos a reportes. |
 | `Passenger\FavoriteRouteController` | `auth`, `passenger` | Alta y baja de rutas favoritas. |
 | `LikeController` | `auth` | Toggle de me gusta sobre rutas y paradas (cualquier rol). |
 | `LocationShareController` | `auth` / público | Enlaces temporales de ubicación y consulta pública del token. |
+| `IncidentController` | `auth` | Reportes ciudadanos del propio usuario: listado, formulario y registro. |
 | `Auth\*` | `guest` / `auth` | Autenticación de Laravel Breeze. |
 
 ## DashboardController
@@ -204,8 +205,8 @@ Si todo es válido, se crea un `Trip` con estado `in_progress` y se informa la p
 | Método | Ruta | Respuesta | Descripción |
 |--------|------|-----------|-------------|
 | `map()` | `GET /passenger` | Vista `passenger.dashboard` | Página principal del pasajero: mapa con rutas activas, paradas activas (con `likes_count`) y autobuses activos; incluye `likedStopIds` para pintar el estado personal de los me gusta. |
-| `index()` | `GET /passenger/menu` | Vista `passenger.menu` | Menú de opciones, paradas favoritas y rutas favoritas del usuario. |
-| `routes()` | `GET /passenger/routes` | Vista `passenger.routes` | Rutas activas con sus paradas, autobuses, `likes_count`, `favoriteRouteIds` y `likedRouteIds`. |
+| `index()` | `GET /passenger/menu` | Vista `passenger.menu` | Menú de opciones, paradas favoritas, rutas favoritas y conteo de reportes enviados/pendientes. Incluye una tarjeta con acceso directo a `incidents.create`. |
+| `routes()` | `GET /passenger/routes` | Vista `passenger.routes` | Rutas activas con todas sus paradas, autobuses, `likes_count`, `favoriteRouteIds` y `likedRouteIds`. La tarjeta permite desplegar el recorrido completo cuando hay más de tres paradas. |
 | `buses(Request)` | `GET /passenger/buses` | Vista `passenger.buses` | Listado filtrado en servidor: `q` (placa, modelo o nombre del conductor), `route_id`, `status` (por defecto `active`; `all` muestra todos) y `sort` (`plate` A-Z por defecto, u `occupancy` por ocupación descendente). Pasa además las rutas activas y `$busDetailsData`, un arreglo con datos verificables por autobús (placa, modelo, capacidad, pasajeros, asientos libres, estado, ruta, conductor, última actualización y enlace al mapa) que alimenta el modal de detalles. |
 | `addFavorite(Stop $stop)` | `POST /passenger/favorites/{stop}` | JSON o redirección | Agrega la parada a favoritos con `nickname` opcional. Evita duplicados. |
 | `removeFavorite(Stop $stop)` | `DELETE /passenger/favorites/{stop}` | JSON o redirección | Quita la parada de favoritos. |
@@ -242,6 +243,16 @@ El contador se calcula con `$likeable->likes()->count()` después de crear o bor
 
 Validaciones: `latitude` entre −90 y 90, `longitude` entre −180 y 180 y `accuracy` entero entre 0 y 65535. El token es `Str::random(48)` y la caducidad por defecto es de 30 minutos (`LocationShare::TTL_MINUTES`).
 
+## IncidentController
+
+Reportes de incidencias enviados por el propio usuario autenticado. Es independiente de la gestión administrativa de `/admin/incidents`.
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `index(Request)` | `GET /incidents` | Listado de los reportes del usuario, ordenados del más reciente al más antiguo. |
+| `create()` | `GET /incidents/create` | Formulario con las categorías de `Incident::CATEGORIES` y el límite de caracteres de la descripción. |
+| `store(Request)` | `POST /incidents` | Valida `category` (catálogo cerrado) y `description` (obligatoria, máximo 1000); crea el reporte con `status = pending` y el dueño tomado de la sesión. No acepta `status`, `user_id` ni `resolved_at` desde el formulario. |
+
 ## Admin\IncidentManagementController
 
 | Método | Ruta | Descripción |
@@ -256,7 +267,7 @@ Proviene de Breeze.
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | `edit()` | `GET /profile` | Formulario de perfil, métricas reales (rutas/paradas favoritas, calificaciones emitidas, me gusta y reportes), listas de favoritos, cambio de contraseña y eliminación de cuenta. |
-| `update(ProfileUpdateRequest)` | `PATCH /profile` | Actualiza los datos; si cambia el correo, anula su verificación. |
+| `update(ProfileUpdateRequest)` | `PATCH /profile` | Actualiza nombre, apellido paterno, apellido materno, teléfono y correo; si cambia el correo, anula su verificación. |
 | `destroy()` | `DELETE /profile` | Elimina la cuenta tras confirmar la contraseña, cierra sesión e invalida la sesión. |
 
 ## Controladores de autenticación
@@ -265,7 +276,7 @@ Ubicados en `app/Http/Controllers/Auth`, provienen de Breeze:
 
 | Controlador | Función |
 |-------------|---------|
-| `AuthenticatedSessionController` | Muestra el login, autentica (vía `LoginRequest`, con límite de 5 intentos) y cierra sesión. Tras el login redirige a `/dashboard`. |
+| `AuthenticatedSessionController` | Muestra el login, autentica (vía `LoginRequest`, con límite de 5 intentos) y cierra sesión. El logout revoca los enlaces de ubicación activos, invalida la sesión y regenera el token CSRF. Tras el login redirige a `/dashboard`. |
 | `RegisteredUserController` | Registro de pasajeros con validación personalizada y método `checkEmail()` para comprobar disponibilidad del correo vía AJAX. |
 | `PasswordResetLinkController` | Envía el enlace de recuperación de contraseña. |
 | `NewPasswordController` | Restablece la contraseña con el token recibido. |
@@ -280,7 +291,7 @@ Ubicados en `app/Http/Controllers/Auth`, provienen de Breeze:
 | Clase | Uso |
 |-------|-----|
 | `App\Http\Requests\Auth\LoginRequest` | Valida correo y contraseña, intenta la autenticación y aplica limitación de intentos por correo + IP. |
-| `App\Http\Requests\ProfileUpdateRequest` | Valida la actualización del perfil (`name` y `email` único). |
+| `App\Http\Requests\ProfileUpdateRequest` | Valida `first_name`, `last_name`, `maternal_last_name`, `phone` (opcional, 10 dígitos) y `email` único, con mensajes en español. |
 
 ## Tiempo real (Broadcasting)
 

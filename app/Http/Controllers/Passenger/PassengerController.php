@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Passenger;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Bus, Route, Stop, Rating};
+use App\Models\{Bus, Incident, Route, Stop, Rating};
 use Illuminate\Http\Request;
 
 class PassengerController extends Controller
@@ -13,8 +13,17 @@ class PassengerController extends Controller
         $user = auth()->user();
         $favoriteStops = $user->favoriteStops()->with('routes')->get();
         $favoriteRoutes = $user->favoriteRoutes()->withCount('likes')->get();
+        $incidentsCount = $user->incidents()->count();
+        $pendingIncidentsCount = $user->incidents()
+            ->where('status', Incident::STATUS_PENDING)
+            ->count();
 
-        return view('passenger.menu', compact('favoriteStops', 'favoriteRoutes'));
+        return view('passenger.menu', compact(
+            'favoriteStops',
+            'favoriteRoutes',
+            'incidentsCount',
+            'pendingIncidentsCount',
+        ));
     }
 
     public function map()

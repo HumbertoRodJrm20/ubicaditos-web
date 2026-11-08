@@ -32,7 +32,7 @@
     @endif
 
     {{-- Accesos rápidos --}}
-    <div class="mt-6 grid gap-4 md:grid-cols-3">
+    <div class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
 
         <a href="{{ route('passenger.dashboard') }}" class="{{ $card }} bg-gradient-to-br from-[#8f9bcb] to-[#4a5a8a]">
             <div class="{{ $iconTile }}">
@@ -72,6 +72,29 @@
                 <div class="min-w-0">
                     <h2 class="text-xl font-bold leading-tight">Autobuses</h2>
                     <p class="mt-1 text-[11px] text-white/80">Conductores y calificaciones</p>
+                </div>
+                <span class="{{ $arrow }}">
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6" /></svg>
+                </span>
+            </div>
+        </a>
+
+        <a href="{{ route('incidents.create') }}" class="{{ $card }} bg-gradient-to-br from-[#c9a58f] to-[#7d5060]">
+            <div class="{{ $iconTile }}">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" /><path d="M8 9h8M8 13h5" /></svg>
+            </div>
+            <div class="mt-6 flex items-end justify-between gap-3">
+                <div class="min-w-0">
+                    <h2 class="text-xl font-bold leading-tight">Reportes</h2>
+                    <p class="mt-1 text-[11px] text-white/80">
+                        Reporta una incidencia del servicio
+                        @if ($incidentsCount > 0)
+                            · {{ $incidentsCount }} {{ $incidentsCount === 1 ? 'enviado' : 'enviados' }}
+                        @endif
+                        @if ($pendingIncidentsCount > 0)
+                            · {{ $pendingIncidentsCount }} {{ $pendingIncidentsCount === 1 ? 'pendiente' : 'pendientes' }}
+                        @endif
+                    </p>
                 </div>
                 <span class="{{ $arrow }}">
                     <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6" /></svg>

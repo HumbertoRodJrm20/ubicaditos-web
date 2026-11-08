@@ -31,6 +31,13 @@ info:
     `/share/{token}` y `/api/share/{token}`) y la gestión administrativa
     de reportes ciudadanos (`/admin/incidents*`).
 
+    La **iteración 5** añade el flujo de reportes del propio usuario
+    (`/incidents*`): listado, formulario y registro con estado inicial
+    `pending`. La **iteración 6** precisa el listado completo de rutas con
+    todas sus paradas, la actualización del perfil (incluidos apellido
+    materno y teléfono) y el cierre de sesión seguro, que revoca los
+    enlaces de ubicación activos antes de invalidar la sesión.
+
     Repositorio: `ubicaditos-web` · Laravel 12 · Rama de producción: `main`
     (PostgreSQL) · Staging: `staging` (PostgreSQL) · Desarrollo: `develop`
     (SQLite).
@@ -56,7 +63,9 @@ tags:
   - name: Conductor
     description: Viajes, ubicación, pasajeros y emergencias (rol driver).
   - name: Pasajero
-    description: Rutas, paradas favoritas y calificaciones (rol passenger).
+    description: Rutas, paradas favoritas, reportes y calificaciones (rol passenger).
+  - name: Incidencias ciudadanas
+    description: Reportes de incidencias creados por el propio usuario autenticado.
   - name: Administración
     description: Panel de administración, estadísticas y reportes (rol admin).
   - name: Social
@@ -102,10 +111,14 @@ paths:
   /logout:
     post:
       tags: [Autenticación]
-      summary: Cierra la sesión actual.
+      summary: Cierra la sesión actual de forma segura.
+      description: |
+        Exige token CSRF. Antes de destruir la sesión, revoca los enlaces
+        temporales de ubicación activos del usuario, invalida los datos de
+        sesión y regenera el token CSRF.
       responses:
         '302':
-          description: Redirige a `/login`.
+          description: Redirige a `/` con la sesión cerrada.
 
   /register:
     get:
@@ -623,6 +636,7 @@ paths:
     get:
       tags: [Pasajero]
       summary: Menú de opciones del pasajero.
+      description: Incluye los accesos a mapa, rutas, autobuses y reportes, además de los favoritos y el conteo de reportes.
       responses:
         '200':
           description: Menú (HTML).
@@ -630,7 +644,12 @@ paths:
   /passenger/routes:
     get:
       tags: [Pasajero]
-      summary: Lista de rutas disponibles.
+      summary: Lista de rutas disponibles con su recorrido completo.
+      description: |
+        Devuelve las rutas activas con todas sus paradas, autobuses,
+        contador de me gusta y los identificadores de rutas favoritas del
+        usuario. La vista permite desplegar el recorrido completo de cada
+        ruta.
       responses:
         '200':
           description: Vista de rutas (HTML).
@@ -954,6 +973,40 @@ paths:
                 $ref: '#/components/schemas/LocationShare'
         '404':
           description: Enlace inexistente, caducado o revocado.
+
+  /incidents:
+    get:
+      tags: [Incidencias ciudadanas]
+      summary: Listado de reportes del usuario autenticado.
+      responses:
+        '200':
+          description: Vista HTML con los reportes del usuario y contadores por estado.
+        '302':
+          description: Redirige a `/login` si no hay sesión.
+    post:
+      tags: [Incidencias ciudadanas]
+      summary: Registra un reporte de incidencia.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncidentCreateRequest'
+      responses:
+        '302':
+          description: Redirección al listado con mensaje flash.
+        '422':
+          description: Errores de validación (categoría desconocida o comentarios fuera de rango).
+
+  /incidents/create:
+    get:
+      tags: [Incidencias ciudadanas]
+      summary: Muestra el formulario para reportar una incidencia.
+      responses:
+        '200':
+          description: Vista HTML con el selector de categoría y el campo de comentarios.
+        '302':
+          description: Redirige a `/login` si no hay sesión.
 
   /admin/incidents:
     get:
@@ -1493,7 +1546,10 @@ components:
           maxLength: 35
         phone:
           type: string
+          minLength: 10
           maxLength: 10
+          pattern: '^\d{10}$'
+          description: Opcional; si se envía, debe contener exactamente 10 dígitos.
         email:
           type: string
           format: email
@@ -1651,6 +1707,20 @@ components:
           minimum: 0
           maximum: 65535
           description: Precisión en metros (opcional).
+
+    IncidentCreateRequest:
+      type: object
+      required: [category, description]
+      properties:
+        category:
+          type: string
+          enum: [route, bus, service, driver, stop, other]
+          description: Tipo de incidencia reportada.
+        description:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Comentarios del reporte.
 
     Incident:
       type: object

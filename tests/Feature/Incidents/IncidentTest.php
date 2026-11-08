@@ -42,6 +42,26 @@ class IncidentTest extends TestCase
             ->assertSee('Otro');
     }
 
+    public function test_passenger_menu_offers_direct_access_to_the_report_module(): void
+    {
+        $this->actingAs($this->passenger())
+            ->get(route('passenger.menu'))
+            ->assertOk()
+            ->assertSee(route('incidents.create'), false)
+            ->assertSee(route('incidents.index'), false)
+            ->assertSee('Reportes');
+    }
+
+    public function test_report_form_is_available_to_driver_and_admin_roles(): void
+    {
+        foreach (['driver', 'admin'] as $role) {
+            $this->actingAs(User::factory()->create(['role' => $role]))
+                ->get(route('incidents.create'))
+                ->assertOk()
+                ->assertSee('Reportar una incidencia');
+        }
+    }
+
     public function test_user_can_submit_an_incident_with_pending_status(): void
     {
         $user = $this->passenger();

@@ -152,6 +152,24 @@
                             @endforelse
                         </div>
 
+                        {{-- Recorrido completo: se despliega sin salir de la tarjeta --}}
+                        @if ($n > 3)
+                            <details class="group -mt-2 rounded-2xl border border-slate-100 bg-white/60 px-3 py-2">
+                                <summary class="flex cursor-pointer list-none items-center justify-between gap-2 text-[11px] font-semibold text-[#4b5a85] marker:hidden">
+                                    <span>Ver las {{ $n }} paradas</span>
+                                    <svg class="h-3.5 w-3.5 transition group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                                </summary>
+                                <ol class="mt-2 space-y-1.5">
+                                    @foreach ($stops as $stop)
+                                        <li class="flex items-start gap-2 text-[11px] text-[#5b6788]">
+                                            <span class="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white" style="background-color: {{ $color }}">{{ $loop->iteration }}</span>
+                                            <span class="min-w-0">{{ $stop->name }}</span>
+                                        </li>
+                                    @endforeach
+                                </ol>
+                            </details>
+                        @endif
+
                         {{-- Pie: conteos + acciones + botón --}}
                         <div class="flex flex-wrap items-center justify-between gap-2">
                             <div class="flex flex-wrap items-center gap-2">

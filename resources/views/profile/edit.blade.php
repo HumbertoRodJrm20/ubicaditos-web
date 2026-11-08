@@ -1,13 +1,10 @@
 @php
     $user = Auth::user();
-    $attrs = $user->getAttributes();
 
-    $firstField = collect(['first_name', 'nombres', 'nombre', 'name'])->first(fn ($c) => array_key_exists($c, $attrs)) ?? 'name';
-    $lastField = collect(['last_name', 'apellidos', 'apellido', 'surname'])->first(fn ($c) => array_key_exists($c, $attrs));
-
-    $firstName = $user->{$firstField};
-    $lastName = $lastField ? $user->{$lastField} : '';
-    $fullName = trim($firstName . ' ' . $lastName) ?: $user->name;
+    $firstName = $user->first_name ?? '';
+    $lastName = $user->last_name ?? '';
+    $maternalLastName = $user->maternal_last_name ?? '';
+    $fullName = trim((string) $user->name) ?: 'Usuario';
 
     $initials = collect(explode(' ', $fullName))->filter()->map(fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)))->take(2)->implode('');
     $favoriteStops = $favoriteStops ?? $user->favoriteStops;
@@ -73,6 +70,9 @@
                         Cerrar sesión
                     </button>
                 </form>
+                <p class="mt-2 text-center text-[10px] leading-4 text-slate-400 dark:text-gray-500">
+                    Al cerrar sesión se invalida tu sesión y se desactivan los enlaces de ubicación activos.
+                </p>
             </div>
         </aside>
 
@@ -89,16 +89,30 @@
                     <div class="grid gap-4 md:grid-cols-3">
                         <div>
                             <label for="first_name" class="{{ $labelClass }}">Nombre</label>
-                            <input id="first_name" name="{{ $firstField }}" type="text" value="{{ old($firstField, $firstName) }}" required autocomplete="given-name" class="{{ $inputClass }}">
-                            @error($firstField)<p class="mt-1 text-xs text-rose-500">{{ $message }}</p>@enderror
+                            <input id="first_name" name="first_name" type="text" value="{{ old('first_name', $firstName) }}" required autocomplete="given-name" class="{{ $inputClass }}">
+                            @error('first_name')<p class="mt-1 text-xs text-rose-500">{{ $message }}</p>@enderror
                         </div>
                         <div>
-                            <label for="last_name" class="{{ $labelClass }}">Apellidos</label>
-                            <input id="last_name" @if($lastField) name="{{ $lastField }}" @endif type="text" value="{{ $lastField ? old($lastField, $lastName) : '' }}" placeholder="Apellidos" autocomplete="family-name" class="{{ $inputClass }}">
-                            @if($lastField) @error($lastField)<p class="mt-1 text-xs text-rose-500">{{ $message }}</p>@enderror @endif
+                            <label for="last_name" class="{{ $labelClass }}">Apellido paterno</label>
+                            <input id="last_name" name="last_name" type="text" value="{{ old('last_name', $lastName) }}" required autocomplete="family-name" class="{{ $inputClass }}">
+                            @error('last_name')<p class="mt-1 text-xs text-rose-500">{{ $message }}</p>@enderror
                         </div>
                         <div>
-                            <label for="email" class="{{ $labelClass }}">Correo</label>
+                            <label for="maternal_last_name" class="{{ $labelClass }}">Apellido materno</label>
+                            <input id="maternal_last_name" name="maternal_last_name" type="text" value="{{ old('maternal_last_name', $maternalLastName) }}" required autocomplete="additional-name" class="{{ $inputClass }}">
+                            @error('maternal_last_name')<p class="mt-1 text-xs text-rose-500">{{ $message }}</p>@enderror
+                        </div>
+                    </div>
+
+                    <div class="mt-4 grid gap-4 md:grid-cols-2">
+                        <div>
+                            <label for="phone" class="{{ $labelClass }}">Teléfono</label>
+                            <input id="phone" name="phone" type="tel" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" value="{{ old('phone', $user->phone) }}" placeholder="10 dígitos" autocomplete="tel" class="{{ $inputClass }}">
+                            <p class="mt-1 text-[11px] text-slate-500 dark:text-gray-400">Opcional. Si lo escribes, deben ser exactamente 10 dígitos.</p>
+                            @error('phone')<p class="mt-1 text-xs text-rose-500">{{ $message }}</p>@enderror
+                        </div>
+                        <div>
+                            <label for="email" class="{{ $labelClass }}">Correo electrónico</label>
                             <input id="email" name="email" type="email" value="{{ old('email', $user->email) }}" required autocomplete="username" class="{{ $inputClass }}">
                             @error('email')<p class="mt-1 text-xs text-rose-500">{{ $message }}</p>@enderror
                         </div>
@@ -194,7 +208,7 @@
                             <label for="current_password" class="{{ $labelClass }}">Contraseña actual</label>
                             <div class="relative">
                                 <input id="current_password" name="current_password" type="password" autocomplete="current-password" placeholder="••••••••" class="{{ $inputClass }} pr-10">
-                                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">{!! $eye !!}</span>
+                                <button type="button" data-toggle-password aria-pressed="false" aria-label="Mostrar u ocultar contraseña" title="Mostrar u ocultar contraseña" class="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#6b7aa8]/40 dark:hover:bg-gray-600 dark:hover:text-gray-200">{!! $eye !!}</button>
                             </div>
                             @if($errors->updatePassword->has('current_password'))<p class="mt-1 text-xs text-rose-500">{{ $errors->updatePassword->first('current_password') }}</p>@endif
                         </div>
@@ -202,7 +216,7 @@
                             <label for="password" class="{{ $labelClass }}">Nueva contraseña</label>
                             <div class="relative">
                                 <input id="password" name="password" type="password" autocomplete="new-password" placeholder="Nueva contraseña" class="{{ $inputClass }} pr-10">
-                                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">{!! $eye !!}</span>
+                                <button type="button" data-toggle-password aria-pressed="false" aria-label="Mostrar u ocultar contraseña" title="Mostrar u ocultar contraseña" class="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#6b7aa8]/40 dark:hover:bg-gray-600 dark:hover:text-gray-200">{!! $eye !!}</button>
                             </div>
                             @if($errors->updatePassword->has('password'))<p class="mt-1 text-xs text-rose-500">{{ $errors->updatePassword->first('password') }}</p>@endif
                         </div>
@@ -210,7 +224,7 @@
                             <label for="password_confirmation" class="{{ $labelClass }}">Confirmar contraseña</label>
                             <div class="relative">
                                 <input id="password_confirmation" name="password_confirmation" type="password" autocomplete="new-password" placeholder="Repite la contraseña" class="{{ $inputClass }} pr-10">
-                                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">{!! $eye !!}</span>
+                                <button type="button" data-toggle-password aria-pressed="false" aria-label="Mostrar u ocultar contraseña" title="Mostrar u ocultar contraseña" class="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#6b7aa8]/40 dark:hover:bg-gray-600 dark:hover:text-gray-200">{!! $eye !!}</button>
                             </div>
                             @if($errors->updatePassword->has('password_confirmation'))<p class="mt-1 text-xs text-rose-500">{{ $errors->updatePassword->first('password_confirmation') }}</p>@endif
                         </div>
@@ -266,5 +280,17 @@
         @if($errors->userDeletion->isNotEmpty())
             deleteDialog.showModal();
         @endif
+
+        // Mostrar u ocultar contraseñas sin enviar el formulario.
+        document.querySelectorAll('[data-toggle-password]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                const input = button.closest('div')?.querySelector('input');
+                if (!input) return;
+
+                const showing = input.type === 'text';
+                input.type = showing ? 'password' : 'text';
+                button.setAttribute('aria-pressed', showing ? 'false' : 'true');
+            });
+        });
     </script>
 </x-passenger-layout>

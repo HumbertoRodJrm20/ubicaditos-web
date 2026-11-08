@@ -272,21 +272,34 @@
             // de modo que puede volver a seguir al GPS.
             centerLocked = false;
 
-            if (userLocationMarker) {
-                map.flyTo(userLocationMarker.getLatLng(), 16);
-            } else {
-                // Sin posición conocida: pide una fix al navegador y centra con ella.
-                map.locate({ setView: true, maxZoom: 16 });
-            }
+            console.log("Requesting device location...");
+
+            map.locate({
+                setView: false,
+                enableHighAccuracy: true,
+                maximumAge: 0,
+                timeout: 20000
+            });
         });
 
         // Leaflet emite estos eventos cuando se llama a map.locate().
         map.on('locationfound', function(e) {
-            updateUserLocationMarker(e.latlng.lat, e.latlng.lng, e.accuracy);
+            console.log('Location:', e.latlng);
+                console.log('Accuracy:', e.accuracy);
+
+                updateUserLocationMarker(
+                    e.latlng.lat,
+                    e.latlng.lng,
+                    e.accuracy
+                );
+
+                map.flyTo(e.latlng, 16);
         });
 
         map.on('locationerror', function(e) {
             console.warn('⚠ No se pudo obtener tu ubicación:', e.message);
+
+            alert(`Unable to retrieve location: ${e.message}`);
         });
 
         // ===== Paneles flotantes colapsables (data-collapse-target) =====

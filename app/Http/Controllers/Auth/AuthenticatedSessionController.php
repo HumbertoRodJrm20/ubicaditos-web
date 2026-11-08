@@ -36,6 +36,17 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        // Cierre de sesión seguro: antes de destruir la sesión se revocan los
+        // enlaces temporales de ubicación que el usuario tuviera activos.
+        $user = $request->user();
+
+        if ($user !== null) {
+            $user->locationShares()
+                ->whereNull('revoked_at')
+                ->where('expires_at', '>', now())
+                ->update(['revoked_at' => now()]);
+        }
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();

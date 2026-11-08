@@ -18,6 +18,7 @@ resources/views/
 │   └── emergencies.blade.php
 ├── driver/           # dashboard, map, statistics
 ├── passenger/        # dashboard (mapa), menu, routes, buses
+├── incidents/        # index y create de reportes ciudadanos del usuario
 ├── share/            # show (mapa público de ubicación compartida)
 ├── dashboard.blade.php
 └── welcome.blade.php
@@ -116,10 +117,13 @@ Comportamiento del mapa del conductor:
 | Vista | Controlador | Contenido |
 |-------|-------------|-----------|
 | `passenger/dashboard` | `PassengerController@map` | Página principal: mapa interactivo a pantalla completa, integrado con el módulo de tiempo real (Echo/WebSocket con *fallback* de polling) y con un buscador que filtra paradas y autobuses. Incluye contador de flota (`#fleet-counter`), indicador de estado de conexión (`#realtime-status`), botón de **me gusta** por parada y el panel **"Compartir mi ubicación"** (crear, actualizar, copiar y detener un enlace temporal). |
-| `passenger/menu` | `PassengerController@index` | Accesos a mapa, rutas y autobuses; listas de **paradas favoritas** y **rutas favoritas** con opción de eliminarlas. |
-| `passenger/routes` | `PassengerController@routes` | Tarjetas de rutas con paradas, autobuses, contador público de me gusta, botón de like, botón de favorito y filtro **"Favoritas"**. |
+| `passenger/menu` | `PassengerController@index` | Accesos a mapa, rutas, autobuses y **reportes**; listas de **paradas favoritas** y **rutas favoritas** con opción de eliminarlas. La tarjeta de reportes muestra el total enviado y los pendientes. |
+| `passenger/routes` | `PassengerController@routes` | Tarjetas de rutas con paradas, autobuses, contador público de me gusta, botón de like, botón de favorito y filtro **"Favoritas"**. Cada tarjeta puede desplegar el recorrido completo de paradas con **"Ver las N paradas"**. |
 | `passenger/buses` | `PassengerController@buses` | Lista de autobuses con filtros de servidor (`q`, ruta, estado y orden) más chips de estado y ruta, select de orden (placa u ocupación), insignias de estado, barras de ocupación, asientos libres, modal de **detalles** (`#bus-details-modal`, con asientos en `#bd-seats`) y modal para **calificar al conductor** con estrellas. El buscador filtra al instante en cliente con `filterBuses()` (sobre atributos `data-*` de cada tarjeta) y `#no-buses-message` muestra el estado vacío. |
 | `share/show` | `LocationShareController@show` | Página pública (sin sesión) con mapa Leaflet que consulta `/api/share/{token}` cada 5 s y dibuja la última posición compartida. Muestra un aviso cuando el enlace caduca o se revoca. |
+| `incidents/create` | `IncidentController@create` | Formulario glass de reporte: selector de categoría con seis opciones, comentarios con contador de 1000 caracteres, explicación de estados y enlaces de regreso al listado. |
+| `incidents/index` | `IncidentController@index` | Listado de los reportes del usuario con contadores por estado (`pending`, `in_review`, `resolved`), categoría, fecha, descripción y acceso al formulario. |
+| `profile/edit` | `ProfileController@edit` | Perfil glass con datos personales (nombre, apellido paterno, apellido materno y teléfono), correo, métricas reales, listas de favoritos, cambio de contraseña, eliminación de cuenta y cierre de sesión seguro. Los campos de contraseña incluyen botones para mostrar u ocultar el valor. |
 
 Funcionalidades del mapa del pasajero (`passenger/dashboard`):
 
