@@ -20,9 +20,13 @@ Convenciones comunes:
 | `Admin\RouteController` | `auth`, `admin` | CRUD de rutas y sus paradas. |
 | `Admin\UserController` | `auth`, `admin` | Alta, edición y baja de usuarios. |
 | `Admin\ReportController` | `auth`, `admin` | Reportes, gráficas y exportación PDF/CSV. |
+| `Admin\IncidentManagementController` | `auth`, `admin` | Listado global, filtros y cambio de estado de los reportes ciudadanos. |
 | `Admin\StopController` | `auth`, `admin` | CRUD de paradas (**sin implementar**). |
 | `Driver\DriverController` | `auth`, `driver` | Panel, mapa, estadísticas, viajes, GPS, pasajeros y emergencias. |
 | `Passenger\PassengerController` | `auth`, `passenger` | Mapa, rutas, autobuses, favoritos y calificaciones. |
+| `Passenger\FavoriteRouteController` | `auth`, `passenger` | Alta y baja de rutas favoritas. |
+| `LikeController` | `auth` | Toggle de me gusta sobre rutas y paradas (cualquier rol). |
+| `LocationShareController` | `auth` / público | Enlaces temporales de ubicación y consulta pública del token. |
 | `Auth\*` | `guest` / `auth` | Autenticación de Laravel Breeze. |
 
 ## DashboardController
@@ -199,9 +203,9 @@ Si todo es válido, se crea un `Trip` con estado `in_progress` y se informa la p
 
 | Método | Ruta | Respuesta | Descripción |
 |--------|------|-----------|-------------|
-| `map()` | `GET /passenger` | Vista `passenger.dashboard` | Página principal del pasajero: mapa con rutas activas, paradas activas y autobuses activos. |
-| `index()` | `GET /passenger/menu` | Vista `passenger.menu` | Menú de opciones y paradas favoritas del usuario. |
-| `routes()` | `GET /passenger/routes` | Vista `passenger.routes` | Rutas activas con sus paradas y autobuses. |
+| `map()` | `GET /passenger` | Vista `passenger.dashboard` | Página principal del pasajero: mapa con rutas activas, paradas activas (con `likes_count`) y autobuses activos; incluye `likedStopIds` para pintar el estado personal de los me gusta. |
+| `index()` | `GET /passenger/menu` | Vista `passenger.menu` | Menú de opciones, paradas favoritas y rutas favoritas del usuario. |
+| `routes()` | `GET /passenger/routes` | Vista `passenger.routes` | Rutas activas con sus paradas, autobuses, `likes_count`, `favoriteRouteIds` y `likedRouteIds`. |
 | `buses(Request)` | `GET /passenger/buses` | Vista `passenger.buses` | Listado filtrado en servidor: `q` (placa, modelo o nombre del conductor), `route_id`, `status` (por defecto `active`; `all` muestra todos) y `sort` (`plate` A-Z por defecto, u `occupancy` por ocupación descendente). Pasa además las rutas activas y `$busDetailsData`, un arreglo con datos verificables por autobús (placa, modelo, capacidad, pasajeros, asientos libres, estado, ruta, conductor, última actualización y enlace al mapa) que alimenta el modal de detalles. |
 | `addFavorite(Stop $stop)` | `POST /passenger/favorites/{stop}` | JSON o redirección | Agrega la parada a favoritos con `nickname` opcional. Evita duplicados. |
 | `removeFavorite(Stop $stop)` | `DELETE /passenger/favorites/{stop}` | JSON o redirección | Quita la parada de favoritos. |
@@ -209,13 +213,49 @@ Si todo es válido, se crea un `Trip` con estado `in_progress` y se informa la p
 
 Los métodos de favoritos detectan con `request()->expectsJson()` si la llamada viene de JavaScript (mapa) o de un formulario (menú) y responden en el formato adecuado.
 
+## Passenger\FavoriteRouteController
+
+| Método | Ruta | Respuesta | Descripción |
+|--------|------|-----------|-------------|
+| `add(Route $route)` | `POST /passenger/favorite-routes/{route}` | JSON o redirección | Guarda la ruta en favoritos. Si ya existe responde 400 con `error`. |
+| `remove(Route $route)` | `DELETE /passenger/favorite-routes/{route}` | JSON o redirección | Quita la ruta de favoritos. |
+
+## LikeController
+
+| Método | Ruta | Respuesta | Descripción |
+|--------|------|-----------|-------------|
+| `toggleRoute(Route $route)` | `POST /likes/routes/{route}` | JSON `{liked, count}` o redirección | Alterna el me gusta del usuario autenticado. |
+| `toggleStop(Stop $stop)` | `POST /likes/stops/{stop}` | JSON `{liked, count}` o redirección | Alterna el me gusta sobre la parada. |
+
+El contador se calcula con `$likeable->likes()->count()` después de crear o borrar el registro, y el estado personal se expone en las vistas con `likedRouteIds` / `likedStopIds`.
+
+## LocationShareController
+
+| Método | Ruta | Middleware | Descripción |
+|--------|------|------------|-------------|
+| `start(Request)` | `POST /passenger/share-location` | `auth`, `passenger` | Valida coordenadas y crea un enlace nuevo; revoca el anterior. Responde `{active, id, token, url, credentials, expires_at}` en JSON. |
+| `update(Request, LocationShare)` | `PATCH /passenger/share-location/{share}` | `auth`, `passenger` | Solo el dueño puede actualizar la posición (403 en caso contrario). |
+| `stop(Request, LocationShare)` | `DELETE /passenger/share-location/{share}` | `auth`, `passenger` | Solo el dueño puede revocar el enlace. |
+| `current(Request)` | `GET /passenger/share-location/current` | `auth`, `passenger` | Devuelve `{active, share}` para rehidratar la UI tras recargar. |
+| `show(string $token)` | `GET /share/{token}` | público | Página `share.show`; 404 si el enlace caducó o fue revocado. |
+| `data(string $token)` | `GET /api/share/{token}` | público | JSON con la última posición; nunca incluye nombre, correo ni ID del pasajero. |
+
+Validaciones: `latitude` entre −90 y 90, `longitude` entre −180 y 180 y `accuracy` entero entre 0 y 65535. El token es `Str::random(48)` y la caducidad por defecto es de 30 minutos (`LocationShare::TTL_MINUTES`).
+
+## Admin\IncidentManagementController
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `index(Request)` | `GET /admin/incidents` | Listado global paginado con filtros `status`, `category` y búsqueda `q` (descripción o datos del autor); incluye contadores por estado. |
+| `update(Request, Incident)` | `PATCH /admin/incidents/{incident}` | Cambia el estado a `pending`, `in_review` o `resolved`; fija `resolved_at` al resolver y lo limpia al reabrir. |
+
 ## ProfileController
 
 Proviene de Breeze.
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| `edit()` | `GET /profile` | Formulario de perfil, cambio de contraseña y eliminación de cuenta. |
+| `edit()` | `GET /profile` | Formulario de perfil, métricas reales (rutas/paradas favoritas, calificaciones emitidas, me gusta y reportes), listas de favoritos, cambio de contraseña y eliminación de cuenta. |
 | `update(ProfileUpdateRequest)` | `PATCH /profile` | Actualiza los datos; si cambia el correo, anula su verificación. |
 | `destroy()` | `DELETE /profile` | Elimina la cuenta tras confirmar la contraseña, cierra sesión e invalida la sesión. |
 

@@ -10,9 +10,11 @@ class PassengerController extends Controller
 {
     public function index()
     {
-        $favoriteStops = auth()->user()->favoriteStops;
+        $user = auth()->user();
+        $favoriteStops = $user->favoriteStops()->with('routes')->get();
+        $favoriteRoutes = $user->favoriteRoutes()->withCount('likes')->get();
 
-        return view('passenger.menu', compact('favoriteStops'));
+        return view('passenger.menu', compact('favoriteStops', 'favoriteRoutes'));
     }
 
     public function map()
@@ -21,16 +23,31 @@ class PassengerController extends Controller
             $query->where('status', 'active');
         }])->where('is_active', true)->get();
 
-        $stops = Stop::where('is_active', true)->get();
+        $stops = Stop::withCount('likes')->where('is_active', true)->get();
         $buses = Bus::with(['driver', 'routes'])->where('status', 'active')->get();
 
-        return view('passenger.dashboard', compact('routes', 'stops', 'buses'));
+        $likedStopIds = auth()->user()->likes()
+            ->where('likeable_type', Stop::class)
+            ->pluck('likeable_id');
+
+        return view('passenger.dashboard', compact('routes', 'stops', 'buses', 'likedStopIds'));
     }
 
     public function routes()
     {
-        $routes = Route::with(['stops', 'buses'])->where('is_active', true)->get();
-        return view('passenger.routes', compact('routes'));
+        $routes = Route::with(['stops', 'buses'])
+            ->withCount('likes')
+            ->where('is_active', true)
+            ->get();
+
+        $user = auth()->user();
+
+        $favoriteRouteIds = $user->favoriteRoutes()->pluck('routes.id');
+        $likedRouteIds = $user->likes()
+            ->where('likeable_type', Route::class)
+            ->pluck('likeable_id');
+
+        return view('passenger.routes', compact('routes', 'favoriteRouteIds', 'likedRouteIds'));
     }
 
     /**

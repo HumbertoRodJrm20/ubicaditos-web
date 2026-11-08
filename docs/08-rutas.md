@@ -43,11 +43,15 @@ Prefijo `/admin`, nombre `admin.*`, middleware `auth` + `admin`.
 | GET | `/admin/passengers` | `admin.passengers` | `AdminController@passengers` |
 | GET | `/admin/emergencies` | `admin.emergencies` | `AdminController@emergencies` |
 | POST | `/admin/emergencies/{emergency}/resolve` | `admin.emergencies.resolve` | `AdminController@resolveEmergency` |
+| GET | `/admin/incidents` | `admin.incidents.index` | `IncidentManagementController@index` |
+| PATCH | `/admin/incidents/{incident}` | `admin.incidents.update` | `IncidentManagementController@update` |
 | GET | `/admin/reports` | `admin.reports` | `ReportController@index` |
 | GET | `/admin/reports/export-pdf` | `admin.reports.export-pdf` | `ReportController@exportPdf` |
 | GET | `/admin/reports/export-excel` | `admin.reports.export-excel` | `ReportController@exportExcel` |
 
 Las rutas de incidencias aceptan los parámetros de consulta `status` (`pending` | `in_progress` | `resolved`) y `type` (`accident` | `breakdown` | `medical` | `security` | `other`). La acción `resolve` solo aplica a incidencias **pendientes**; al resolverla, si el autobús asociado estaba en estado `emergency`, vuelve a `active`.
+
+Los **reportes ciudadanos** (`admin.incidents.*`) aceptan `status` (`pending` | `in_review` | `resolved`), `category` (`route` | `bus` | `service` | `driver` | `stop` | `other`) y la búsqueda `q` (descripción o datos del autor). La acción `update` recibe `status`; al pasar a `resolved` fija `resolved_at`, y al reabrir el reporte lo limpia.
 
 ### Recursos CRUD
 
@@ -99,7 +103,31 @@ Prefijo `/passenger`, nombre `passenger.*`, middleware `auth` + `passenger`.
 | GET | `/passenger/buses` | `passenger.buses` | `PassengerController@buses` | `q` (placa, modelo o conductor), `route_id`, `status` (por defecto `active`; `all` muestra todos), `sort` (`plate` \| `occupancy`) |
 | POST | `/passenger/favorites/{stop}` | `passenger.favorites.add` | `PassengerController@addFavorite` | `nickname` (opcional) |
 | DELETE | `/passenger/favorites/{stop}` | `passenger.favorites.remove` | `PassengerController@removeFavorite` | — |
+| POST | `/passenger/favorite-routes/{route}` | `passenger.favorite-routes.add` | `FavoriteRouteController@add` | — |
+| DELETE | `/passenger/favorite-routes/{route}` | `passenger.favorite-routes.remove` | `FavoriteRouteController@remove` | — |
+| POST | `/passenger/share-location` | `passenger.share-location.start` | `LocationShareController@start` | `latitude`, `longitude`, `accuracy` (opcional) |
+| GET | `/passenger/share-location/current` | `passenger.share-location.current` | `LocationShareController@current` | — |
+| PATCH | `/passenger/share-location/{share}` | `passenger.share-location.update` | `LocationShareController@update` | `latitude`, `longitude`, `accuracy` (opcional) |
+| DELETE | `/passenger/share-location/{share}` | `passenger.share-location.stop` | `LocationShareController@stop` | — |
 | POST | `/passenger/rate/{driver}` | `passenger.rate` | `PassengerController@rateDriver` | `rating` (1–5), `comment` (opcional) |
+
+## Rutas de me gusta
+
+Middleware `auth` (cualquier rol autenticado). El estado se alterna en cada llamada.
+
+| Método | URI | Nombre | Acción |
+|--------|-----|--------|--------|
+| POST | `/likes/routes/{route}` | `likes.routes.toggle` | `LikeController@toggleRoute` |
+| POST | `/likes/stops/{stop}` | `likes.stops.toggle` | `LikeController@toggleStop` |
+
+## Rutas públicas de ubicación compartida
+
+Sin sesión. Devuelven 404 si el token no existe, caducó o fue revocado.
+
+| Método | URI | Nombre | Acción |
+|--------|-----|--------|--------|
+| GET | `/share/{token}` | `share.show` | `LocationShareController@show` (HTML) |
+| GET | `/api/share/{token}` | `api.share.data` | `LocationShareController@data` (JSON) |
 
 ## Rutas de autenticación
 
@@ -194,6 +222,40 @@ Cuando la petición incluye `Accept: application/json`, responde:
 | Agregada | 200 | `{"success": true, "message": "Parada agregada a favoritos"}` |
 | Ya existía | 400 | `{"error": "Esta parada ya está en tus favoritos"}` |
 | Eliminada | 200 | `{"success": true, "message": "Parada eliminada de favoritos"}` |
+
+### POST / DELETE /passenger/favorite-routes/{route}
+
+| Caso | Código | Cuerpo |
+|------|--------|--------|
+| Agregada | 200 | `{"success": true, "message": "Ruta agregada a favoritos"}` |
+| Ya existía | 400 | `{"error": "Esta ruta ya está en tus favoritos"}` |
+| Eliminada | 200 | `{"success": true, "message": "Ruta eliminada de favoritos"}` |
+
+### POST /likes/routes/{route} y POST /likes/stops/{stop}
+
+Alternan el me gusta del usuario autenticado. Responden en JSON cuando la petición lo espera:
+
+```json
+{ "liked": true, "count": 12 }
+```
+
+`liked` indica el estado resultante para el usuario y `count` es el total público de la entidad. El índice único de `likes` impide duplicados.
+
+### Enlaces de ubicación compartida
+
+| Método y ruta | Respuesta |
+|---------------|-----------|
+| `POST /passenger/share-location` | `{"active": true, "id": 1, "token": "…48 caracteres…", "url": "http://…/share/…", "expires_at": "…", "accuracy": 12}` |
+| `GET /passenger/share-location/current` | `{"active": true, "share": {…}}` o `{"active": false}` |
+| `PATCH /passenger/share-location/{share}` | `{"active": true, "share": {…}}`; 403 si el enlace es de otro usuario |
+| `DELETE /passenger/share-location/{share}` | `{"active": false}`; 403 si el enlace es de otro usuario |
+| `GET /api/share/{token}` | `{"active": true, "latitude": …, "longitude": …, "accuracy": …, "expires_at": "…"}`; 404 si caducó o fue revocado |
+
+Al iniciar un enlace nuevo se revoca el anterior del mismo usuario. La caducidad por defecto es de **30 minutos**. El payload público no incluye nombre, correo ni ID del pasajero.
+
+### PATCH /admin/incidents/{incident}
+
+Recibe `status` (`pending`, `in_review`, `resolved`). Responde con redirección y mensaje flash; `resolved_at` se fija al resolver y se limpia al reabrir.
 
 ### POST /check-email
 

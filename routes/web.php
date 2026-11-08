@@ -3,8 +3,12 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\IncidentController;
+use App\Http\Controllers\LikeController;
+use App\Http\Controllers\LocationShareController;
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\IncidentManagementController;
 use App\Http\Controllers\Driver\DriverController;
+use App\Http\Controllers\Passenger\FavoriteRouteController;
 use App\Http\Controllers\Passenger\PassengerController;
 use Illuminate\Support\Facades\Route;
 
@@ -45,6 +49,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('emergencies', [AdminController::class, 'emergencies'])->name('emergencies');
     Route::post('emergencies/{emergency}/resolve', [AdminController::class, 'resolveEmergency'])->name('emergencies.resolve');
 
+    // Reportes de incidencias enviados por los usuarios
+    Route::get('incidents', [IncidentManagementController::class, 'index'])->name('incidents.index');
+    Route::patch('incidents/{incident}', [IncidentManagementController::class, 'update'])->name('incidents.update');
+
     // Driver Management
     Route::get('drivers', [AdminController::class, 'drivers'])->name('drivers');
     Route::post('drivers/{driver}/assign-bus', [AdminController::class, 'assignBusToDriver'])->name('drivers.assign-bus');
@@ -77,8 +85,24 @@ Route::middleware(['auth', 'passenger'])->prefix('passenger')->name('passenger.'
     Route::post('/favorites/{stop}', [PassengerController::class, 'addFavorite'])->name('favorites.add');
     Route::delete('/favorites/{stop}', [PassengerController::class, 'removeFavorite'])->name('favorites.remove');
 
+    // Favorite Routes
+    Route::post('/favorite-routes/{route}', [FavoriteRouteController::class, 'add'])->name('favorite-routes.add');
+    Route::delete('/favorite-routes/{route}', [FavoriteRouteController::class, 'remove'])->name('favorite-routes.remove');
+
+    // Compartir ubicación en vivo
+    Route::post('/share-location', [LocationShareController::class, 'start'])->name('share-location.start');
+    Route::get('/share-location/current', [LocationShareController::class, 'current'])->name('share-location.current');
+    Route::patch('/share-location/{share}', [LocationShareController::class, 'update'])->name('share-location.update');
+    Route::delete('/share-location/{share}', [LocationShareController::class, 'stop'])->name('share-location.stop');
+
     // Ratings
     Route::post('/rate/{driver}', [PassengerController::class, 'rateDriver'])->name('rate');
+});
+
+// Likes públicos de rutas y paradas (cualquier usuario autenticado)
+Route::middleware('auth')->group(function () {
+    Route::post('/likes/routes/{route}', [LikeController::class, 'toggleRoute'])->name('likes.routes.toggle');
+    Route::post('/likes/stops/{stop}', [LikeController::class, 'toggleStop'])->name('likes.stops.toggle');
 });
 
 // API Routes for real-time data (accessible by all authenticated users)
@@ -98,5 +122,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/incidents/create', [IncidentController::class, 'create'])->name('incidents.create');
     Route::post('/incidents', [IncidentController::class, 'store'])->name('incidents.store');
 });
+
+// Enlace público para compartir la ubicación (sin autenticación)
+Route::get('/share/{token}', [LocationShareController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]{48}')
+    ->name('share.show');
+
+Route::get('/api/share/{token}', [LocationShareController::class, 'data'])
+    ->where('token', '[A-Za-z0-9]{48}')
+    ->name('api.share.data');
 
 require __DIR__.'/auth.php';

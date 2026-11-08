@@ -14,9 +14,11 @@ resources/views/
 │   ├── buses/        # index, create, edit, show
 │   ├── routes/       # index, create, edit
 │   ├── users/        # create, edit
+│   ├── incidents/    # index (gestión de reportes ciudadanos)
 │   └── emergencies.blade.php
 ├── driver/           # dashboard, map, statistics
 ├── passenger/        # dashboard (mapa), menu, routes, buses
+├── share/            # show (mapa público de ubicación compartida)
 ├── dashboard.blade.php
 └── welcome.blade.php
 ```
@@ -40,9 +42,9 @@ Las imágenes del proyecto están en `public/images` (`autobus.svg`, `autobusfbl
 
 | Layout | Uso | Características |
 |--------|-----|-----------------|
-| `layouts/app.blade.php` | Páginas autenticadas, usado como `<x-app-layout>`. | Incluye el token CSRF en `<meta>`, la fuente Figtree, *preconnect* a unpkg, OSRM y OpenStreetMap, el CSS de Leaflet, la navegación, un `$header` opcional y el `$slot` principal sobre un fondo con degradado (con variante oscura). |
-| `layouts/guest.blade.php` | Pantallas de autenticación, usado como `<x-guest-layout>`. | Tarjeta centrada con el logotipo. |
-| `layouts/navigation.blade.php` | Barra superior. | Enlaces según el rol del usuario, menú desplegable de perfil y cierre de sesión, menú responsive para móvil y **conmutador de modo oscuro** persistido en `localStorage`. |
+| `layouts/app.blade.php` | Páginas autenticadas, usado como `<x-app-layout>`. | Incluye el token CSRF en `<meta>`, la fuente Figtree, *preconnect* a unpkg, OSRM y OpenStreetMap, el CSS de Leaflet, la navegación glass, un `$header` opcional translúcido y el `$slot` principal sobre un fondo con degradado suave y orbes difuminados (con variante oscura). |
+| `layouts/guest.blade.php` | Pantallas de autenticación, usado como `<x-guest-layout>`. | Fondo con orbes difuminados, logotipo en píldora glass y tarjeta central translúcida (`backdrop-blur-xl`) con borde blanco. |
+| `layouts/navigation.blade.php` | Barra superior. | Envoltura *sticky* que renderiza `<x-passenger-nav />`: enlaces según el rol, menú responsive, menú de perfil y **conmutador de modo oscuro** persistido en `localStorage['darkMode']`. |
 
 Las clases `App\View\Components\AppLayout` y `GuestLayout` simplemente devuelven estas plantillas.
 
@@ -53,14 +55,14 @@ Componentes anónimos en `resources/views/components`, provenientes de Breeze y 
 | Componente | Uso |
 |------------|-----|
 | `<x-application-logo>` | Logotipo de la aplicación. |
-| `<x-auth-session-status>` | Mensaje de estado de sesión (por ejemplo, "enlace enviado"). |
-| `<x-input-label>`, `<x-text-input>`, `<x-input-error>` | Etiqueta, campo de texto y errores de validación. |
-| `<x-primary-button>`, `<x-secondary-button>`, `<x-danger-button>` | Botones con estilos predefinidos. |
-| `<x-dropdown>`, `<x-dropdown-link>` | Menú desplegable con Alpine. |
-| `<x-nav-link>`, `<x-responsive-nav-link>` | Enlaces de navegación con estado activo. |
-| `<x-modal>` | Modal accesible controlado por eventos de Alpine. |
+| `<x-auth-session-status>` | Mensaje de estado de sesión (por ejemplo, "enlace enviado") en píldora esmeralda. |
+| `<x-input-label>`, `<x-text-input>`, `<x-input-error>` | Etiqueta, campo de texto y errores de validación con estilo glass. |
+| `<x-primary-button>`, `<x-secondary-button>`, `<x-danger-button>` | Botones píldora con degradado azul, glass blanco y rosa, respectivamente. |
+| `<x-dropdown>`, `<x-dropdown-link>` | Menú desplegable con Alpine, panel translúcido y enlaces redondeados. |
+| `<x-nav-link>`, `<x-responsive-nav-link>` | Enlaces de navegación con estado activo en píldora. |
+| `<x-modal>` | Modal accesible controlado por eventos de Alpine, con panel glass y fondo desenfocado. |
 | `<x-passenger-layout>` | Layout propio de las vistas del pasajero (fondo con degradado, barra de navegación y ranura de contenido). |
-| `<x-passenger-nav>` | Navegación por rol usada por ese layout: para conductores incluye **"Estadísticas"** (`driver.statistics`) y para administradores **"Emergencias"** (`admin.emergencies`). |
+| `<x-passenger-nav>` | Navegación por rol usada por ese layout: conductores incluyen **"Estadísticas"** (`driver.statistics`); administradores incluyen **"Incidencias"** (`admin.incidents.index`), **"Emergencias"** (`admin.emergencies`) y el resto de módulos. |
 
 ## Vistas de autenticación
 
@@ -88,8 +90,9 @@ Componentes anónimos en `resources/views/components`, provenientes de Breeze y 
 | `admin/reports` | `ReportController@index` | Tarjetas de indicadores, gráfica de línea de viajes por día y gráfica de rutas más utilizadas (Chart.js), tablas de autobuses y conductores, y botones de exportación a PDF y CSV. |
 | `admin/reports-pdf` | `ReportController@exportPdf` | Plantilla con estilos en línea, optimizada para DomPDF. |
 | `admin/emergencies` | `AdminController@emergencies`, `@resolveEmergency` | Listado de incidencias reportadas por los conductores con contadores por estado (pendientes, en atención, resueltas), filtros de estado y tipo que se autoenvían al cambiar, insignias de tipo/estado, fecha de resolución y acción **Resolver** (visible solo para incidencias pendientes, vía `POST admin.emergencies.resolve`). |
+| `admin/incidents/index` | `IncidentManagementController@index` | Gestión de **reportes ciudadanos**: contadores por estado (`pending`, `in_review`, `resolved`), filtros por estado y categoría, búsqueda por descripción/autor y tarjetas con acciones para mover el reporte entre estados (`admin.incidents.update`). `resolved_at` se fija o limpia automáticamente. |
 
-Estilo de las vistas de administración: las pantallas `admin/buses/index|create|edit`, `admin/routes/index|create|edit`, `admin/passengers` y `admin/users/create|edit` fueron **restiladas al estilo *glass*** *mobile-first* (diseño pensado para 375×667 con página de degradado a pantalla completa, paneles translúcidos con `backdrop-blur-xl` y bordes redondeados grandes, insumos y botones tipo píldora, tablas envueltas en `overflow-x-auto` y variantes de modo oscuro). La receta de estilo se define localmente en cada vista (arreglos de clases PHP en la sección `@php` superior).
+Estilo de las vistas de administración: **todas** las pantallas de administración (`admin/buses/*`, `admin/routes/*`, `admin/passengers`, `admin/users/*`, `admin/statistics`, `admin/reports`, `admin/emergencies` y `admin/incidents/index`) usan el estilo *glass* *mobile-first* (diseño pensado para 375×667 con página de degradado a pantalla completa, paneles translúcidos con `backdrop-blur-xl` y bordes redondeados grandes, insumos y botones tipo píldora, tablas envueltas en `overflow-x-auto` y variantes de modo oscuro). La receta de estilo se define localmente en cada vista (arreglos de clases PHP en la sección `@php` superior).
 
 ## Vistas del conductor
 
@@ -112,10 +115,11 @@ Comportamiento del mapa del conductor:
 
 | Vista | Controlador | Contenido |
 |-------|-------------|-----------|
-| `passenger/dashboard` | `PassengerController@map` | Página principal: mapa interactivo a pantalla completa, integrado con el módulo de tiempo real (Echo/WebSocket con *fallback* de polling) y con un buscador que filtra paradas y autobuses. Incluye contador de flota (`#fleet-counter`) e indicador de estado de conexión (`#realtime-status`). |
-| `passenger/menu` | `PassengerController@index` | Accesos a mapa, rutas y autobuses; lista de paradas favoritas con opción de eliminarlas. |
-| `passenger/routes` | `PassengerController@routes` | Tarjetas de rutas disponibles con paradas, autobuses y filtro. |
+| `passenger/dashboard` | `PassengerController@map` | Página principal: mapa interactivo a pantalla completa, integrado con el módulo de tiempo real (Echo/WebSocket con *fallback* de polling) y con un buscador que filtra paradas y autobuses. Incluye contador de flota (`#fleet-counter`), indicador de estado de conexión (`#realtime-status`), botón de **me gusta** por parada y el panel **"Compartir mi ubicación"** (crear, actualizar, copiar y detener un enlace temporal). |
+| `passenger/menu` | `PassengerController@index` | Accesos a mapa, rutas y autobuses; listas de **paradas favoritas** y **rutas favoritas** con opción de eliminarlas. |
+| `passenger/routes` | `PassengerController@routes` | Tarjetas de rutas con paradas, autobuses, contador público de me gusta, botón de like, botón de favorito y filtro **"Favoritas"**. |
 | `passenger/buses` | `PassengerController@buses` | Lista de autobuses con filtros de servidor (`q`, ruta, estado y orden) más chips de estado y ruta, select de orden (placa u ocupación), insignias de estado, barras de ocupación, asientos libres, modal de **detalles** (`#bus-details-modal`, con asientos en `#bd-seats`) y modal para **calificar al conductor** con estrellas. El buscador filtra al instante en cliente con `filterBuses()` (sobre atributos `data-*` de cada tarjeta) y `#no-buses-message` muestra el estado vacío. |
+| `share/show` | `LocationShareController@show` | Página pública (sin sesión) con mapa Leaflet que consulta `/api/share/{token}` cada 5 s y dibuja la última posición compartida. Muestra un aviso cuando el enlace caduca o se revoca. |
 
 Funcionalidades del mapa del pasajero (`passenger/dashboard`):
 
@@ -127,6 +131,8 @@ Funcionalidades del mapa del pasajero (`passenger/dashboard`):
 | Rutas más cercanas | `showNearestRoutes()` calcula, con la fórmula de Haversine, la parada más cercana de cada ruta y muestra hasta 3 rutas dentro de un radio de 5 km. |
 | Tiempos de llegada | Al seleccionar una parada, estima para cada autobús que pasa por ella el tiempo de llegada a partir de la distancia sobre la ruta, una velocidad promedio (20 km/h por defecto) y 30 segundos por parada intermedia. |
 | Favoritos | `addToFavorites()` y `removeFromFavorites()` llaman con `fetch` a `/passenger/favorites/{stop}` y actualizan el popup de la parada. |
+| Me gusta | El botón de like de cada parada llama a `POST /likes/stops/{stop}` y actualiza el contador visible sin recargar. |
+| Ubicación compartida | `startLocationSharing()` obtiene la posición con la API de geolocalización, crea el enlace en `POST /passenger/share-location` y lo actualiza con `PATCH /passenger/share-location/{id}`; el panel permite copiar la URL pública y detenerla con `DELETE`. |
 | Tiempo real | Arranca `UbicaditosRealtime` (`resources/js/realtime.js`) con polling cada 5 s: los autobuses con posición real dejan de moverse por simulación local y sus marcadores siguen los eventos; `#fleet-counter` refleja la flota (o los resultados del buscador) y `#realtime-status` muestra "en vivo", "actualizando…" o "sin conexión en vivo". |
 | Buscador del mapa | El campo "Buscar parada o ruta" filtra los marcadores por nombre de parada, dirección o placa/ruta del autobús, y actualiza el contador de flota. |
 
@@ -146,6 +152,6 @@ La interfaz está escrita directamente en español. El archivo `lang/es.json` tr
 
 | Vista | Estado |
 |-------|--------|
-| `welcome.blade.php` | Página de bienvenida por defecto de Laravel; no se usa porque `/` redirige a `/login`. |
-| `dashboard.blade.php` | Dashboard genérico de Breeze; no se usa porque `/dashboard` redirige según el rol. |
-| `profile/partials/*` | Parciales heredados de Breeze (`update-profile-information-form`, `update-password-form`, `delete-user-form`); ya no se incluyen en ninguna vista (código muerto) y no se restilaron. En cambio, `profile/edit.blade.php` —que antes los incluía— ya está escrito con el estilo glass propio del proyecto (tarjetas translúcidas, botones píldora, `backdrop-blur-xl` y modo oscuro). |
+| `welcome.blade.php` | Página de bienvenida propia con hero glass, enlaces a login/registro y panel. No se usa porque `/` redirige a `/login`, pero se mantiene coherente con el diseño. |
+| `dashboard.blade.php` | Dashboard genérico de Breeze restilado (tarjeta glass con accesos a panel y perfil); `/dashboard` redirige según el rol, por lo que es una vista de respaldo. |
+| `profile/partials/*` | Parciales heredados de Breeze (`update-profile-information-form`, `update-password-form`, `delete-user-form`). Ya no se incluyen en ninguna vista (código muerto), pero se restilaron y tradujeron al español para mantener consistencia. En cambio, `profile/edit.blade.php` —que antes los incluía— está escrito con el estilo glass propio del proyecto (tarjetas translúcidas, botones píldora, `backdrop-blur-xl` y modo oscuro). |

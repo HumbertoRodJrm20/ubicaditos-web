@@ -34,16 +34,20 @@ composer run test
 | `tests/Feature/Admin/EmergencyManagementTest.php` | Incidencias: listado, filtros, resolución solo de pendientes y vuelta de la unidad a servicio (iteración 3). |
 | `tests/Feature/Admin/BusShowTest.php` | Detalle de autobús del administrador: KPIs, viajes y emergencias (iteración 3). |
 | `tests/Feature/RealTime/BusLocationUpdatedTest.php` | Evento `BusLocationUpdated`: payload, canal privado `buses`, autorización de canal con el driver reverb y `ShouldBroadcastNow` (iteración 3). |
+| `tests/Feature/Likes/LikeTest.php` | Me gusta polimórfico en rutas y paradas: alternancia, contador público, unicidad por usuario y estado personal (iteración 4). |
+| `tests/Feature/Passenger/FavoriteRouteTest.php` | Rutas favoritas: alta/baja, duplicados, acceso por rol y exposición en rutas, menú y perfil (iteración 4). |
+| `tests/Feature/Passenger/LocationShareTest.php` | Ubicación compartida: creación con token y caducidad, revocación del enlace anterior, actualización solo del dueño, endpoints públicos y caducidad (iteración 4). |
+| `tests/Feature/Admin/IncidentManagementTest.php` | Gestión administrativa de reportes ciudadanos: listado, filtros, búsqueda, transiciones de estado y `resolved_at` (iteración 4). |
 | `tests/Unit/ExampleTest.php` | Ejemplo unitario. |
 
-**Estado actual:** la suite completa está **en verde (86 pruebas, 289 aserciones)** tras la iteración 3. El detalle de las pruebas de la iteración 1 está en [API Swagger — Iteración 1](12-swagger-api.md); las de la iteración 3, en [Iteración 3](13-iteracion-3.md) y en el [_devlog](_devlog.md).
+**Estado actual:** la suite completa está **en verde (134 pruebas, 503 aserciones)** tras la iteración 4. El detalle de las pruebas de la iteración 1 está en [API Swagger — Iteración 1](12-swagger-api.md); las de la iteración 3, en [Iteración 3](13-iteracion-3.md); las de la iteración 4, en [Iteración 4](16-iteracion-4.md); y el histórico, en el [_devlog](_devlog.md).
 
-Además de `php artisan test`, la iteración 3 incorpora scripts de prueba **no ejecutados en esta rama** (previstos para la rama de pruebas):
+Además de `php artisan test`, el proyecto incorpora scripts de prueba **no ejecutados en este entorno** (previstos para la rama de pruebas):
 
 | Tipo | Ubicación | Herramienta |
 |------|-----------|-------------|
-| E2E de navegador | `tests/selenium/` | Selenium WebDriver + pytest + Chrome headless (dependencias con `pip install -r requirements.txt`; ejecución con `python3 -m pytest`). |
-| Carga/rendimiento | `tests/load/ubicaditos-iteration3-load.js` | k6 (solo lectura; patrón de sesión documentado en `tests/load/README.md`). |
+| E2E de navegador | `tests/selenium/` | Selenium WebDriver + pytest + Chrome headless (dependencias con `pip install -r requirements.txt`; ejecución con `python3 -m pytest`). Incluye flujos de likes, rutas favoritas, ubicación compartida y gestión de reportes ciudadanos. |
+| Carga/rendimiento | `tests/load/ubicaditos-iteration4-load.js` | k6 (solo lectura; patrón de sesión documentado en `tests/load/README.md`). |
 
 Las pruebas generadas por Breeze habían quedado desincronizadas con el esquema real de `users` en la iteración 0; se corrigieron en la iteración 1:
 
@@ -72,7 +76,7 @@ public function definition(): array
 }
 ```
 
-La lógica propia del proyecto (roles, protección de endpoints, configuración de base de datos por ambiente) ya tiene cobertura propia en `RoleAccessTest`, `EndpointProtectionTest` y `DatabaseConfigurationTest`; el resto (CRUD de administración, inicio de viajes, favoritos, reportes) aún no.
+La lógica propia del proyecto (roles, protección de endpoints, configuración de base de datos por ambiente) tiene cobertura en `RoleAccessTest`, `EndpointProtectionTest` y `DatabaseConfigurationTest`. A partir de la iteración 3 se añadieron pruebas de búsqueda/filtros, ciclo de viaje, estadísticas, incidencias y tiempo real; la iteración 4 incorpora likes, rutas favoritas, ubicación compartida y gestión administrativa de reportes ciudadanos. El CRUD de administración sigue sin cobertura dedicada.
 
 ## Observaciones técnicas
 

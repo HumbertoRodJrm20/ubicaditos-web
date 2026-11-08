@@ -124,3 +124,73 @@ def test_el_mapa_del_pasajero_carga_la_flota_con_el_contador_de_unidades(driver)
     counter = wait_for_element(driver, By.CSS_SELECTOR, "#fleet-counter")
 
     assert "autobus" in counter.text.lower()
+
+
+def test_el_me_gusta_de_una_ruta_actualiza_el_estado_y_el_contador(driver):
+    goto(driver, "/passenger/routes")
+    like_button = wait_for_element(driver, By.CSS_SELECTOR, "[data-like-route]")
+
+    initial_liked = like_button.get_attribute("data-liked")
+    initial_count = int(like_button.find_element(By.CSS_SELECTOR, "[data-like-count]").text)
+
+    like_button.click()
+
+    WebDriverWait(driver, 10).until(
+        lambda d: d.find_element(By.CSS_SELECTOR, "[data-like-route]").get_attribute("data-liked")
+        != initial_liked
+    )
+
+    like_button = driver.find_element(By.CSS_SELECTOR, "[data-like-route]")
+    new_count = int(like_button.find_element(By.CSS_SELECTOR, "[data-like-count]").text)
+
+    assert like_button.get_attribute("aria-pressed") == like_button.get_attribute("data-liked")
+    assert new_count != initial_count
+
+
+def test_el_favorito_de_una_ruta_se_refleja_en_el_filtro_favoritas(driver):
+    goto(driver, "/passenger/routes")
+    favorite_button = wait_for_element(driver, By.CSS_SELECTOR, "[data-favorite-route]")
+    was_favorite = favorite_button.get_attribute("data-favorite")
+
+    # Nos aseguramos de que la ruta esté marcada como favorita.
+    if was_favorite != "true":
+        favorite_button.click()
+        WebDriverWait(driver, 10).until(
+            lambda d: d.find_element(By.CSS_SELECTOR, "[data-favorite-route]").get_attribute("data-favorite")
+            == "true"
+        )
+
+    next(button for button in driver.find_elements(By.TAG_NAME, "button") if button.text.strip() == "Favoritas").click()
+    pause(0.4)
+
+    visible_favorites = driver.execute_script(
+        """
+        return [...document.querySelectorAll('article')].filter(
+            (article) => article.offsetParent !== null
+                && article.querySelector('[data-favorite="true"]') !== null
+        ).length;
+        """
+    )
+
+    assert visible_favorites >= 1
+
+
+def test_el_panel_de_ubicacion_compartida_crea_y_detiene_el_enlace(driver):
+    goto(driver, "/passenger")
+    wait_for_element(driver, By.CSS_SELECTOR, "#map")
+
+    driver.find_element(By.CSS_SELECTOR, "#share-location-btn").click()
+    panel = wait_for_element(driver, By.CSS_SELECTOR, "#share-location-panel")
+    assert panel.is_displayed() is True
+
+    driver.find_element(By.CSS_SELECTOR, "#share-start-btn").click()
+
+    share_link = wait_for_element(driver, By.CSS_SELECTOR, "#share-link")
+    WebDriverWait(driver, 15).until(lambda d: "/share/" in (share_link.get_attribute("value") or ""))
+    assert wait_for_element(driver, By.CSS_SELECTOR, "#share-active").is_displayed() is True
+
+    driver.find_element(By.CSS_SELECTOR, "#share-stop-btn").click()
+    WebDriverWait(driver, 15).until(
+        lambda d: d.find_element(By.CSS_SELECTOR, "#share-inactive").is_displayed()
+    )
+    assert (share_link.get_attribute("value") or "") == ""

@@ -50,6 +50,7 @@ class Incident extends Model
         'category',
         'description',
         'status',
+        'resolved_at',
     ];
 
     protected $attributes = [
@@ -61,6 +62,7 @@ class Incident extends Model
         return [
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
+            'resolved_at' => 'datetime',
         ];
     }
 

@@ -14,12 +14,15 @@ TOLERANCE = 4
 
 PAGES = [
     {"path": "/passenger", "role": "passenger", "label": "Mapa del pasajero"},
+    {"path": "/passenger/menu", "role": "passenger", "label": "Menú del pasajero"},
     {"path": "/passenger/buses", "role": "passenger", "label": "Autobuses del pasajero"},
     {"path": "/passenger/routes", "role": "passenger", "label": "Rutas del pasajero"},
+    {"path": "/incidents/create", "role": "passenger", "label": "Nuevo reporte ciudadano"},
     {"path": "/driver", "role": "driver", "label": "Panel del conductor"},
     {"path": "/driver/statistics", "role": "driver", "label": "Estadísticas del conductor"},
     {"path": "/admin", "role": "admin", "label": "Panel de administración"},
     {"path": "/admin/emergencies", "role": "admin", "label": "Incidencias (admin)"},
+    {"path": "/admin/incidents", "role": "admin", "label": "Reportes ciudadanos (admin)"},
     {"path": "/admin/buses", "role": "admin", "label": "Autobuses (admin)"},
     {"path": "/admin/routes", "role": "admin", "label": "Rutas (admin)"},
     {"path": "/profile", "role": "admin", "label": "Perfil de usuario"},

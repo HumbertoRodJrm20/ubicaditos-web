@@ -222,3 +222,87 @@ Se maquetaron al nuevo estilo (cristal + mobile-first): `admin/buses/index|creat
 - Incidencias preexistentes sin resolver (ver `10-pruebas-y-estado.md`): `Admin\StopController`, `strftime`→`EXTRACT` para PostgreSQL en `ReportController`, enum `work_shift` con turno `night`, límites de `Route::resource`, seeders obsoletos y validaciones de autorización (calificaciones, `driver_id`, coordenadas acotadas).
 - Despliegue: proceso de Reverb en segundo plano (supervisor/systemd) y WSS con certificado TLS en producción/staging.
 - Limpieza: eliminar o reutilizar los partials de perfil heredados; extraer el JavaScript de los mapas a módulos (parcialmente avanzado con `realtime.js`).
+
+## Iteración 4 — Likes, favoritos, ubicación compartida y reportes ciudadanos
+
+Rama de trabajo: `test`. Enfoque **TDD** (pruebas en rojo primero, implementación, verde; suite completa al final): **134 pruebas / 503 aserciones en verde**. Gestor de paquetes JS: **bun**.
+
+### Resumen
+
+| # | Tarea | Descripción | Estado |
+|---|-------|-------------|:------:|
+| 1 | Likes polimórficos | Me gusta públicos sobre rutas y paradas, con contador y estado por usuario. | ✅ |
+| 2 | Rutas favoritas | Tabla `favorite_routes`, endpoints de alta/baja y listas en menú, rutas y perfil. | ✅ |
+| 3 | Ubicación compartida | Enlace temporal `/share/{token}` con token de 48 caracteres, TTL de 30 min y revocación. | ✅ |
+| 4 | Reportes ciudadanos | Listado global, filtros, búsqueda y transiciones `pending`/`in_review`/`resolved`. | ✅ |
+| 5 | Perfil enriquecido | Métricas reales de favoritos, calificaciones, likes y reportes. | ✅ |
+| 6 | Restilizado glass | Navegación, componentes Breeze, layouts y vistas heredadas. | ✅ |
+| 7 | Documentación y Swagger | Secciones 04–12, 15 y 16, `swagger.yaml` y este devlog. | ✅ |
+| 8 | Pruebas E2E y carga | Selenium y k6 actualizados (no ejecutados en este entorno). | ✅ |
+
+### Decisiones
+
+| Decisión | Motivo |
+|----------|--------|
+| Likes polimórficos (`likeable_type`/`likeable_id`) | Una sola tabla y contadores homogéneos para rutas y paradas. |
+| Favoritos separados de likes | Los likes son públicos; los favoritos son privados y personales. |
+| Un enlace activo por pasajero | Al iniciar uno nuevo se revoca el anterior; evita enlaces olvidados. |
+| Token aleatorio de 48 caracteres | No expone el ID del pasajero y es inviable de adivinar. |
+| TTL de 30 minutos | Suficiente para un viaje urbano y limita la exposición. |
+| `resolved_at` gestionado en el controlador | Mantiene consistencia al resolver y reabrir reportes. |
+| Reutilizar `<x-passenger-nav>` | Una navegación única para los tres roles y un solo lugar para el modo oscuro. |
+
+### Cambios por capa
+
+| Capa | Cambios |
+|------|---------|
+| Migraciones | `create_likes_table`, `create_favorite_routes_table`, `create_location_shares_table`, `add_resolved_at_to_incidents_table`. |
+| Modelos | Nuevos `Like`, `FavoriteRoute` y `LocationShare`; relaciones y helpers en `User`, `Route`, `Stop` e `Incident`. |
+| Controladores | `LikeController`, `Passenger\FavoriteRouteController`, `LocationShareController`, `Admin\IncidentManagementController`. |
+| Rutas | `likes.*`, `passenger.favorite-routes.*`, `passenger.share-location.*`, `share.show`, `api.share.data`, `admin.incidents.*`. |
+| Vistas | Mapa del pasajero (like por parada + panel de ubicación), rutas (like/favorito/filtro), menú, perfil, reportes de administración y página pública. |
+| Estilo | Navegación sticky glass, componentes Breeze, `layouts/guest`, `layouts/app`, `welcome`, `dashboard` y parciales de perfil. |
+| Pruebas | `Likes/LikeTest`, `Passenger/FavoriteRouteTest`, `Passenger/LocationShareTest`, `Admin/IncidentManagementTest`. |
+| Documentación | `docs/04`, `05`, `06`, `07`, `08`, `10`, `12`, `15`, `16`, `README.md`, `swagger.yaml` y este devlog. |
+
+### Pruebas nuevas (fase roja → verde)
+
+| Archivo | Enfoque |
+|---------|---------|
+| `tests/Feature/Likes/LikeTest.php` | Alternancia de likes, contador público, unicidad por usuario y estado personal en rutas y paradas. |
+| `tests/Feature/Passenger/FavoriteRouteTest.php` | Alta/baja, duplicado (400), acceso por rol y exposición en rutas, menú y perfil. |
+| `tests/Feature/Passenger/LocationShareTest.php` | Token y caducidad, revocación del enlace anterior, actualización solo del dueño, endpoints públicos y 404 al caducar. |
+| `tests/Feature/Admin/IncidentManagementTest.php` | Listado, filtros, búsqueda, transiciones de estado y gestión de `resolved_at`. |
+
+### Archivos creados
+
+- `app/Models/Like.php`, `app/Models/FavoriteRoute.php`, `app/Models/LocationShare.php`
+- `app/Http/Controllers/LikeController.php`, `app/Http/Controllers/Passenger/FavoriteRouteController.php`, `app/Http/Controllers/LocationShareController.php`, `app/Http/Controllers/Admin/IncidentManagementController.php`
+- `database/migrations/2026_11_08_000001_…` a `…000004_…`
+- `resources/views/admin/incidents/index.blade.php`, `resources/views/share/show.blade.php`
+- `tests/Feature/Likes/LikeTest.php`, `tests/Feature/Passenger/FavoriteRouteTest.php`, `tests/Feature/Passenger/LocationShareTest.php`, `tests/Feature/Admin/IncidentManagementTest.php`
+- `tests/load/ubicaditos-iteration4-load.js`
+- `docs/15-auditoria-mapas.md` (movido desde la raíz), `docs/16-iteracion-4.md`
+
+### Archivos modificados (principales)
+
+- Modelos `User`, `Route`, `Stop`, `Incident` (relaciones, `resolved_at` en `$fillable` y casts).
+- Controladores `Passenger\PassengerController` y `ProfileController` (conteos, listas y métricas reales).
+- Vistas `passenger/dashboard`, `passenger/routes`, `passenger/menu`, `profile/edit`, `layouts/navigation`, `layouts/app`, `layouts/guest`, `dashboard`, `welcome`, `components/*` y `profile/partials/*`.
+- `routes/web.php`, `docs/swagger.yaml` y secciones de documentación 04–12.
+
+### Verificación
+
+| Comando | Resultado |
+|---------|-----------|
+| `php artisan test` | 134 pruebas, 503 aserciones, 0 fallos. |
+| `bun run build` | Vite compila CSS y JS correctamente. |
+| `php artisan migrate --force` | Nuevas migraciones aplicadas en la base local. |
+
+### Pendientes para la siguiente iteración
+
+- Ejecutar Selenium y k6 en un entorno con Chrome y k6, y archivar resultados.
+- Cobertura dedicada del CRUD de administración.
+- Revisar el límite de 30 minutos o permitir configurarlo por usuario.
+- Extraer el JavaScript del mapa y del panel de ubicación a módulos si el archivo crece más.
+- Regenerar trazados reales en la base local con `php artisan routes:generate-paths --force` (requiere internet).

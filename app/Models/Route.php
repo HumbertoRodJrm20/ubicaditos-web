@@ -46,7 +46,30 @@ class Route extends Model
         return $this->hasMany(Trip::class);
     }
 
+    public function likes()
+    {
+        return $this->morphMany(Like::class, 'likeable');
+    }
+
+    public function favoritedByUsers()
+    {
+        return $this->belongsToMany(User::class, 'favorite_routes')
+            ->withTimestamps();
+    }
+
     // Helper methods
+    public function isLikedBy(?User $user): bool
+    {
+        return $user !== null
+            && $this->likes()->where('user_id', $user->id)->exists();
+    }
+
+    public function isFavoritedBy(?User $user): bool
+    {
+        return $user !== null
+            && $this->favoritedByUsers()->where('user_id', $user->id)->exists();
+    }
+
     public function getActiveBuses()
     {
         return $this->buses()->where('status', 'active')->get();

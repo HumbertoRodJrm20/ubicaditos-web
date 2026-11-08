@@ -24,6 +24,13 @@ info:
     tiempo real `BusLocationUpdated` (canal privado `buses`, canal
     autorizado en `routes/channels.php`).
 
+    La **iteración 4** incorpora los me gusta polimórficos sobre rutas y
+    paradas (`/likes/*`), las rutas favoritas
+    (`/passenger/favorite-routes/{route}`), la compartición temporal de
+    ubicación con enlace público (`/passenger/share-location*`,
+    `/share/{token}` y `/api/share/{token}`) y la gestión administrativa
+    de reportes ciudadanos (`/admin/incidents*`).
+
     Repositorio: `ubicaditos-web` · Laravel 12 · Rama de producción: `main`
     (PostgreSQL) · Staging: `staging` (PostgreSQL) · Desarrollo: `develop`
     (SQLite).
@@ -52,6 +59,10 @@ tags:
     description: Rutas, paradas favoritas y calificaciones (rol passenger).
   - name: Administración
     description: Panel de administración, estadísticas y reportes (rol admin).
+  - name: Social
+    description: Me gusta sobre rutas y paradas (cualquier usuario autenticado).
+  - name: Ubicación compartida
+    description: Enlaces temporales para compartir la ubicación en vivo (pasajero y público).
   - name: Perfil
     description: Actualización y baja de la cuenta.
 
@@ -712,6 +723,297 @@ paths:
         '403':
           description: No autorizado.
 
+  /likes/routes/{route}:
+    post:
+      tags: [Social]
+      summary: Alterna el me gusta del usuario sobre una ruta.
+      parameters:
+        - in: path
+          name: route
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: ID de la ruta.
+      responses:
+        '200':
+          description: Estado resultante y contador público.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LikeToggleResponse'
+        '401':
+          description: Sesión requerida.
+        '404':
+          description: Ruta no encontrada.
+
+  /likes/stops/{stop}:
+    post:
+      tags: [Social]
+      summary: Alterna el me gusta del usuario sobre una parada.
+      parameters:
+        - in: path
+          name: stop
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: ID de la parada.
+      responses:
+        '200':
+          description: Estado resultante y contador público.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LikeToggleResponse'
+        '401':
+          description: Sesión requerida.
+        '404':
+          description: Parada no encontrada.
+
+  /passenger/favorite-routes/{route}:
+    post:
+      tags: [Pasajero]
+      summary: Guarda una ruta en los favoritos del pasajero.
+      parameters:
+        - in: path
+          name: route
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: ID de la ruta.
+      responses:
+        '200':
+          description: Ruta agregada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FavoriteRouteResponse'
+        '400':
+          description: La ruta ya está en favoritos.
+        '403':
+          description: No autorizado (rol distinto de passenger).
+        '404':
+          description: Ruta no encontrada.
+    delete:
+      tags: [Pasajero]
+      summary: Quita una ruta de los favoritos del pasajero.
+      parameters:
+        - in: path
+          name: route
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: ID de la ruta.
+      responses:
+        '200':
+          description: Ruta eliminada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FavoriteRouteResponse'
+        '403':
+          description: No autorizado.
+        '404':
+          description: Ruta no encontrada.
+
+  /passenger/share-location:
+    post:
+      tags: [Ubicación compartida]
+      summary: Crea un enlace temporal de ubicación y revoca el anterior.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationSharePosition'
+      responses:
+        '200':
+          description: Enlace creado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  active:
+                    type: boolean
+                    example: true
+                  share:
+                    $ref: '#/components/schemas/LocationShare'
+        '422':
+          description: Coordenadas o precisión inválidas.
+        '403':
+          description: No autorizado (rol distinto de passenger).
+
+  /passenger/share-location/current:
+    get:
+      tags: [Ubicación compartida]
+      summary: Devuelve el enlace activo del pasajero, si existe.
+      responses:
+        '200':
+          description: Estado del enlace.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  active:
+                    type: boolean
+                  share:
+                    allOf:
+                      - $ref: '#/components/schemas/LocationShare'
+
+  /passenger/share-location/{share}:
+    patch:
+      tags: [Ubicación compartida]
+      summary: Actualiza la posición del enlace compartido.
+      parameters:
+        - in: path
+          name: share
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: ID del enlace.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationSharePosition'
+      responses:
+        '200':
+          description: Posición actualizada.
+        '403':
+          description: El enlace pertenece a otro usuario.
+        '404':
+          description: Enlace no encontrado.
+        '422':
+          description: Coordenadas inválidas.
+    delete:
+      tags: [Ubicación compartida]
+      summary: Detiene la compartición de ubicación.
+      parameters:
+        - in: path
+          name: share
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: ID del enlace.
+      responses:
+        '200':
+          description: Enlace revocado.
+        '403':
+          description: El enlace pertenece a otro usuario.
+        '404':
+          description: Enlace no encontrado.
+
+  /share/{token}:
+    get:
+      tags: [Ubicación compartida]
+      summary: Página pública con el mapa de la ubicación compartida.
+      security: []
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+            minLength: 48
+            maxLength: 48
+          description: Token del enlace compartido.
+      responses:
+        '200':
+          description: Página HTML con el mapa.
+        '404':
+          description: Enlace inexistente, caducado o revocado.
+
+  /api/share/{token}:
+    get:
+      tags: [Ubicación compartida]
+      summary: Última posición compartida, sin datos personales.
+      security: []
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+            minLength: 48
+            maxLength: 48
+          description: Token del enlace compartido.
+      responses:
+        '200':
+          description: Posición y estado del enlace.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationShare'
+        '404':
+          description: Enlace inexistente, caducado o revocado.
+
+  /admin/incidents:
+    get:
+      tags: [Administración]
+      summary: Listado global de reportes ciudadanos con filtros.
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [pending, in_review, resolved]
+        - in: query
+          name: category
+          schema:
+            type: string
+            enum: [route, bus, service, driver, stop, other]
+        - in: query
+          name: q
+          schema:
+            type: string
+          description: Búsqueda por descripción o datos del autor.
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Vista HTML con contadores y tarjetas de reportes.
+        '403':
+          description: No autorizado (rol distinto de admin).
+
+  /admin/incidents/{incident}:
+    patch:
+      tags: [Administración]
+      summary: Cambia el estado de un reporte ciudadano.
+      parameters:
+        - in: path
+          name: incident
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: ID del reporte.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncidentStatusRequest'
+      responses:
+        '302':
+          description: Redirección con mensaje flash.
+        '403':
+          description: No autorizado.
+        '404':
+          description: Reporte no encontrado.
+        '422':
+          description: Estado inválido.
+
 components:
   securitySchemes:
     SessionAuth:
@@ -1255,3 +1557,135 @@ components:
             type: array
             items:
               type: string
+
+    LikeToggleResponse:
+      type: object
+      description: Resultado de alternar un me gusta.
+      properties:
+        liked:
+          type: boolean
+          description: Estado resultante para el usuario autenticado.
+        count:
+          type: integer
+          minimum: 0
+          description: Total público de me gusta de la entidad.
+
+    FavoriteRouteResponse:
+      type: object
+      description: Resultado de agregar o quitar una ruta favorita.
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+          nullable: true
+        error:
+          type: string
+          nullable: true
+
+    LocationShare:
+      type: object
+      description: Enlace temporal de ubicación compartida. No incluye datos personales.
+      properties:
+        id:
+          type: integer
+        token:
+          type: string
+          minLength: 48
+          maxLength: 48
+        url:
+          type: string
+          format: uri
+        latitude:
+          type: number
+          format: double
+          nullable: true
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          format: double
+          nullable: true
+          minimum: -180
+          maximum: 180
+        accuracy:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 65535
+          description: Precisión en metros.
+        active:
+          type: boolean
+        expires_at:
+          type: string
+          format: date-time
+        revoked_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+
+    LocationSharePosition:
+      type: object
+      required: [latitude, longitude]
+      properties:
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+        accuracy:
+          type: integer
+          minimum: 0
+          maximum: 65535
+          description: Precisión en metros (opcional).
+
+    Incident:
+      type: object
+      description: Reporte ciudadano de una incidencia del servicio.
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        category:
+          type: string
+          enum: [route, bus, service, driver, stop, other]
+        description:
+          type: string
+          maxLength: 1000
+        status:
+          type: string
+          enum: [pending, in_review, resolved]
+        resolved_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+
+    IncidentStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [pending, in_review, resolved]

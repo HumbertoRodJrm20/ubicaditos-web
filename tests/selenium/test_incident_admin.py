@@ -82,3 +82,55 @@ def test_reporte_de_incidencia_resolucion_administrativa_y_vuelta_al_servicio(dr
         EC.element_to_be_located((By.XPATH, f'//tr[contains(., "{plate_text}")]'))
     )
     assert "En servicio" in row.text
+
+
+def test_reporte_ciudadano_se_filtra_y_se_resuelve_desde_administracion(driver):
+    """
+    Ciclo de un reporte ciudadano (iteración 4):
+      1. El pasajero envía una incidencia desde /incidents/create.
+      2. El administrador la encuentra por búsqueda en /admin/incidents.
+      3. La marca como resuelta y el estado se refleja en la tarjeta.
+    """
+    description = f"Reporte ciudadano Selenium {int(time.time() * 1000)}"
+
+    # --- 1) El pasajero crea el reporte ---
+    login(driver, USERS["passenger"])
+    goto(driver, "/incidents/create")
+
+    category = wait_for_element(driver, By.CSS_SELECTOR, "#category")
+    category.find_element(By.CSS_SELECTOR, 'option[value="service"]').click()
+
+    wait_for_element(driver, By.CSS_SELECTOR, "#description").send_keys(description)
+    button_by_text(driver, "Enviar reporte").click()
+
+    creation_flash = wait_for_flash(driver)
+    assert creation_flash["kind"] == "success"
+
+    # --- 2) El administrador lo busca ---
+    login(driver, USERS["admin"])
+    goto(driver, f"/admin/incidents?q={description.replace(' ', '+')}")
+
+    card = WebDriverWait(driver, WAIT).until(
+        EC.element_to_be_located((By.XPATH, f'//article[contains(., "{description}")]'))
+    )
+    assert "Pendiente" in card.text
+
+    # --- 3) Lo resuelve ---
+    card.find_element(By.XPATH, ".//button[contains(., 'Marcar como resuelto')]").click()
+
+    update_flash = wait_for_flash(driver)
+    assert update_flash["kind"] == "success"
+    assert "actualizó" in update_flash["text"]
+
+    resolved_card = WebDriverWait(driver, WAIT).until(
+        EC.element_to_be_located((By.XPATH, f'//article[contains(., "{description}")]'))
+    )
+    assert "Resuelto" in resolved_card.text
+
+    # Reabrir el reporte limpia la marca de resolución.
+    resolved_card.find_element(By.XPATH, ".//button[contains(., 'Reabrir reporte')]").click()
+    wait_for_flash(driver)
+    reopened_card = WebDriverWait(driver, WAIT).until(
+        EC.element_to_be_located((By.XPATH, f'//article[contains(., "{description}")]'))
+    )
+    assert "Pendiente" in reopened_card.text

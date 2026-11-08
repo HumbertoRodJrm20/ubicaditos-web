@@ -16,8 +16,15 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): View
     {
+        $user = $request->user();
+
         return view('profile.edit', [
-            'user' => $request->user(),
+            'user' => $user,
+            'favoriteStops' => $user->favoriteStops()->with('routes')->get(),
+            'favoriteRoutes' => $user->favoriteRoutes()->withCount('likes')->get(),
+            'ratingsGivenCount' => $user->ratingsGiven()->count(),
+            'likesGivenCount' => $user->likes()->count(),
+            'incidentsCount' => $user->incidents()->count(),
         ]);
     }
 

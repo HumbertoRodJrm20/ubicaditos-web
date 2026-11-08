@@ -1,12 +1,13 @@
-# INFORME DE AUDITORÍA TÉCNICA — Mapas de Ubicaditos (pasajero y conductor)
+# Auditoría técnica de mapas (informe histórico)
+
+> **Documento histórico.** Este informe se redactó el 21 de octubre de 2026 como diagnóstico previo a la iteración 3. Varias de sus observaciones ya fueron corregidas: el registro de `Broadcast::routes()`, la autorización del canal privado `buses`, la regeneración de trazados con `routes:generate-paths` y la deduplicación de tramos. Se conserva como antecedente; el estado vigente está en [Iteración 3](13-iteracion-3.md) y [Diagnóstico y optimización del dibujo de rutas](14-diagnostico-y-optimizacion-rutas.md).
 
 **Proyecto:** `ubicaditos-web` (Laravel)
-**Estado:** Solo diagnóstico y plan de implementación. **No se ha modificado código.**
+**Estado original:** solo diagnóstico y plan de implementación. **No se modificó código en ese momento.**
 **Fecha:** 21 de octubre de 2026
 
 > Convención utilizada en este informe: `[HECHO]` = comprobado leyendo el código; `[HIPÓTESIS]` = deducción que requiere verificación en ejecución (no se ejecutaron migraciones ni se probó la aplicación).
 
----
 
 ## 1. Resumen general de la implementación actual
 
@@ -24,7 +25,6 @@ El estado de ubicación de un autobús se guarda en la tabla **`buses`** (column
 
 **Hallazgo estructural clave:** no se encontró ninguna llamada a `Broadcast::routes()` en el proyecto (grep sin coincidencias), por lo cual el endpoint `/broadcasting/auth` **no está registrado** en la aplicación real. Esto implica que los canales privados de WebSocket (incluido `private-buses`) no pueden autentificarse vía Echo a menos que se añada `Broadcast::routes()`. La aplicación se salva gracias al fallback a polling de `realtime.js`. [HECHO: ausencia de `Broadcast::routes()`; HIPÓTESIS: en producción real solo funciona polling hasta que se agregue.]
 
----
 
 ## 2. Funcionamiento del mapa del pasajero
 
@@ -99,7 +99,6 @@ Cuando llega un payload con `latitude`/`longitude`, el JS establece `bus.isReal 
 
 No hay forma, desde la vista del pasajero ni del API, de distinguir si una coordenada fue capturada por GPS real o generada por simulación. [HECHO]
 
----
 
 ## 3. Funcionamiento del mapa del conductor
 
@@ -155,7 +154,6 @@ No hay forma, desde la vista del pasajero ni del API, de distinguir si una coord
 - **En `updateLocation`:** solo usa `auth()->user()->drivingBus`, por lo que un conductor solo puede actualizar el bus que le está asignado. No puede actualizar la ubicación del bus de otro conductor porque `drivingBus` filtra por `driver_id = auth()->id()`. [HECHO]
 - **Faltantes:** no se valida que el conductor esté `is_active`, que el bus esté `status='active'`, que exista un viaje en progreso, ni rangos razonables de latitud/longitud (cualquier valor numérico pasa). No hay distinción de origen (GPS real vs simulado) al guardar.
 
----
 
 ## 4. Archivos, clases, rutas, tablas y métodos implicados
 
@@ -210,7 +208,6 @@ No hay forma, desde la vista del pasajero ni del API, de distinguir si una coord
 - `package.json`: `laravel-echo ^2.6.1`, `pusher-js ^8.6.0`.
 - `composer.json`: `laravel/reverb ^1.12`.
 
----
 
 ## 5. Flujo de datos de las coordenadas
 
@@ -250,7 +247,6 @@ Carga del mapa (initMap)
 - El pasajero lee esa misma fila a través de `GET /api/buses/active` (usado por `UbicaditosRealtime`) o `GET /api/buses/{bus}/location`.
 - El evento `BusLocationUpdated` se dispara al actualizar, pero **el canal privado no se puede autenticar en la app real por falta de `Broadcast::routes()`**, por lo que en práctica el pasajero recibe la ubicación mediante **polling HTTP cada 5 s**, no por WebSocket. [HIPÓTESIS: el flujo real dominante es polling.]
 
----
 
 ## 6. Diferencias entre simulación y ubicación GPS real
 
@@ -266,7 +262,6 @@ Carga del mapa (initMap)
 
 **Conclusión:** hoy no es posible saber, ni desde el backend ni desde el frontend del pasajero, si una posición mostrada corresponde al GPS real del conductor o a una simulación. [HECHO]
 
----
 
 ## 7. Problemas y limitaciones detectados
 
@@ -283,7 +278,6 @@ Carga del mapa (initMap)
 11. **No hay throttling del envío del conductor** → `watchPosition` puede disparar muchos POST por segundo; no hay control de distancia mínima ni intervalo mínimo entre envíos. `[HECHO]`
 12. **El pasajero no recibe indicador de "desactualizado"** → si un bus deja de enviar, su marcador se queda en la última posición conocida sin advertencia de antigüedad. `[HECHO]`
 
----
 
 ## 8. Arquitectura recomendada para ubicación GPS real
 
@@ -346,7 +340,6 @@ Carga del mapa (initMap)
 - En segundo plano (pestaña no visible, pantalla apagada) los navegadores móviles limitan o detienen `watchPosition`; no se puede garantizar ubicación continua del conductor sin una app nativa o notificaciones push/background geofencing (fuera del alcance de esta etapa).
 - `maximumAge` y `timeout` ya configurados; considerar manejar `PositionError` con mensajes claros al conductor.
 
----
 
 ## 9. Plan de implementación por etapas
 
@@ -405,7 +398,6 @@ Carga del mapa (initMap)
 9. `resources/views/passenger/dashboard.blade.php` — indicador de frescura/origen por bus
 10. `resources/js/realtime.js` — (opcional) ajustar pollInterval o manejo de estado de conexión
 
----
 
 ## Nota final
 

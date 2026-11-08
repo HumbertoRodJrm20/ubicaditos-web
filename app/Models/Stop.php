@@ -39,7 +39,18 @@ class Stop extends Model
             ->withTimestamps();
     }
 
+    public function likes()
+    {
+        return $this->morphMany(Like::class, 'likeable');
+    }
+
     // Helper methods
+    public function isLikedBy(?User $user): bool
+    {
+        return $user !== null
+            && $this->likes()->where('user_id', $user->id)->exists();
+    }
+
     public function getCoordinatesAttribute()
     {
         return [
