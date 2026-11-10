@@ -7,6 +7,8 @@
 
         <title>{{ config('app.name', 'Ubicaditos') }}</title>
 
+        @include('partials.theme-init')
+
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
@@ -15,15 +17,19 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans text-[#1e2a4a] antialiased dark:text-gray-100">
-        <div class="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[#eef2f9] px-4 py-10 dark:bg-slate-900 sm:px-6">
+        <div class="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[#eef2f9] px-4 py-10 dark:bg-slate-950 sm:px-6">
             <div aria-hidden="true" class="pointer-events-none absolute inset-0">
-                <div class="absolute -top-32 -left-32 h-[520px] w-[620px] rounded-full bg-[#c3d7ec] opacity-90 blur-[110px]"></div>
-                <div class="absolute -top-24 -right-24 h-[460px] w-[560px] rounded-full bg-[#c5cbe6] opacity-90 blur-[110px]"></div>
-                <div class="absolute -bottom-40 left-1/4 h-[420px] w-[720px] rounded-full bg-[#cfd6ee] opacity-80 blur-[120px]"></div>
+                <div class="absolute -top-32 -left-32 h-[520px] w-[620px] rounded-full bg-[#c3d7ec] opacity-90 blur-[110px] dark:bg-slate-800/70"></div>
+                <div class="absolute -top-24 -right-24 h-[460px] w-[560px] rounded-full bg-[#c5cbe6] opacity-90 blur-[110px] dark:bg-slate-800/60"></div>
+                <div class="absolute -bottom-40 left-1/4 h-[420px] w-[720px] rounded-full bg-[#cfd6ee] opacity-80 blur-[120px] dark:bg-slate-900/70"></div>
+            </div>
+
+            <div class="absolute right-4 top-4 z-10 sm:right-6 sm:top-6">
+                <x-theme-toggle />
             </div>
 
             <div class="relative mb-5 flex flex-col items-center">
-                <a href="/" class="flex items-center gap-3 rounded-3xl border border-white/70 bg-white/70 px-5 py-3 shadow-lg shadow-[#4a5a8a]/10 backdrop-blur-xl">
+                <a href="/" class="flex items-center gap-3 rounded-3xl border border-white/70 bg-white/70 px-5 py-3 shadow-lg shadow-[#4a5a8a]/10 backdrop-blur-xl dark:border-white/10 dark:bg-gray-800/70">
                     <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#6b7aa8] to-[#3f4c75] text-white shadow-md shadow-[#4a5a8a]/30">
                         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="4" y="3" width="16" height="14" rx="3" /><path d="M4 11h16M8 21v-4M16 21v-4" /><circle cx="8.5" cy="14" r=".6" /><circle cx="15.5" cy="14" r=".6" />

@@ -2,6 +2,93 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===== Tema claro/oscuro (iteración 7) ===== */
+html {
+    color-scheme: light;
+    scroll-behavior: smooth;
+}
+
+html.dark {
+    color-scheme: dark;
+}
+
+body {
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Los mapas de Leaflet se oscurecen junto con la interfaz. */
+.dark #admin-map,
+.dark #map,
+.dark #passenger-map,
+.dark #driver-map,
+.dark #share-map {
+    background: #0f172a;
+}
+
+.dark #admin-map .leaflet-tile-pane,
+.dark #map .leaflet-tile-pane,
+.dark #passenger-map .leaflet-tile-pane,
+.dark #driver-map .leaflet-tile-pane,
+.dark #share-map .leaflet-tile-pane {
+    filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9);
+    opacity: 0.7;
+}
+
+.dark .leaflet-control-zoom a,
+.dark .leaflet-control-attribution {
+    background: rgba(30, 41, 59, 0.9);
+    color: #e2e8f0;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .leaflet-control-attribution a {
+    color: #93c5fd;
+}
+
+.dark .ub-stop-popup-wrap .leaflet-popup-content-wrapper,
+.dark .ub-stop-popup-wrap .leaflet-popup-tip {
+    background: #1e293b;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .ub-stop-popup,
+.dark .ub-stop-popup__body {
+    background: #1e293b;
+    color: #e2e8f0;
+}
+
+.dark .ub-stop-popup__chip {
+    border-color: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    color: #cbd5e1;
+}
+
+.dark .ub-stop-popup__chip--neutral,
+.dark .ub-stop-popup__chip--more {
+    background: rgba(255, 255, 255, 0.04);
+    color: #cbd5e1;
+}
+
+.dark .ub-stop-popup__chip--favorite {
+    border-color: rgba(244, 63, 94, 0.4);
+    background: rgba(244, 63, 94, 0.14);
+    color: #fda4af;
+}
+
+.dark .ub-stop-popup__action--ghost {
+    border-color: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    color: #cbd5e1;
+}
+
+.dark .ub-stop-popup__action--ghost:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.dark .ub-stop-popup__hint {
+    color: #94a3b8;
+}
+
 /* ===== Popup de paradas (mapas) ===== */
 .ub-stop-popup-wrap .leaflet-popup-content-wrapper {
     padding: 0;

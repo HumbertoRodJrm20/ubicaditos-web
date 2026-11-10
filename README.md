@@ -74,7 +74,8 @@ La documentación técnica completa vive en [`docs/`](docs/README.md):
 | 15 | [Auditoría técnica de mapas](docs/15-auditoria-mapas.md) | Informe histórico de diagnóstico de los mapas de pasajero y conductor. |
 | 16 | [Iteración 4](docs/16-iteracion-4.md) | Likes, rutas favoritas, ubicación compartida y gestión de reportes ciudadanos. |
 | 17 | [Iteración 5 y 6](docs/17-iteracion-5-6.md) | Reportes de incidencias, rutas con recorrido completo, perfil y sesión segura. |
-| 18 | [Registro técnico (_devlog)](docs/_devlog.md) | Bitácora técnica de lo realizado en cada iteración. |
+| 18 | [Iteración 7](docs/18-iteracion-7.md) | Modo oscuro persistente, conmutador compartido, dashboard con contadores y listado de autobuses con filtros. |
+| 19 | [Registro técnico (_devlog)](docs/_devlog.md) | Bitácora técnica de lo realizado en cada iteración. |
 
 ## Resumen funcional
 
@@ -82,4 +83,4 @@ La documentación técnica completa vive en [`docs/`](docs/README.md):
 |-----|-----------------------------|
 | **Pasajero** | Mapa en tiempo real (WebSocket con fallback de sondeo) con rutas, paradas y autobuses; búsqueda y filtros de autobuses (estado, ruta, ocupación); rutas más cercanas a su ubicación; paradas y rutas favoritas; listado completo de rutas con todas sus paradas; reportes de incidencias con tipo y comentarios; perfil editable con teléfono y cierre de sesión seguro; calificación de conductores. |
 | **Conductor** | Panel con su autobús asignado y viajes recientes; mapa de su ruta con GPS (interruptor de compartir ubicación); inicio y fin de viaje (validando turno y cercanía a una parada); pasajeros a bordo; estadísticas propias; reporte de emergencias y acceso a reportes de incidencias. |
-| **Administrador** | Dashboard con estadísticas y mapa en vivo; detalle de autobús (KPIs, viajes, incidencias); gestión de emergencias con filtros y resolución (la unidad vuelve a servicio); gestión de reportes ciudadanos con estados; CRUD de autobuses, rutas y usuarios; reportes con gráficas; exportación a PDF y CSV. |
+| **Administrador** | Dashboard con estadísticas, contadores de flota y reportes, y mapa en vivo; detalle de autobús (KPIs, viajes, incidencias); gestión de emergencias con filtros y resolución (la unidad vuelve a servicio); gestión de reportes ciudadanos con estados; listado de autobuses con resumen y filtros por estado; CRUD de autobuses, rutas y usuarios; reportes con gráficas; exportación a PDF y CSV. Toda la interfaz incluye modo oscuro persistente. |

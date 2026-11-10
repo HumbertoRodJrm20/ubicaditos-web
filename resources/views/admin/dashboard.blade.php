@@ -125,6 +125,37 @@
         </div>
 
         <div class="{{ $card }} p-6 mt-5">
+            <h3 class="text-[16px] font-semibold text-[#2f3a5f] dark:text-gray-100 mb-4">Estado de la flota y reportes</h3>
+            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <a href="{{ route('admin.buses.index', ['status' => 'maintenance']) }}" class="rounded-[22px] bg-white/85 dark:bg-gray-700/60 px-4 py-3 transition hover:bg-white dark:hover:bg-gray-700">
+                    <p class="text-[11px] font-semibold uppercase tracking-[.1em] text-slate-400 dark:text-gray-500">Mantenimiento</p>
+                    <p class="mt-1 text-[22px] font-bold leading-tight text-amber-600 dark:text-amber-300">{{ $stats['maintenance_buses'] }}</p>
+                    <p class="text-[11px] text-slate-500 dark:text-gray-400">Unidades en taller</p>
+                </a>
+                <a href="{{ route('admin.buses.index', ['status' => 'emergency']) }}" class="rounded-[22px] bg-white/85 dark:bg-gray-700/60 px-4 py-3 transition hover:bg-white dark:hover:bg-gray-700">
+                    <p class="text-[11px] font-semibold uppercase tracking-[.1em] text-slate-400 dark:text-gray-500">Emergencias</p>
+                    <p class="mt-1 text-[22px] font-bold leading-tight text-rose-600 dark:text-rose-300">{{ $stats['emergency_buses'] }}</p>
+                    <p class="text-[11px] text-slate-500 dark:text-gray-400">Unidades fuera de servicio</p>
+                </a>
+                <a href="{{ route('admin.buses.index', ['status' => 'inactive']) }}" class="rounded-[22px] bg-white/85 dark:bg-gray-700/60 px-4 py-3 transition hover:bg-white dark:hover:bg-gray-700">
+                    <p class="text-[11px] font-semibold uppercase tracking-[.1em] text-slate-400 dark:text-gray-500">Inactivas</p>
+                    <p class="mt-1 text-[22px] font-bold leading-tight text-slate-600 dark:text-gray-200">{{ $stats['inactive_buses'] }}</p>
+                    <p class="text-[11px] text-slate-500 dark:text-gray-400">Sin operación</p>
+                </a>
+                <a href="{{ route('admin.incidents.index', ['status' => 'pending']) }}" class="rounded-[22px] bg-white/85 dark:bg-gray-700/60 px-4 py-3 transition hover:bg-white dark:hover:bg-gray-700">
+                    <p class="text-[11px] font-semibold uppercase tracking-[.1em] text-slate-400 dark:text-gray-500">Incidencias</p>
+                    <p class="mt-1 text-[22px] font-bold leading-tight text-amber-600 dark:text-amber-300">{{ $stats['pending_incidents'] }}</p>
+                    <p class="text-[11px] text-slate-500 dark:text-gray-400">Pendientes de atención</p>
+                </a>
+                <a href="{{ route('admin.emergencies') }}" class="rounded-[22px] bg-white/85 dark:bg-gray-700/60 px-4 py-3 transition hover:bg-white dark:hover:bg-gray-700">
+                    <p class="text-[11px] font-semibold uppercase tracking-[.1em] text-slate-400 dark:text-gray-500">Emergencias reportadas</p>
+                    <p class="mt-1 text-[22px] font-bold leading-tight text-rose-600 dark:text-rose-300">{{ $stats['pending_emergencies'] }}</p>
+                    <p class="text-[11px] text-slate-500 dark:text-gray-400">Pendientes de resolver</p>
+                </a>
+            </div>
+        </div>
+
+        <div class="{{ $card }} p-6 mt-5">
             <h3 class="text-[16px] font-semibold text-[#2f3a5f] dark:text-gray-100 mb-4">Autobuses Activos</h3>
             @if($activeBuses->count() > 0)
                 <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">

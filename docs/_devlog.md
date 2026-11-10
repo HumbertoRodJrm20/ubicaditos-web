@@ -432,3 +432,54 @@ Important Context
 - public/build is gitignored; rebuild with bun run build.
 - k6 command: k6 run tests/load/ubicaditos-iteration4-load.js -e K6_VUS=15.
 
+
+## Iteración 7 — Modo oscuro y administración
+
+Se activó el modo oscuro en toda la aplicación y se reforzó el panel administrativo con contadores de flota y reportes, además de un listado de autobuses con resumen y filtros. El trabajo siguió TDD: pruebas de listado, filtros, contadores y tema primero; implementación después; suite completa en verde al final.
+
+### Resumen
+
+| #   | Tarea                          | Descripción                                                                                          | Estado |
+| --- | ------------------------------ | ---------------------------------------------------------------------------------------------------- | :----: |
+| 1   | Inicialización del tema        | Parcial `theme-init` en el `<head>` que aplica la preferencia antes del primer pintado.              |   ✅    |
+| 2   | Conmutador compartido          | Componente `<x-theme-toggle>` con iconos luna/sol, persistencia y API `UbicaditosTheme`.             |   ✅    |
+| 3   | Cobertura visual               | Variantes `dark:` en layouts, autenticación, pasajero, conductor, reportes y administración.         |   ✅    |
+| 4   | Mapas oscuros                  | Reglas globales para contenedores Leaflet, teselas, controles y popups de paradas.                   |   ✅    |
+| 5   | Contadores del dashboard       | Flota en mantenimiento/emergencia/inactiva e incidencias/emergencias pendientes con enlaces filtrados. |   ✅    |
+| 6   | Listado de autobuses           | Resumen de flota, chips de estado, búsqueda, paginación validada y estados vacíos diferenciados.     |   ✅    |
+| 7   | Pruebas y documentación        | Nuevas pruebas de autobuses, dashboard y tema; sección 18 y actualización de índices.                |   ✅    |
+
+### Decisiones
+
+| Decisión | Motivo |
+|----------|--------|
+| Un solo componente para el toggle | Evita duplicar la lógica entre navegación autenticada y pantallas de autenticación. |
+| Clave `ubicaditos-theme` con respaldo en `darkMode` | Conserva la preferencia de usuarios que ya habían usado el conmutador anterior. |
+| Respetar `prefers-color-scheme` sin preferencia guardada | El tema inicial coincide con el sistema operativo y se actualiza si este cambia. |
+| Filtros del listado como enlaces y formularios GET | Permiten compartir la URL, conservar el estado al paginar y funcionar sin JavaScript. |
+| La emergencia no se edita desde el CRUD | Ese estado lo controla el flujo de reportes del conductor y su resolución. |
+| Contadores del dashboard con enlaces filtrados | Convierten los indicadores en accesos directos al listado correspondiente. |
+
+### Cambios por capa
+
+| Capa | Cambios |
+|------|---------|
+| Controladores | `AdminController@index` agrega contadores de flota y reportes; `BusController@index` valida `status`/`per_page`, filtra y calcula `$summary`. |
+| Vistas | Nuevos `partials/theme-init` y `components/theme-toggle`; variantes oscuras en layouts y vistas; dashboard con tarjeta de estado; listado de autobuses con resumen y filtros. |
+| CSS | Reglas de `color-scheme`, transición de tema, mapas Leaflet oscuros y popups adaptados. |
+| Pruebas | `Admin/BusManagementTest` (12), `Admin/AdminDashboardTest` (4) y `ThemeTest` (3). |
+| Documentación | `docs/18-iteracion-7.md`, `README.md`, `docs/README.md`, `07`, `10` y esta bitácora. |
+
+### Verificación
+
+| Comando | Resultado |
+|---------|-----------|
+| `php artisan test` | 162 pruebas, 635 aserciones, 0 fallos. |
+| `php artisan view:cache` | Todas las plantillas Blade compilan. |
+| `bun run build` | Vite compila CSS y JS correctamente. |
+
+### Pendientes
+
+- Ejecutar Selenium y k6 en un entorno con Chrome y k6.
+- Añadir cobertura dedicada al CRUD de rutas y paradas.
+- Revisar el contraste de los mapas oscuros en dispositivos de gama baja.

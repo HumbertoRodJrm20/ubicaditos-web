@@ -43,9 +43,9 @@ Las imágenes del proyecto están en `public/images` (`autobus.svg`, `autobusfbl
 
 | Layout | Uso | Características |
 |--------|-----|-----------------|
-| `layouts/app.blade.php` | Páginas autenticadas, usado como `<x-app-layout>`. | Incluye el token CSRF en `<meta>`, la fuente Figtree, *preconnect* a unpkg, OSRM y OpenStreetMap, el CSS de Leaflet, la navegación glass, un `$header` opcional translúcido y el `$slot` principal sobre un fondo con degradado suave y orbes difuminados (con variante oscura). |
-| `layouts/guest.blade.php` | Pantallas de autenticación, usado como `<x-guest-layout>`. | Fondo con orbes difuminados, logotipo en píldora glass y tarjeta central translúcida (`backdrop-blur-xl`) con borde blanco. |
-| `layouts/navigation.blade.php` | Barra superior. | Envoltura *sticky* que renderiza `<x-passenger-nav />`: enlaces según el rol, menú responsive, menú de perfil y **conmutador de modo oscuro** persistido en `localStorage['darkMode']`. |
+| `layouts/app.blade.php` | Páginas autenticadas, usado como `<x-app-layout>`. | Incluye el token CSRF en `<meta>`, la fuente Figtree, *preconnect* a unpkg, OSRM y OpenStreetMap, el CSS de Leaflet, la navegación glass, un `$header` opcional translúcido y el `$slot` principal sobre un fondo con degradado suave y orbes difuminados (con variante oscura). Carga `partials/theme-init` antes del primer pintado. |
+| `layouts/guest.blade.php` | Pantallas de autenticación, usado como `<x-guest-layout>`. | Fondo con orbes difuminados, logotipo en píldora glass, tarjeta central translúcida (`backdrop-blur-xl`) con borde blanco, toggle de tema y `theme-init` en el `<head>`. |
+| `layouts/navigation.blade.php` | Barra superior. | Envoltura *sticky* que renderiza `<x-passenger-nav />`: enlaces según el rol, menú responsive, menú de perfil y **conmutador de modo oscuro** compartido (`<x-theme-toggle />`). |
 
 Las clases `App\View\Components\AppLayout` y `GuestLayout` simplemente devuelven estas plantillas.
 
@@ -64,6 +64,8 @@ Componentes anónimos en `resources/views/components`, provenientes de Breeze y 
 | `<x-modal>` | Modal accesible controlado por eventos de Alpine, con panel glass y fondo desenfocado. |
 | `<x-passenger-layout>` | Layout propio de las vistas del pasajero (fondo con degradado, barra de navegación y ranura de contenido). |
 | `<x-passenger-nav>` | Navegación por rol usada por ese layout: conductores incluyen **"Estadísticas"** (`driver.statistics`); administradores incluyen **"Incidencias"** (`admin.incidents.index`), **"Emergencias"** (`admin.emergencies`) y el resto de módulos. |
+| `<x-theme-toggle>` | Conmutador de modo claro/oscuro con iconos luna/sol, `aria-pressed`, persistencia en `localStorage['ubicaditos-theme']` (compatible con `darkMode`) y API `window.UbicaditosTheme`. |
+| `partials/theme-init` | Parcial incluido en el `<head>` que aplica el tema antes del primer pintado para evitar el destello de modo claro. |
 
 ## Vistas de autenticación
 
@@ -78,10 +80,10 @@ Componentes anónimos en `resources/views/components`, provenientes de Breeze y 
 
 | Vista | Controlador | Contenido |
 |-------|-------------|-----------|
-| `admin/dashboard` | `AdminController@index` | Tarjetas de estadísticas, accesos rápidos (crear usuario, conductores, pasajeros, autobuses, rutas, reportes), **mapa en tiempo real** con todas las rutas activas, paradas y autobuses animados, listado de autobuses activos y viajes recientes. El script se protege con una guarda `typeof L !== 'undefined'` antes de usar Leaflet, se integra con el módulo de tiempo real (posiciones reales detienen la simulación local de ese autobús) y los popups muestran la ocupación actual (`pasajeros/capacidad`). |
+| `admin/dashboard` | `AdminController@index` | Tarjetas de estadísticas, accesos rápidos (crear usuario, conductores, pasajeros, autobuses, rutas, reportes), tarjeta **Estado de la flota y reportes** (mantenimiento, emergencias, inactivos, incidencias y emergencias pendientes con enlaces filtrados), **mapa en tiempo real** con todas las rutas activas, paradas y autobuses animados, listado de autobuses activos y viajes recientes. El script se protege con una guarda `typeof L !== 'undefined'` antes de usar Leaflet, se integra con el módulo de tiempo real (posiciones reales detienen la simulación local de ese autobús) y los popups muestran la ocupación actual (`pasajeros/capacidad`). |
 | `admin/drivers` | `AdminController@drivers` | Tabla paginada con búsqueda, autobús asignado, viajes y calificación; modal para asignar o desasignar autobús. |
 | `admin/passengers` | `AdminController@passengers` | Tabla paginada con búsqueda, calificaciones emitidas y favoritos. |
-| `admin/buses/index` | `BusController@index` | Tabla paginada de autobuses con búsqueda, acciones y enlace **Detalles** hacia `admin.buses.show`. |
+| `admin/buses/index` | `BusController@index` | Resumen de flota en cuatro tarjetas, chips de filtro por estado con conteo, búsqueda por placa/modelo/conductor, selector de tamaño de página, tabla paginada con insignias de estado y acciones **Detalles**, **Editar** y **Eliminar**, botón **Agregar Autobús** y estados vacíos diferenciados. |
 | `admin/buses/create`, `edit` | `BusController` | Formulario con validación en Alpine (`busForm()`): placa, modelo, capacidad, conductor, estado y rutas. |
 | `admin/buses/show` | `BusController@show` | Detalle del autobús: tarjetas KPI de ocupación (capacidad, pasajeros, asientos libres), ficha de datos, conductor y rutas asignadas, últimas 5 incidencias (con enlace al listado de emergencias) y tabla de los últimos 10 viajes. |
 | `admin/routes/index` | `RouteController@index` | Tabla paginada de rutas con color, código y conteos. |
@@ -94,6 +96,8 @@ Componentes anónimos en `resources/views/components`, provenientes de Breeze y 
 | `admin/incidents/index` | `IncidentManagementController@index` | Gestión de **reportes ciudadanos**: contadores por estado (`pending`, `in_review`, `resolved`), filtros por estado y categoría, búsqueda por descripción/autor y tarjetas con acciones para mover el reporte entre estados (`admin.incidents.update`). `resolved_at` se fija o limpia automáticamente. |
 
 Estilo de las vistas de administración: **todas** las pantallas de administración (`admin/buses/*`, `admin/routes/*`, `admin/passengers`, `admin/users/*`, `admin/statistics`, `admin/reports`, `admin/emergencies` y `admin/incidents/index`) usan el estilo *glass* *mobile-first* (diseño pensado para 375×667 con página de degradado a pantalla completa, paneles translúcidos con `backdrop-blur-xl` y bordes redondeados grandes, insumos y botones tipo píldora, tablas envueltas en `overflow-x-auto` y variantes de modo oscuro). La receta de estilo se define localmente en cada vista (arreglos de clases PHP en la sección `@php` superior).
+
+El **modo oscuro** se activa desde `<x-theme-toggle>` en la navegación y en las pantallas de autenticación. La preferencia se guarda en `localStorage['ubicaditos-theme']` y se aplica antes del primer pintado mediante `partials/theme-init`; si no hay preferencia guardada se respeta `prefers-color-scheme`. Los mapas Leaflet y sus popups se oscurecen con las reglas globales de `resources/css/app.css`.
 
 ## Vistas del conductor
 
