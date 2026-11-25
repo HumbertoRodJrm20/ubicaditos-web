@@ -2,33 +2,20 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Models\Route;
-use Illuminate\Support\Facades\Http;
+use App\Services\RouteGeometryService;
+use Illuminate\Console\Command;
 
 class GenerateRoutePaths extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = 'routes:generate-paths
                             {--force : Regenera el trazado aunque la ruta ya tenga path_coordinates}
                             {--route= : Procesa únicamente la ruta con este código}
                             {--sleep=1 : Segundos de espera entre peticiones a OSRM}';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
     protected $description = 'Genera y guarda en la BD el trazado de las rutas usando OSRM (una sola vez)';
 
-    /**
-     * Execute the console command.
-     */
-    public function handle()
+    public function handle(RouteGeometryService $geometry): int
     {
         $query = Route::query();
 
@@ -40,6 +27,7 @@ class GenerateRoutePaths extends Command
 
         if ($routes->isEmpty()) {
             $this->error('No se encontraron rutas para procesar.');
+
             return self::FAILURE;
         }
 
@@ -53,67 +41,23 @@ class GenerateRoutePaths extends Command
         $this->info('Generando trazados sobre calles (OSRM)...');
 
         foreach ($routes as $route) {
-            // OSRM se calcula con las paradas principales. Las paradas de alta
-            // frecuencia están muestreadas sobre ese mismo trazado y harían
-            // demasiado grande la petición (hasta 180 waypoints por ruta).
-            $stops = $route->getOrderedStops(false);
+            $result = $geometry->generate($route, $force);
 
-            if ($stops->count() < 2) {
-                $this->warn("⚠ {$route->code}: tiene menos de 2 paradas, se omite.");
-                $skipped++;
-                continue;
-            }
+            switch ($result['status']) {
+                case 'generated':
+                    $this->info("✓ {$route->code}: {$result['points']} puntos guardados.");
+                    $generated += 1;
+                    break;
 
-            $existingPath = is_array($route->path_coordinates) ? $route->path_coordinates : [];
+                case 'skipped':
+                    $this->line("• {$route->code}: {$result['message']}");
+                    $skipped += 1;
+                    break;
 
-            if (!$force && count($existingPath) >= 2) {
-                $this->line("• {$route->code}: ya tiene {$this->pointCount($existingPath)} puntos, se conserva.");
-                $skipped++;
-                continue;
-            }
-
-            $waypoints = $stops->map(function ($stop) {
-                return $stop->longitude . ',' . $stop->latitude;
-            })->join(';');
-
-            $this->line("→ {$route->code}: consultando OSRM...");
-
-            try {
-                $response = Http::timeout(30)->get(
-                    "https://router.project-osrm.org/route/v1/driving/{$waypoints}",
-                    [
-                        'overview' => 'full',
-                        'geometries' => 'geojson',
-                    ]
-                );
-
-                $geometry = $response->json('routes.0.geometry.coordinates');
-
-                if (!$response->successful() || $response->json('code') !== 'Ok' || !is_array($geometry)) {
-                    $this->error("✗ {$route->code}: OSRM no devolvió un trazado válido.");
-                    $failed++;
-                    continue;
-                }
-
-                $pathCoordinates = collect($geometry)->map(function ($coord) {
-                    return [
-                        'lat' => $coord[1],
-                        'lng' => $coord[0],
-                    ];
-                })->toArray();
-
-                $route->path_coordinates = $pathCoordinates;
-                $route->estimated_duration = $this->estimateDurationMinutes(
-                    $pathCoordinates,
-                    $stops->count()
-                );
-                $route->save();
-
-                $this->info("✓ {$route->code}: {$this->pointCount($pathCoordinates)} puntos guardados.");
-                $generated++;
-            } catch (\Throwable $e) {
-                $this->error("✗ {$route->code}: {$e->getMessage()}");
-                $failed++;
+                default:
+                    $this->error("✗ {$route->code}: {$result['message']}");
+                    $failed += 1;
+                    break;
             }
 
             if ($sleep > 0) {
@@ -128,46 +72,5 @@ class GenerateRoutePaths extends Command
         );
 
         return $failed > 0 ? self::FAILURE : self::SUCCESS;
-    }
-
-    /**
-     * @param array<int, array{lat: float, lng: float}> $path
-     */
-    private function estimateDurationMinutes(array $path, int $stopCount): int
-    {
-        $distanceKm = 0.0;
-
-        for ($i = 1; $i < count($path); $i++) {
-            $distanceKm += $this->distanceKm(
-                (float) $path[$i - 1]['lat'],
-                (float) $path[$i - 1]['lng'],
-                (float) $path[$i]['lat'],
-                (float) $path[$i]['lng']
-            );
-        }
-
-        // 20 km/h promedio urbano más una pequeña espera por parada.
-        $minutes = ($distanceKm / 20) * 60 + ($stopCount * 0.5);
-
-        return max(1, (int) round($minutes));
-    }
-
-    private function distanceKm(float $lat1, float $lng1, float $lat2, float $lng2): float
-    {
-        $earthRadiusKm = 6371.0;
-        $phi1 = deg2rad($lat1);
-        $phi2 = deg2rad($lat2);
-        $deltaPhi = deg2rad($lat2 - $lat1);
-        $deltaLambda = deg2rad($lng2 - $lng1);
-
-        $a = sin($deltaPhi / 2) ** 2
-            + cos($phi1) * cos($phi2) * sin($deltaLambda / 2) ** 2;
-
-        return $earthRadiusKm * 2 * atan2(sqrt($a), sqrt(1 - $a));
-    }
-
-    private function pointCount(array $path): int
-    {
-        return count($path);
     }
 }

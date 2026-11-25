@@ -32,10 +32,19 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // CRUD Buses
     Route::resource('buses', \App\Http\Controllers\Admin\BusController::class);
 
+    // Estudio de rutas y paradas (declarado antes del resource para que
+    // "/routes/manage" no sea capturado como "{route}").
+    Route::get('routes/manage', [RouteManagementController::class, 'index'])->name('routes.manage');
+    Route::get('routes/manage/data', [RouteManagementController::class, 'data'])->name('routes.manage.data');
+    Route::post('routes/{route}/stops', [RouteManagementController::class, 'syncStops'])->name('routes.stops.sync');
+    Route::post('routes/{route}/geometry', [RouteManagementController::class, 'regenerateGeometry'])->name('routes.geometry.regenerate');
+    Route::patch('routes/{route}/status', [RouteManagementController::class, 'toggleStatus'])->name('routes.status');
+
     // CRUD Routes
     Route::resource('routes', \App\Http\Controllers\Admin\RouteController::class);
 
     // CRUD Stops
+    Route::patch('stops/{stop}/status', [\App\Http\Controllers\Admin\StopController::class, 'toggleStatus'])->name('stops.status');
     Route::resource('stops', \App\Http\Controllers\Admin\StopController::class);
 
     // CRUD Users
@@ -134,14 +143,5 @@ Route::get('/share/{token}', [LocationShareController::class, 'show'])
 Route::get('/api/share/{token}', [LocationShareController::class, 'data'])
     ->where('token', '[A-Za-z0-9]{48}')
     ->name('api.share.data');
-
-// CRUD Buses
-Route::resource('buses', \App\Http\Controllers\Admin\BusController::class);
-
-// Estudio de rutas y paradas (debe declararse antes del resource de rutas)
-Route::get('routes/manage', [RouteManagementController::class, 'index'])->name('routes.manage');
-
-// CRUD Routes
-Route::resource('routes', \App\Http\Controllers\Admin\RouteController::class);
 
 require __DIR__.'/auth.php';

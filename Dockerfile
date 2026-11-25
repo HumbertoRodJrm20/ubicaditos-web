@@ -106,3 +106,22 @@ RUN mkdir -p \
 EXPOSE 9000
 
 CMD ["php-fpm"]
+
+# --------------------------------------------------
+# Web: PHP-FPM + Nginx in one image for simple VPS deploys.
+# The `reverb` service uses the `production` target instead.
+# --------------------------------------------------
+FROM production AS web
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends nginx \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY docker/nginx/ubicaditos.conf /etc/nginx/sites-available/default
+COPY docker/entrypoint.sh /usr/local/bin/ubicaditos-entrypoint
+RUN chmod +x /usr/local/bin/ubicaditos-entrypoint
+
+EXPOSE 80
+
+CMD ["/usr/local/bin/ubicaditos-entrypoint"]

@@ -8,6 +8,7 @@ use App\Models\Stop;
 use App\Models\Trip;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -124,27 +125,21 @@ class RouteCrudCharacterizationTest extends TestCase
             ])
             ->assertRedirect(route('admin.routes.index'));
 
-        $this->assertDatabaseHas('route_stop', [
-            'route_id' => $route->id,
-            'stop_id' => $b->id,
-            'order' => 0,
-            'estimated_time_from_previous' => 3,
-            'is_frequent' => true,
-        ]);
-        $this->assertDatabaseHas('route_stop', [
-            'route_id' => $route->id,
-            'stop_id' => $a->id,
-            'order' => 1,
-            'estimated_time_from_previous' => 7,
-            'is_frequent' => false,
-        ]);
+        // Al reordenar, la primera parada queda en 0 y la siguiente se
+        // recalcula porque cambió su predecesora.
+        $this->assertSame(0, (int) DB::table('route_stop')
+            ->where('route_id', $route->id)->where('stop_id', $b->id)
+            ->value('estimated_time_from_previous'));
+        $this->assertGreaterThan(0, (int) DB::table('route_stop')
+            ->where('route_id', $route->id)->where('stop_id', $a->id)
+            ->value('estimated_time_from_previous'));
         $this->assertDatabaseMissing('route_stop', [
             'route_id' => $route->id,
             'stop_id' => $c->id,
         ]);
     }
 
-    public function test_known_gap_update_without_stops_field_cannot_empty_a_route(): void
+    public function test_update_without_stops_field_cannot_empty_a_route(): void
     {
         $route = $this->makeRoute();
         $a = $this->makeStop('Parada A', 17.060);
@@ -161,7 +156,7 @@ class RouteCrudCharacterizationTest extends TestCase
         $this->assertSame(1, $route->stops()->count());
     }
 
-    public function test_known_defect_edit_form_lists_stops_by_database_order_not_route_order(): void
+    public function test_edit_form_lists_stops_in_route_order(): void
     {
         $a = $this->makeStop('Parada A', 17.060);
         $b = $this->makeStop('Parada B', 17.061);
@@ -172,14 +167,13 @@ class RouteCrudCharacterizationTest extends TestCase
         $route->stops()->attach($a->id, ['order' => 1, 'estimated_time_from_previous' => 1, 'is_frequent' => false]);
         $route->stops()->attach($b->id, ['order' => 2, 'estimated_time_from_previous' => 1, 'is_frequent' => false]);
 
-        // La ruta recorre C, A, B, pero el formulario muestra A, B, C.
         $this->actingAs($this->admin)
             ->get(route('admin.routes.edit', $route))
             ->assertOk()
-            ->assertSeeInOrder(['Parada A', 'Parada B', 'Parada C']);
+            ->assertSeeInOrder(['Parada C', 'Parada A', 'Parada B']);
     }
 
-    public function test_known_risk_destroy_cascades_to_trips(): void
+    public function test_destroy_deactivates_a_route_with_trips(): void
     {
         $route = $this->makeRoute();
         $bus = Bus::create([
@@ -206,16 +200,22 @@ class RouteCrudCharacterizationTest extends TestCase
             ->delete(route('admin.routes.destroy', $route))
             ->assertRedirect();
 
-        $this->assertDatabaseMissing('routes', ['id' => $route->id]);
-        $this->assertDatabaseMissing('trips', ['id' => $trip->id]);
+        $this->assertDatabaseHas('routes', ['id' => $route->id, 'is_active' => false]);
+        $this->assertDatabaseHas('trips', ['id' => $trip->id]);
     }
 
-    public function test_known_gap_color_is_not_validated_as_hex(): void
+    public function test_color_must_be_a_valid_hex_value(): void
     {
         $this->actingAs($this->admin)
             ->post(route('admin.routes.store'), $this->validPayload(['color' => 'rojo']))
+            ->assertSessionHasErrors('color');
+
+        $this->assertSame(0, Route::count());
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.routes.store'), $this->validPayload(['color' => '#10B981']))
             ->assertRedirect(route('admin.routes.index'));
 
-        $this->assertSame('rojo', Route::where('code', 'RN-1')->value('color'));
+        $this->assertSame('#10B981', Route::where('code', 'RN-1')->value('color'));
     }
 }

@@ -41,7 +41,7 @@ Abre `http://localhost:8000` e inicia sesión con alguna de las cuentas de prueb
 | Conductor | `chofer1@ubicaditos.com` … `chofer100@ubicaditos.com` | `password` |
 | Pasajero | `pasajero1@ubicaditos.com` … `pasajero600@ubicaditos.com` | `password` |
 
-> La guía completa de instalación, variables de entorno y despliegue está en [docs/01-instalacion.md](docs/01-instalacion.md). Si Reverb no está corriendo, los mapas usan automáticamente un sondeo cada 5 segundos.
+> La guía completa de instalación y variables de entorno está en [docs/01-instalacion.md](docs/01-instalacion.md). Para producción en IONOS con Docker Compose, PostgreSQL, Reverb, TLS y backups, ver [docs/20-despliegue-ionos.md](docs/20-despliegue-ionos.md). Si Reverb no está corriendo, los mapas usan automáticamente un sondeo cada 5 segundos.
 
 ## Pruebas
 

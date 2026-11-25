@@ -26,6 +26,7 @@
             'Inicio'       => 'admin.dashboard',
             'Autobuses'    => 'admin.buses.index',
             'Rutas'        => 'admin.routes.index',
+            'Estudio'      => 'admin.routes.manage',
             'Conductores'  => 'admin.drivers',
             'Pasajeros'    => 'admin.passengers',
             'Emergencias'  => 'admin.emergencies',
