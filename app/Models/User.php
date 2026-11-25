@@ -98,6 +98,27 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
+    public function favoriteRoutes()
+    {
+        return $this->belongsToMany(Route::class, 'favorite_routes')
+            ->withTimestamps();
+    }
+
+    public function likes()
+    {
+        return $this->hasMany(Like::class);
+    }
+
+    public function locationShares()
+    {
+        return $this->hasMany(LocationShare::class);
+    }
+
+    public function incidents()
+    {
+        return $this->hasMany(Incident::class);
+    }
+
     // Accessors
     public function getNameAttribute()
     {

@@ -10,26 +10,44 @@ class BusController extends Controller
 {
     public function index(Request $request)
     {
-        $search = $request->input('search');
-        $perPage = $request->input('per_page', 15);
+        $search = trim((string) $request->input('search'));
+        $status = $request->input('status');
+        $allowedStatuses = ['active', 'inactive', 'maintenance', 'emergency'];
+        $status = in_array($status, $allowedStatuses, true) ? $status : null;
 
-        $buses = Bus::when($search, function($query, $search) {
-                $query->where(function($q) use ($search) {
+        $perPage = (int) $request->input('per_page', 15);
+        $perPage = in_array($perPage, [10, 15, 20, 50], true) ? $perPage : 15;
+
+        $buses = Bus::when($search !== '', function ($query) use ($search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('license_plate', 'like', "%{$search}%")
                       ->orWhere('model', 'like', "%{$search}%")
-                      ->orWhereHas('driver', function($driverQuery) use ($search) {
+                      ->orWhereHas('driver', function ($driverQuery) use ($search) {
                           $driverQuery->where('first_name', 'like', "%{$search}%")
                                       ->orWhere('last_name', 'like', "%{$search}%")
                                       ->orWhere('maternal_last_name', 'like', "%{$search}%");
                       });
                 });
             })
+            ->when($status, fn ($query, $value) => $query->where('status', $value))
             ->with(['routes', 'driver'])
             ->latest()
             ->paginate($perPage)
             ->withQueryString();
 
-        return view('admin.buses.index', compact('buses'));
+        $statusCounts = Bus::selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        $summary = [
+            'total' => Bus::count(),
+            'active' => (int) ($statusCounts['active'] ?? 0),
+            'maintenance' => (int) ($statusCounts['maintenance'] ?? 0),
+            'emergency' => (int) ($statusCounts['emergency'] ?? 0),
+            'inactive' => (int) ($statusCounts['inactive'] ?? 0),
+        ];
+
+        return view('admin.buses.index', compact('buses', 'summary', 'status', 'search'));
     }
 
     /**

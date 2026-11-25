@@ -1,0 +1,989 @@
+{
+    "generated_from": "OSRM route geometries + Nominatim reverse geocoding",
+    "stops": [
+        {
+            "key": 1,
+            "name": "Parada Santa Lucía del Camino",
+            "address": "Santa Lucía del Camino",
+            "latitude": 17.073668,
+            "longitude": -96.696146,
+            "reference_route": "OAX-101"
+        },
+        {
+            "key": 2,
+            "name": "Parada Avenida Internacional",
+            "address": "Avenida Internacional, Tlalixtac de Cabrera",
+            "latitude": 17.051257,
+            "longitude": -96.646047,
+            "reference_route": "OAX-101"
+        },
+        {
+            "key": 3,
+            "name": "Centro de Especialidades Médicas",
+            "address": "Calle Manuel Sabino Crespo, Centro Histórico de Oaxaca, Oaxaca",
+            "latitude": 17.071398,
+            "longitude": -96.727371,
+            "reference_route": "OAX-101"
+        },
+        {
+            "key": 4,
+            "name": "Parada Antigua Carretera a Monte Albán",
+            "address": "Antigua Carretera a Monte Albán, Oaxaca",
+            "latitude": 17.053234,
+            "longitude": -96.742972,
+            "reference_route": "OAX-101"
+        },
+        {
+            "key": 5,
+            "name": "Parada Cuarta Privada de la Noria",
+            "address": "Cuarta Privada de la Noria, Centro Histórico de Oaxaca, Oaxaca",
+            "latitude": 17.052243,
+            "longitude": -96.720876,
+            "reference_route": "OAX-102"
+        },
+        {
+            "key": 6,
+            "name": "Parada Calle Progreso",
+            "address": "Calle Progreso, Santa Cruz Xoxocotlán",
+            "latitude": 17.00439,
+            "longitude": -96.738319,
+            "reference_route": "OAX-102"
+        },
+        {
+            "key": 7,
+            "name": "Parada Carretera a San Luis Beltrán",
+            "address": "Carretera a San Luis Beltrán, Oaxaca",
+            "latitude": 17.094486,
+            "longitude": -96.697657,
+            "reference_route": "OAX-102"
+        },
+        {
+            "key": 8,
+            "name": "Parada Antigua Carretera a Monte Albán",
+            "address": "Antigua Carretera a Monte Albán, Oaxaca",
+            "latitude": 17.050364,
+            "longitude": -96.733096,
+            "reference_route": "OAX-102"
+        },
+        {
+            "key": 9,
+            "name": "Parada Calle Ignacio Bernal",
+            "address": "Calle Ignacio Bernal, Oaxaca",
+            "latitude": 17.07325,
+            "longitude": -96.759888,
+            "reference_route": "OAX-103"
+        },
+        {
+            "key": 10,
+            "name": "Parada Calle Nezahualcóyotl",
+            "address": "Calle Nezahualcóyotl, Colonia Reforma, Oaxaca",
+            "latitude": 17.074415,
+            "longitude": -96.717377,
+            "reference_route": "OAX-103"
+        },
+        {
+            "key": 11,
+            "name": "Parada Calle General Manuel Cabrera Carrasquedo",
+            "address": "Calle General Manuel Cabrera Carrasquedo, Centro Histórico de Oaxaca, Oaxaca",
+            "latitude": 17.070134,
+            "longitude": -96.726741,
+            "reference_route": "OAX-103"
+        },
+        {
+            "key": 12,
+            "name": "Parada Calle Venustiano Carranza",
+            "address": "Calle Venustiano Carranza, Oaxaca",
+            "latitude": 17.05181,
+            "longitude": -96.708982,
+            "reference_route": "OAX-104"
+        },
+        {
+            "key": 13,
+            "name": "Parada Calle de Melchor Ocampo",
+            "address": "Calle de Melchor Ocampo, Centro Histórico de Oaxaca, Oaxaca",
+            "latitude": 17.056669,
+            "longitude": -96.722655,
+            "reference_route": "OAX-104"
+        },
+        {
+            "key": 14,
+            "name": "Parada Calle Primero de Mayo",
+            "address": "Calle Primero de Mayo, Oaxaca",
+            "latitude": 17.049524,
+            "longitude": -96.742316,
+            "reference_route": "OAX-104"
+        },
+        {
+            "key": 15,
+            "name": "Parada Calle Pico de Orizaba",
+            "address": "Calle Pico de Orizaba, Oaxaca",
+            "latitude": 17.085485,
+            "longitude": -96.734599,
+            "reference_route": "OAX-104"
+        },
+        {
+            "key": 16,
+            "name": "Cuartel General de la 28.ª Zona Militar",
+            "address": "Privada Sexta Orquídeas, Santa Lucía del Camino",
+            "latitude": 17.075126,
+            "longitude": -96.696757,
+            "reference_route": "OAX-105"
+        },
+        {
+            "key": 17,
+            "name": "Parada Tecnológico",
+            "address": "Tecnológico, Oaxaca",
+            "latitude": 17.079666,
+            "longitude": -96.744605,
+            "reference_route": "OAX-105"
+        },
+        {
+            "key": 18,
+            "name": "Parada Calle Juan de la Barrera",
+            "address": "Calle Juan de la Barrera, Oaxaca",
+            "latitude": 17.071323,
+            "longitude": -96.736846,
+            "reference_route": "OAX-105"
+        },
+        {
+            "key": 19,
+            "name": "Parada Calle Ignacio Bernal",
+            "address": "Calle Ignacio Bernal, Oaxaca",
+            "latitude": 17.073628,
+            "longitude": -96.764011,
+            "reference_route": "OAX-106"
+        },
+        {
+            "key": 20,
+            "name": "Robobrick",
+            "address": "Calle Palmeras, Colonia América Norte, Oaxaca",
+            "latitude": 17.07604,
+            "longitude": -96.712852,
+            "reference_route": "OAX-106"
+        },
+        {
+            "key": 21,
+            "name": "Parada Privada de Fray Bartolomé de las Casas",
+            "address": "Privada de Fray Bartolomé de las Casas, Centro Histórico de Oaxaca, Oaxaca",
+            "latitude": 17.060492,
+            "longitude": -96.731795,
+            "reference_route": "OAX-106"
+        },
+        {
+            "key": 22,
+            "name": "Parada Antiguo Callejón de San Pablo",
+            "address": "Antiguo Callejón de San Pablo, Centro Histórico de Oaxaca, Oaxaca",
+            "latitude": 17.061587,
+            "longitude": -96.723054,
+            "reference_route": "OAX-106"
+        },
+        {
+            "key": 23,
+            "name": "Parada Boulevard Guadalupe Hinojosa de Murat",
+            "address": "Boulevard Guadalupe Hinojosa de Murat, Santa Cruz Xoxocotlán",
+            "latitude": 17.039493,
+            "longitude": -96.728775,
+            "reference_route": "OAX-107"
+        },
+        {
+            "key": 24,
+            "name": "Parada San Juan Bautista la Raya",
+            "address": "San Juan Bautista la Raya",
+            "latitude": 16.998745,
+            "longitude": -96.732623,
+            "reference_route": "OAX-107"
+        },
+        {
+            "key": 25,
+            "name": "Parada Riveras del Atoyac",
+            "address": "Riveras del Atoyac, Fracc. Real Casa Blanca, Oaxaca",
+            "latitude": 17.072996,
+            "longitude": -96.743517,
+            "reference_route": "OAX-107"
+        },
+        {
+            "key": 26,
+            "name": "Parada Calle 21 de Marzo",
+            "address": "Calle 21 de Marzo, Oaxaca",
+            "latitude": 17.057199,
+            "longitude": -96.709863,
+            "reference_route": "OAX-107"
+        },
+        {
+            "key": 27,
+            "name": "Parada Carretera al Panteón Jardín",
+            "address": "Carretera al Panteón Jardín",
+            "latitude": 17.070084,
+            "longitude": -96.695772,
+            "reference_route": "OAX-108"
+        },
+        {
+            "key": 28,
+            "name": "Parada Camino del Rancho",
+            "address": "Camino del Rancho, Tlalixtac de Cabrera",
+            "latitude": 17.054431,
+            "longitude": -96.651665,
+            "reference_route": "OAX-108"
+        },
+        {
+            "key": 29,
+            "name": "Parada Avenida La Paz",
+            "address": "Avenida La Paz, Oaxaca",
+            "latitude": 17.055681,
+            "longitude": -96.739874,
+            "reference_route": "OAX-108"
+        },
+        {
+            "key": 30,
+            "name": "Parada Avenida Constituyentes",
+            "address": "Avenida Constituyentes, Centro Histórico de Oaxaca, Oaxaca",
+            "latitude": 17.052151,
+            "longitude": -96.72915,
+            "reference_route": "OAX-108"
+        },
+        {
+            "key": 31,
+            "name": "Parada Avenida San Diego Hornos",
+            "address": "Avenida San Diego Hornos, Santa Lucía del Camino",
+            "latitude": 17.06454,
+            "longitude": -96.690378,
+            "reference_route": "OAX-109"
+        },
+        {
+            "key": 32,
+            "name": "Parada Calle Unión Zapata",
+            "address": "Calle Unión Zapata, Santa María del Tule",
+            "latitude": 17.025048,
+            "longitude": -96.608368,
+            "reference_route": "OAX-109"
+        },
+        {
+            "key": 33,
+            "name": "Parada Carretera Oaxaca - Tehuantepec",
+            "address": "Carretera Oaxaca - Tehuantepec, San Sebastián Tutla",
+            "latitude": 17.065941,
+            "longitude": -96.681081,
+            "reference_route": "OAX-109"
+        },
+        {
+            "key": 34,
+            "name": "Parada Avenida de la Independencia",
+            "address": "Avenida de la Independencia, Centro Histórico de Oaxaca, Oaxaca",
+            "latitude": 17.061307,
+            "longitude": -96.721691,
+            "reference_route": "OAX-109"
+        },
+        {
+            "key": 35,
+            "name": "Parada San Raymundo Jalpan",
+            "address": "San Raymundo Jalpan",
+            "latitude": 16.984976,
+            "longitude": -96.747076,
+            "reference_route": "OAX-110"
+        },
+        {
+            "key": 36,
+            "name": "Parada Carretera Oaxaca-Zimatlán de Álvarez",
+            "address": "Carretera Oaxaca-Zimatlán de Álvarez, Oaxaca",
+            "latitude": 17.048958,
+            "longitude": -96.731295,
+            "reference_route": "OAX-110"
+        },
+        {
+            "key": 37,
+            "name": "Parada Privada Eduardo Vasconcelos",
+            "address": "Privada Eduardo Vasconcelos, Barrio Mágico de Jalatlaco, Oaxaca",
+            "latitude": 17.06691,
+            "longitude": -96.714147,
+            "reference_route": "OAX-110"
+        },
+        {
+            "key": 38,
+            "name": "Parada Carretera a San Luis Beltrán",
+            "address": "Carretera a San Luis Beltrán, Oaxaca",
+            "latitude": 17.092613,
+            "longitude": -96.701368,
+            "reference_route": "OAX-110"
+        },
+        {
+            "key": 39,
+            "name": "Parada Calzada Niños Héroes de Chapultepec",
+            "address": "Calzada Niños Héroes de Chapultepec, Centro Histórico de Oaxaca, Oaxaca",
+            "latitude": 17.072665,
+            "longitude": -96.734336,
+            "reference_route": "OAX-111"
+        },
+        {
+            "key": 40,
+            "name": "Parada San Pablo Etla",
+            "address": "San Pablo Etla",
+            "latitude": 17.143222,
+            "longitude": -96.777848,
+            "reference_route": "OAX-111"
+        },
+        {
+            "key": 41,
+            "name": "Parada Carretera Panamericana",
+            "address": "Carretera Panamericana, Hacienda Blanca",
+            "latitude": 17.132877,
+            "longitude": -96.772893,
+            "reference_route": "OAX-111"
+        },
+        {
+            "key": 42,
+            "name": "Parada Calle Independencia",
+            "address": "Calle Independencia, Santa Cruz Amilpas",
+            "latitude": 17.063805,
+            "longitude": -96.681636,
+            "reference_route": "OAX-112"
+        },
+        {
+            "key": 43,
+            "name": "Parada Macuilxóchitl",
+            "address": "Carretera Oaxaca - Tehuantepec, Macuilxóchitl",
+            "latitude": 17.006517,
+            "longitude": -96.543586,
+            "reference_route": "OAX-112"
+        },
+        {
+            "key": 44,
+            "name": "Parada Carretera Oaxaca - Tehuantepec",
+            "address": "Carretera Oaxaca - Tehuantepec, Macuilxóchitl",
+            "latitude": 17.010013,
+            "longitude": -96.549402,
+            "reference_route": "OAX-112"
+        },
+        {
+            "key": 45,
+            "name": "Parada Calle Mariano Azuela",
+            "address": "Calle Mariano Azuela, Oaxaca",
+            "latitude": 17.056186,
+            "longitude": -96.710943,
+            "reference_route": "OAX-112"
+        },
+        {
+            "key": 46,
+            "name": "Parada Privada Vicente Guerrero",
+            "address": "Privada Vicente Guerrero, Santa Cruz Xoxocotlán",
+            "latitude": 17.011285,
+            "longitude": -96.735305,
+            "reference_route": "OAX-113"
+        },
+        {
+            "key": 47,
+            "name": "Parada San Raymundo Jalpan",
+            "address": "San Raymundo Jalpan",
+            "latitude": 16.993921,
+            "longitude": -96.742977,
+            "reference_route": "OAX-113"
+        },
+        {
+            "key": 48,
+            "name": "Parada Avenida Venus",
+            "address": "Avenida Venus, Oaxaca",
+            "latitude": 17.078242,
+            "longitude": -96.726101,
+            "reference_route": "OAX-113"
+        },
+        {
+            "key": 49,
+            "name": "Parada Carretera a San Luis Beltrán",
+            "address": "Carretera a San Luis Beltrán, Oaxaca",
+            "latitude": 17.092877,
+            "longitude": -96.703138,
+            "reference_route": "OAX-113"
+        },
+        {
+            "key": 50,
+            "name": "Parada Tecnológico",
+            "address": "Tecnológico, Oaxaca",
+            "latitude": 17.079119,
+            "longitude": -96.745828,
+            "reference_route": "OAX-114"
+        },
+        {
+            "key": 51,
+            "name": "Parada Boulevard Eduardo Mata",
+            "address": "Boulevard Eduardo Mata, Centro Histórico de Oaxaca, Oaxaca",
+            "latitude": 17.060058,
+            "longitude": -96.733154,
+            "reference_route": "OAX-114"
+        },
+        {
+            "key": 52,
+            "name": "Parada Avenida Lázaro Cárdenas",
+            "address": "Avenida Lázaro Cárdenas, San Sebastián Tutla",
+            "latitude": 17.064082,
+            "longitude": -96.68663,
+            "reference_route": "OAX-115"
+        },
+        {
+            "key": 53,
+            "name": "Parada Calle Camino Nacional",
+            "address": "Calle Camino Nacional, Santa María del Tule",
+            "latitude": 17.026386,
+            "longitude": -96.612713,
+            "reference_route": "OAX-115"
+        },
+        {
+            "key": 54,
+            "name": "Parada Santa Lucía del Camino",
+            "address": "Santa Lucía del Camino",
+            "latitude": 17.064729,
+            "longitude": -96.696866,
+            "reference_route": "OAX-115"
+        },
+        {
+            "key": 55,
+            "name": "El Apetito Buffet",
+            "address": "Calle de Arteaga, Centro Histórico de Oaxaca, Oaxaca",
+            "latitude": 17.057078,
+            "longitude": -96.724578,
+            "reference_route": "OAX-115"
+        },
+        {
+            "key": 56,
+            "name": "Parada San Juan Bautista la Raya",
+            "address": "San Juan Bautista la Raya",
+            "latitude": 16.981477,
+            "longitude": -96.748601,
+            "reference_route": "OAX-116"
+        },
+        {
+            "key": 57,
+            "name": "Parada Calle 21 de Marzo",
+            "address": "Calle 21 de Marzo, Oaxaca",
+            "latitude": 17.053748,
+            "longitude": -96.710388,
+            "reference_route": "OAX-116"
+        },
+        {
+            "key": 58,
+            "name": "Parada Boulevard Eduardo Mata",
+            "address": "Boulevard Eduardo Mata, Oaxaca",
+            "latitude": 17.050719,
+            "longitude": -96.727004,
+            "reference_route": "OAX-116"
+        },
+        {
+            "key": 59,
+            "name": "Parada Calzada Niños Héroes de Chapultepec",
+            "address": "Calzada Niños Héroes de Chapultepec, Oaxaca",
+            "latitude": 17.072522,
+            "longitude": -96.728103,
+            "reference_route": "OAX-116"
+        },
+        {
+            "key": 60,
+            "name": "Parada Camino de la Horqueta",
+            "address": "Camino de la Horqueta, Santa Cruz Xoxocotlán",
+            "latitude": 17.017859,
+            "longitude": -96.73239,
+            "reference_route": "OAX-117"
+        },
+        {
+            "key": 61,
+            "name": "Parada San Raymundo Jalpan",
+            "address": "San Raymundo Jalpan",
+            "latitude": 16.992465,
+            "longitude": -96.743634,
+            "reference_route": "OAX-117"
+        },
+        {
+            "key": 62,
+            "name": "Parada Prolongación de Calzada Madero",
+            "address": "Prolongación de Calzada Madero, Oaxaca",
+            "latitude": 17.084435,
+            "longitude": -96.745486,
+            "reference_route": "OAX-117"
+        },
+        {
+            "key": 63,
+            "name": "Parada Calle José López Alavez",
+            "address": "Calle José López Alavez, Oaxaca",
+            "latitude": 17.082802,
+            "longitude": -96.719399,
+            "reference_route": "OAX-118"
+        },
+        {
+            "key": 64,
+            "name": "Parada Avenida Miguel Hidalgo",
+            "address": "Avenida Miguel Hidalgo, Centro Histórico de Oaxaca, Oaxaca",
+            "latitude": 17.060774,
+            "longitude": -96.723826,
+            "reference_route": "OAX-118"
+        },
+        {
+            "key": 65,
+            "name": "Herbivora – Restaurante Vegano en Oaxaca",
+            "address": "Calle de Tinoco y Palacios, Centro Histórico de Oaxaca, Oaxaca",
+            "latitude": 17.063423,
+            "longitude": -96.727282,
+            "reference_route": "OAX-118"
+        }
+    ],
+    "routes": {
+        "OAX-101": [
+            {
+                "stop_key": 1,
+                "name": "Parada Santa Lucía del Camino",
+                "order": 7,
+                "minutes": 2
+            },
+            {
+                "stop_key": 2,
+                "name": "Parada Avenida Internacional",
+                "order": 10,
+                "minutes": 4
+            },
+            {
+                "stop_key": 3,
+                "name": "Centro de Especialidades Médicas",
+                "order": 12,
+                "minutes": 3
+            },
+            {
+                "stop_key": 4,
+                "name": "Parada Antigua Carretera a Monte Albán",
+                "order": 17,
+                "minutes": 2
+            }
+        ],
+        "OAX-102": [
+            {
+                "stop_key": 5,
+                "name": "Parada Cuarta Privada de la Noria",
+                "order": 4,
+                "minutes": 4
+            },
+            {
+                "stop_key": 8,
+                "name": "Parada Antigua Carretera a Monte Albán",
+                "order": 5,
+                "minutes": 4
+            },
+            {
+                "stop_key": 6,
+                "name": "Parada Calle Progreso",
+                "order": 10,
+                "minutes": 12
+            },
+            {
+                "stop_key": 7,
+                "name": "Parada Carretera a San Luis Beltrán",
+                "order": 13,
+                "minutes": 3
+            }
+        ],
+        "OAX-103": [
+            {
+                "stop_key": 9,
+                "name": "Parada Calle Ignacio Bernal",
+                "order": 4,
+                "minutes": 8
+            },
+            {
+                "stop_key": 10,
+                "name": "Parada Calle Nezahualcóyotl",
+                "order": 6,
+                "minutes": 22
+            },
+            {
+                "stop_key": 11,
+                "name": "Parada Calle General Manuel Cabrera Carrasquedo",
+                "order": 13,
+                "minutes": 2
+            }
+        ],
+        "OAX-104": [
+            {
+                "stop_key": 12,
+                "name": "Parada Calle Venustiano Carranza",
+                "order": 6,
+                "minutes": 2
+            },
+            {
+                "stop_key": 13,
+                "name": "Parada Calle de Melchor Ocampo",
+                "order": 9,
+                "minutes": 5
+            },
+            {
+                "stop_key": 14,
+                "name": "Parada Calle Primero de Mayo",
+                "order": 12,
+                "minutes": 9
+            },
+            {
+                "stop_key": 15,
+                "name": "Parada Calle Pico de Orizaba",
+                "order": 15,
+                "minutes": 5
+            }
+        ],
+        "OAX-105": [
+            {
+                "stop_key": 16,
+                "name": "Cuartel General de la 28.ª Zona Militar",
+                "order": 6,
+                "minutes": 2
+            },
+            {
+                "stop_key": 7,
+                "name": "Parada Carretera a San Luis Beltrán",
+                "order": 9,
+                "minutes": 4
+            },
+            {
+                "stop_key": 17,
+                "name": "Parada Tecnológico",
+                "order": 11,
+                "minutes": 9
+            },
+            {
+                "stop_key": 18,
+                "name": "Parada Calle Juan de la Barrera",
+                "order": 14,
+                "minutes": 11
+            }
+        ],
+        "OAX-106": [
+            {
+                "stop_key": 19,
+                "name": "Parada Calle Ignacio Bernal",
+                "order": 4,
+                "minutes": 9
+            },
+            {
+                "stop_key": 20,
+                "name": "Robobrick",
+                "order": 6,
+                "minutes": 24
+            },
+            {
+                "stop_key": 21,
+                "name": "Parada Privada de Fray Bartolomé de las Casas",
+                "order": 9,
+                "minutes": 11
+            },
+            {
+                "stop_key": 22,
+                "name": "Parada Antiguo Callejón de San Pablo",
+                "order": 11,
+                "minutes": 4
+            }
+        ],
+        "OAX-107": [
+            {
+                "stop_key": 23,
+                "name": "Parada Boulevard Guadalupe Hinojosa de Murat",
+                "order": 6,
+                "minutes": 2
+            },
+            {
+                "stop_key": 24,
+                "name": "Parada San Juan Bautista la Raya",
+                "order": 9,
+                "minutes": 2
+            },
+            {
+                "stop_key": 25,
+                "name": "Parada Riveras del Atoyac",
+                "order": 12,
+                "minutes": 9
+            },
+            {
+                "stop_key": 26,
+                "name": "Parada Calle 21 de Marzo",
+                "order": 17,
+                "minutes": 6
+            }
+        ],
+        "OAX-108": [
+            {
+                "stop_key": 27,
+                "name": "Parada Carretera al Panteón Jardín",
+                "order": 4,
+                "minutes": 3
+            },
+            {
+                "stop_key": 28,
+                "name": "Parada Camino del Rancho",
+                "order": 7,
+                "minutes": 6
+            },
+            {
+                "stop_key": 30,
+                "name": "Parada Avenida Constituyentes",
+                "order": 8,
+                "minutes": 25
+            },
+            {
+                "stop_key": 29,
+                "name": "Parada Avenida La Paz",
+                "order": 10,
+                "minutes": 2
+            }
+        ],
+        "OAX-109": [
+            {
+                "stop_key": 31,
+                "name": "Parada Avenida San Diego Hornos",
+                "order": 5,
+                "minutes": 7
+            },
+            {
+                "stop_key": 32,
+                "name": "Parada Calle Unión Zapata",
+                "order": 8,
+                "minutes": 12
+            },
+            {
+                "stop_key": 33,
+                "name": "Parada Carretera Oaxaca - Tehuantepec",
+                "order": 10,
+                "minutes": 31
+            },
+            {
+                "stop_key": 34,
+                "name": "Parada Avenida de la Independencia",
+                "order": 12,
+                "minutes": 5
+            }
+        ],
+        "OAX-110": [
+            {
+                "stop_key": 35,
+                "name": "Parada San Raymundo Jalpan",
+                "order": 4,
+                "minutes": 16
+            },
+            {
+                "stop_key": 36,
+                "name": "Parada Carretera Oaxaca-Zimatlán de Álvarez",
+                "order": 7,
+                "minutes": 16
+            },
+            {
+                "stop_key": 37,
+                "name": "Parada Privada Eduardo Vasconcelos",
+                "order": 11,
+                "minutes": 8
+            },
+            {
+                "stop_key": 38,
+                "name": "Parada Carretera a San Luis Beltrán",
+                "order": 15,
+                "minutes": 5
+            }
+        ],
+        "OAX-111": [
+            {
+                "stop_key": 39,
+                "name": "Parada Calzada Niños Héroes de Chapultepec",
+                "order": 4,
+                "minutes": 11
+            },
+            {
+                "stop_key": 40,
+                "name": "Parada San Pablo Etla",
+                "order": 6,
+                "minutes": 33
+            },
+            {
+                "stop_key": 41,
+                "name": "Parada Carretera Panamericana",
+                "order": 8,
+                "minutes": 25
+            },
+            {
+                "stop_key": 18,
+                "name": "Parada Calle Juan de la Barrera",
+                "order": 10,
+                "minutes": 11
+            }
+        ],
+        "OAX-112": [
+            {
+                "stop_key": 42,
+                "name": "Parada Calle Independencia",
+                "order": 4,
+                "minutes": 16
+            },
+            {
+                "stop_key": 44,
+                "name": "Parada Carretera Oaxaca - Tehuantepec",
+                "order": 7,
+                "minutes": 21
+            },
+            {
+                "stop_key": 43,
+                "name": "Parada Macuilxóchitl",
+                "order": 8,
+                "minutes": 2
+            },
+            {
+                "stop_key": 45,
+                "name": "Parada Calle Mariano Azuela",
+                "order": 10,
+                "minutes": 82
+            }
+        ],
+        "OAX-113": [
+            {
+                "stop_key": 46,
+                "name": "Parada Privada Vicente Guerrero",
+                "order": 5,
+                "minutes": 19
+            },
+            {
+                "stop_key": 47,
+                "name": "Parada San Raymundo Jalpan",
+                "order": 8,
+                "minutes": 14
+            },
+            {
+                "stop_key": 48,
+                "name": "Parada Avenida Venus",
+                "order": 11,
+                "minutes": 2
+            },
+            {
+                "stop_key": 49,
+                "name": "Parada Carretera a San Luis Beltrán",
+                "order": 15,
+                "minutes": 5
+            }
+        ],
+        "OAX-114": [
+            {
+                "stop_key": 22,
+                "name": "Parada Antiguo Callejón de San Pablo",
+                "order": 4,
+                "minutes": 7
+            },
+            {
+                "stop_key": 50,
+                "name": "Parada Tecnológico",
+                "order": 6,
+                "minutes": 16
+            },
+            {
+                "stop_key": 51,
+                "name": "Parada Boulevard Eduardo Mata",
+                "order": 9,
+                "minutes": 4
+            },
+            {
+                "stop_key": 25,
+                "name": "Parada Riveras del Atoyac",
+                "order": 11,
+                "minutes": 10
+            }
+        ],
+        "OAX-115": [
+            {
+                "stop_key": 52,
+                "name": "Parada Avenida Lázaro Cárdenas",
+                "order": 4,
+                "minutes": 8
+            },
+            {
+                "stop_key": 53,
+                "name": "Parada Calle Camino Nacional",
+                "order": 8,
+                "minutes": 2
+            },
+            {
+                "stop_key": 54,
+                "name": "Parada Santa Lucía del Camino",
+                "order": 9,
+                "minutes": 35
+            },
+            {
+                "stop_key": 55,
+                "name": "El Apetito Buffet",
+                "order": 14,
+                "minutes": 5
+            }
+        ],
+        "OAX-116": [
+            {
+                "stop_key": 58,
+                "name": "Parada Boulevard Eduardo Mata",
+                "order": 2,
+                "minutes": 6
+            },
+            {
+                "stop_key": 56,
+                "name": "Parada San Juan Bautista la Raya",
+                "order": 5,
+                "minutes": 17
+            },
+            {
+                "stop_key": 57,
+                "name": "Parada Calle 21 de Marzo",
+                "order": 8,
+                "minutes": 22
+            },
+            {
+                "stop_key": 59,
+                "name": "Parada Calzada Niños Héroes de Chapultepec",
+                "order": 16,
+                "minutes": 19
+            }
+        ],
+        "OAX-117": [
+            {
+                "stop_key": 13,
+                "name": "Parada Calle de Melchor Ocampo",
+                "order": 5,
+                "minutes": 3
+            },
+            {
+                "stop_key": 60,
+                "name": "Parada Camino de la Horqueta",
+                "order": 8,
+                "minutes": 17
+            },
+            {
+                "stop_key": 61,
+                "name": "Parada San Raymundo Jalpan",
+                "order": 10,
+                "minutes": 13
+            },
+            {
+                "stop_key": 62,
+                "name": "Parada Prolongación de Calzada Madero",
+                "order": 12,
+                "minutes": 15
+            }
+        ],
+        "OAX-118": [
+            {
+                "stop_key": 63,
+                "name": "Parada Calle José López Alavez",
+                "order": 1,
+                "minutes": 25
+            },
+            {
+                "stop_key": 64,
+                "name": "Parada Avenida Miguel Hidalgo",
+                "order": 5,
+                "minutes": 2
+            },
+            {
+                "stop_key": 65,
+                "name": "Herbivora – Restaurante Vegano en Oaxaca",
+                "order": 10,
+                "minutes": 5
+            },
+            {
+                "stop_key": 36,
+                "name": "Parada Carretera Oaxaca-Zimatlán de Álvarez",
+                "order": 15,
+                "minutes": 5
+            }
+        ]
+    }
+}

@@ -1,16 +1,20 @@
-<x-passenger-layout title="Ubicaditos · Reportes y Estadísticas">
+<x-passenger-layout title="Ubicaditos · Reportes y Estadísticas" surface="admin">
     @php
         $card = 'bg-white/75 dark:bg-gray-800/75 backdrop-blur-xl border border-white/80 dark:border-white/10 shadow-[0_14px_35px_-20px_rgba(40,50,90,0.35)] rounded-[26px]';
         $muted = 'text-slate-500 dark:text-gray-400';
         $heading = 'text-[#273252] dark:text-gray-100';
 
-        $totalTrips = isset($tripsByDay) ? (int) $tripsByDay->sum('count') : 0;
-        $tripsThisMonth = isset($tripsByDay)
-            ? (int) $tripsByDay->filter(fn ($day) => \Carbon\Carbon::parse($day->date)->isSameMonth(now()))->sum('count')
-            : 0;
+        $totalTrips = $stats['total_trips']
+            ?? (isset($tripsByDay) ? (int) $tripsByDay->sum('count') : 0);
+        $tripsThisMonth = $stats['total_trips_month']
+            ?? (isset($tripsByDay)
+                ? (int) $tripsByDay->filter(fn ($day) => \Carbon\Carbon::parse($day->date)->isSameMonth(now()))->sum('count')
+                : 0);
 
-        $totalBuses = isset($busUsage) ? $busUsage->count() : 0;
-        $activeBuses = isset($activeBuses) ? $activeBuses->count() : (isset($stats['active_buses']) ? $stats['active_buses'] : null);
+        $totalBuses = $stats['total_buses']
+            ?? (isset($busUsage) ? $busUsage->count() : 0);
+        $activeBuses = $stats['active_buses']
+            ?? (isset($activeBuses) ? $activeBuses->count() : null);
         $totalUsers = isset($stats['total_users'])
             ? $stats['total_users']
             : ((isset($stats['total_drivers']) && isset($stats['total_passengers'])) ? $stats['total_drivers'] + $stats['total_passengers'] : null);
@@ -29,14 +33,19 @@
         $maxBusTrips = isset($busUsage) && $busUsage->isNotEmpty()
             ? max((int) $busUsage->max('trips_count'), 1)
             : 1;
+        $maxRouteTrips = isset($topRoutes) && $topRoutes->isNotEmpty()
+            ? max((int) $topRoutes->max('trips_count'), 1)
+            : 1;
+        $emergencyLabels = [
+            'accident' => 'Accidente',
+            'breakdown' => 'Avería',
+            'medical' => 'Médica',
+            'security' => 'Seguridad',
+            'other' => 'Otra',
+        ];
     @endphp
 
     <style>
-        .reports-page {
-            background:
-                radial-gradient(circle at 8% 12%, rgba(151, 169, 211, .28), transparent 30%),
-                radial-gradient(circle at 94% 8%, rgba(178, 207, 232, .45), transparent 28%);
-        }
         .report-stat {
             min-height: 116px;
             transition: transform .2s ease, box-shadow .2s ease;
@@ -52,20 +61,32 @@
 
     <div class="reports-page -m-4 sm:-m-6 lg:-m-8 min-h-full px-4 py-7 sm:px-6 lg:px-8">
         <div class="mx-auto max-w-7xl">
-            <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div class="mb-6 flex flex-col items-center gap-3 text-center">
                 <div>
                     <p class="mb-1 text-xs font-semibold uppercase tracking-[.18em] text-[#697aa8] dark:text-[#aab7df]">Panel de administración</p>
-                    <h1 class="text-center text-[30px] font-bold leading-tight text-[#252e4b] dark:text-gray-100 sm:text-left sm:text-[36px]">
+                    <h1 class="text-center text-[30px] font-bold leading-tight text-[#252e4b] dark:text-gray-100 sm:text-[36px]">
                         Reportes y Estadísticas
                     </h1>
-                    <p class="mt-2 text-center text-sm text-slate-500 dark:text-gray-400 sm:text-left">
+                    <p class="mt-2 text-center text-sm text-slate-500 dark:text-gray-400">
                         Un resumen del uso y la actividad de Ubicaditos.
                     </p>
                 </div>
-                <span class="self-center rounded-full border border-white/80 bg-white/70 px-4 py-2 text-xs font-medium text-slate-500 shadow-sm dark:border-white/10 dark:bg-gray-800/70 dark:text-gray-300 sm:self-auto">
-                    <span class="mr-1.5 inline-block h-2 w-2 rounded-full bg-emerald-500"></span>
-                    Datos del sistema
-                </span>
+                <div class="flex flex-wrap items-center justify-center gap-2">
+                    <a href="{{ route('admin.reports.export-pdf') }}"
+                       class="inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white/80 px-4 text-xs font-semibold text-slate-600 shadow-sm transition hover:bg-white dark:border-gray-600 dark:bg-gray-700/70 dark:text-gray-200 dark:hover:bg-gray-700">
+                        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+                        Exportar PDF
+                    </a>
+                    <a href="{{ route('admin.reports.export-excel') }}"
+                       class="inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white/80 px-4 text-xs font-semibold text-slate-600 shadow-sm transition hover:bg-white dark:border-gray-600 dark:bg-gray-700/70 dark:text-gray-200 dark:hover:bg-gray-700">
+                        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+                        Exportar CSV
+                    </a>
+                    <span class="inline-flex items-center rounded-full border border-white/80 bg-white/70 px-4 py-2 text-xs font-medium text-slate-500 shadow-sm dark:border-white/10 dark:bg-gray-800/70 dark:text-gray-300">
+                        <span class="mr-1.5 inline-block h-2 w-2 rounded-full bg-emerald-500"></span>
+                        Datos del sistema
+                    </span>
+                </div>
             </div>
 
             {{-- Tarjetas de resumen --}}
@@ -279,6 +300,56 @@
                     <p class="rounded-2xl bg-slate-50/80 px-4 py-8 text-center text-sm {{ $muted }} dark:bg-gray-700/30">No hay autobuses registrados.</p>
                 @endif
             </section>
+
+            {{-- Rutas más utilizadas y emergencias por tipo --}}
+            <div class="mt-6 grid gap-4 lg:grid-cols-2">
+                <section class="{{ $card }} p-5 sm:p-6">
+                    <div class="mb-4">
+                        <h2 class="text-base font-semibold {{ $heading }}">Rutas más utilizadas</h2>
+                        <p class="mt-1 text-xs {{ $muted }}">Rutas con más viajes en los últimos 30 días.</p>
+                    </div>
+                    @if(isset($topRoutes) && $topRoutes->isNotEmpty())
+                        <div class="space-y-3">
+                            @foreach($topRoutes as $route)
+                                <div>
+                                    <div class="mb-1 flex items-center justify-between gap-3 text-xs">
+                                        <span class="flex min-w-0 items-center gap-2 font-medium {{ $heading }}">
+                                            <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background-color: {{ $route->color ?? '#8b5cf6' }}"></span>
+                                            <span class="truncate">{{ $route->name }}</span>
+                                            <span class="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:bg-gray-700 dark:text-gray-300">{{ $route->code }}</span>
+                                        </span>
+                                        <span class="shrink-0 {{ $muted }}">{{ number_format($route->trips_count) }} viajes</span>
+                                    </div>
+                                    <div class="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-gray-600">
+                                        <div class="h-full rounded-full bg-gradient-to-r from-[#7788bd] to-[#b5cde9]" style="width: {{ min(((int) $route->trips_count / $maxRouteTrips) * 100, 100) }}%"></div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <p class="rounded-2xl bg-slate-50/80 px-4 py-8 text-center text-sm {{ $muted }} dark:bg-gray-700/30">No hay rutas registradas.</p>
+                    @endif
+                </section>
+
+                <section class="{{ $card }} p-5 sm:p-6">
+                    <div class="mb-4">
+                        <h2 class="text-base font-semibold {{ $heading }}">Emergencias por tipo</h2>
+                        <p class="mt-1 text-xs {{ $muted }}">Reportes acumulados de los conductores.</p>
+                    </div>
+                    @if(!empty($emergenciesByType))
+                        <div class="grid grid-cols-2 gap-3">
+                            @foreach($emergencyLabels as $type => $label)
+                                <div class="rounded-2xl bg-slate-50/80 px-4 py-3 dark:bg-gray-700/40">
+                                    <p class="text-[11px] font-semibold uppercase tracking-[.1em] text-slate-400 dark:text-gray-500">{{ $label }}</p>
+                                    <p class="mt-1 text-[22px] font-bold leading-tight {{ $heading }}">{{ number_format($emergenciesByType[$type] ?? 0) }}</p>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <p class="rounded-2xl bg-slate-50/80 px-4 py-8 text-center text-sm {{ $muted }} dark:bg-gray-700/30">No hay emergencias registradas.</p>
+                    @endif
+                </section>
+            </div>
 
             {{-- Conductores mejor calificados / con más viajes --}}
             <section class="{{ $card }} mt-6 p-5 sm:p-6">

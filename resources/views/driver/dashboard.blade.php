@@ -1,8 +1,8 @@
 @php
-    $cardClass = 'bg-white/70 backdrop-blur-xl border border-white/80 shadow-[0_20px_50px_-20px_rgba(60,70,110,0.35)] rounded-[32px] p-5 flex flex-col';
-    $panelClass = 'bg-white/80 rounded-[4px] px-2 py-2 text-[14px] leading-5';
-    $labelClass = 'text-slate-400';
-    $valueClass = 'text-slate-500';
+    $cardClass = 'bg-white/70 backdrop-blur-xl border border-white/80 shadow-[0_20px_50px_-20px_rgba(60,70,110,0.35)] rounded-[32px] p-5 flex flex-col dark:border-white/10 dark:bg-gray-800/70';
+    $panelClass = 'bg-white/80 rounded-[4px] px-2 py-2 text-[14px] leading-5 dark:bg-gray-700/60 dark:text-gray-300';
+    $labelClass = 'text-slate-400 dark:text-gray-400';
+    $valueClass = 'text-slate-500 dark:text-gray-300';
     $iconBox = 'w-10 h-10 rounded-xl bg-gradient-to-br from-[#4b5a85] to-[#2f3a5f] text-white flex items-center justify-center shrink-0';
     $route = $bus?->routes->first();
 @endphp
@@ -12,8 +12,8 @@
 
         <div class="flex flex-wrap items-end justify-between gap-3">
             <div>
-                <h1 class="text-[27px] font-bold text-[#1e2a4a] leading-tight">Panel de Conductor</h1>
-                <p class="text-[11px] text-slate-500">Gestiona tu autobús</p>
+                <h1 class="text-[27px] font-bold text-[#1e2a4a] leading-tight dark:text-gray-100">Panel de Conductor</h1>
+                <p class="text-[11px] text-slate-500 dark:text-gray-400">Gestiona tu autobús</p>
             </div>
             <a href="{{ route('driver.statistics') }}"
                class="inline-flex h-9 items-center justify-center gap-2 rounded-full bg-gradient-to-b from-[#7b88b8] to-[#4a5a8a] px-5 text-xs font-semibold text-white shadow-md shadow-[#4a5a8a]/25 transition hover:brightness-105">
@@ -23,28 +23,28 @@
         </div>
 
         @if(session('success'))
-            <div class="px-4 py-3 rounded-2xl bg-emerald-50/90 border border-emerald-200 text-emerald-700 text-sm" role="alert">{{ session('success') }}</div>
+            <div class="px-4 py-3 rounded-2xl bg-emerald-50/90 border border-emerald-200 text-emerald-700 text-sm dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200" role="alert">{{ session('success') }}</div>
         @endif
 
         @if(session('error'))
-            <div class="px-4 py-3 rounded-2xl bg-rose-50/90 border border-rose-200 text-rose-700 text-sm" role="alert">{{ session('error') }}</div>
+            <div class="px-4 py-3 rounded-2xl bg-rose-50/90 border border-rose-200 text-rose-700 text-sm dark:border-rose-800 dark:bg-rose-900/30 dark:text-rose-200" role="alert">{{ session('error') }}</div>
         @endif
 
         @if($currentTrip)
-            <section class="rounded-[32px] bg-gradient-to-r from-[#e3e9f8]/90 to-white/60 backdrop-blur-xl border border-[#b9c6ea] shadow-lg p-5">
-                <h2 class="text-[15px] font-semibold text-[#3f4c75] mb-3">Viaje en progreso</h2>
+            <section class="rounded-[32px] bg-gradient-to-r from-[#e3e9f8]/90 to-white/60 backdrop-blur-xl border border-[#b9c6ea] shadow-lg p-5 dark:border-white/10 dark:from-gray-800/90 dark:to-gray-900/60">
+                <h2 class="text-[15px] font-semibold text-[#3f4c75] mb-3 dark:text-gray-200">Viaje en progreso</h2>
                 <div class="grid gap-4 md:grid-cols-3 text-[14px]">
                     <div>
-                        <span class="text-slate-400">Ruta</span>
-                        <p class="font-medium text-[#2f3a5f]">{{ $currentTrip->route->name }}</p>
+                        <span class="text-slate-400 dark:text-gray-400">Ruta</span>
+                        <p class="font-medium text-[#2f3a5f] dark:text-gray-100">{{ $currentTrip->route->name }}</p>
                     </div>
                     <div>
-                        <span class="text-slate-400">Hora de inicio</span>
-                        <p class="font-medium text-[#2f3a5f]">{{ $currentTrip->started_at->format('d/m/Y H:i:s') }}</p>
+                        <span class="text-slate-400 dark:text-gray-400">Hora de inicio</span>
+                        <p class="font-medium text-[#2f3a5f] dark:text-gray-100">{{ $currentTrip->started_at->format('d/m/Y H:i:s') }}</p>
                     </div>
                     <div>
-                        <span class="text-slate-400">Duración</span>
-                        <p class="font-medium text-[#2f3a5f]">{{ $currentTrip->started_at->diffForHumans(null, true) }}</p>
+                        <span class="text-slate-400 dark:text-gray-400">Duración</span>
+                        <p class="font-medium text-[#2f3a5f] dark:text-gray-100">{{ $currentTrip->started_at->diffForHumans(null, true) }}</p>
                     </div>
                 </div>
             </section>
@@ -57,7 +57,7 @@
                     <span class="{{ $iconBox }}">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="14" rx="3"></rect><path d="M4 11h16M8 21v-4M16 21v-4"></path><circle cx="8.5" cy="14" r=".6"></circle><circle cx="15.5" cy="14" r=".6"></circle></svg>
                     </span>
-                    <h2 class="text-[16px] font-semibold text-[#2f3a5f]">Mi Unidad</h2>
+                    <h2 class="text-[16px] font-semibold text-[#2f3a5f] dark:text-gray-100">Mi Unidad</h2>
                 </div>
 
                 @if($bus)
@@ -67,7 +67,7 @@
                         <div class="flex justify-between"><span class="{{ $labelClass }}">Capacidad:</span><span class="{{ $valueClass }}">{{ $bus->capacity }} pasajeros</span></div>
                         <div class="flex justify-between items-center">
                             <span class="{{ $labelClass }}">Estado:</span>
-                            <span class="inline-flex items-center gap-1.5 px-2.5 rounded-full text-[10px] leading-5 {{ $bus->status === 'active' ? 'bg-[#dcf3e5] text-emerald-700' : 'bg-slate-100 text-slate-600' }}">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 rounded-full text-[10px] leading-5 {{ $bus->status === 'active' ? 'bg-[#dcf3e5] text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200' : 'bg-slate-100 text-slate-600 dark:bg-gray-700 dark:text-gray-300' }}">
                                 <span class="w-1 h-1 rounded-full {{ $bus->status === 'active' ? 'bg-emerald-500' : 'bg-slate-400' }}"></span>
                                 {{ $bus->status === 'active' ? 'Activo' : 'Inactivo' }}
                             </span>
@@ -98,7 +98,7 @@
                         <img src="{{ asset('images/bus-unit.png') }}" alt="" class="w-[210px] h-auto mix-blend-multiply select-none" draggable="false">
                     </div>
 
-                    <div class="bg-white/80 rounded-[4px] px-8 py-1.5 flex flex-col sm:flex-row gap-3">
+                    <div class="bg-white/80 rounded-[4px] px-8 py-1.5 flex flex-col sm:flex-row gap-3 dark:bg-gray-700/40">
                         <a href="{{ route('driver.map') }}" class="flex-1 inline-flex items-center justify-center gap-2 h-[41px] rounded-full bg-gradient-to-r from-[#86bcc0] to-[#3ed6e0] text-white text-[13px] font-medium hover:brightness-105 transition">
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="14" rx="3"></rect><path d="M4 11h16M8 21v-4M16 21v-4"></path><circle cx="8.5" cy="14" r=".6"></circle><circle cx="15.5" cy="14" r=".6"></circle></svg>
                             Ver Mapa
@@ -123,21 +123,21 @@
                     <span class="{{ $iconBox }}">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.5"></circle><circle cx="18" cy="18" r="2.5"></circle><path d="M8.5 6H15a3 3 0 010 6H9a3 3 0 000 6h6.5"></path></svg>
                     </span>
-                    <h2 class="text-[16px] font-semibold text-[#2f3a5f]">Mis viajes recientes</h2>
+                    <h2 class="text-[16px] font-semibold text-[#2f3a5f] dark:text-gray-100">Mis viajes recientes</h2>
                 </div>
 
                 @if($recentTrips->count() > 0)
-                    <div class="bg-white/80 rounded-[4px] ml-2 px-1.5 pb-2 overflow-x-auto">
+                    <div class="bg-white/80 rounded-[4px] ml-2 px-1.5 pb-2 overflow-x-auto dark:bg-gray-700/40">
                         <table class="min-w-full text-[14px] leading-5">
                             <thead>
-                                <tr class="text-left uppercase text-[13px] text-slate-400 border-b border-slate-300/70">
+                                <tr class="text-left uppercase text-[13px] text-slate-400 border-b border-slate-300/70 dark:border-gray-600 dark:text-gray-400">
                                     <th class="py-1.5 pr-4 font-normal">Ruta</th>
                                     <th class="py-1.5 pr-4 font-normal">Fecha inicio</th>
                                     <th class="py-1.5 pr-4 font-normal">Fecha fin</th>
                                     <th class="py-1.5 font-normal">Estado</th>
                                 </tr>
                             </thead>
-                            <tbody class="text-slate-400">
+                            <tbody class="text-slate-400 dark:text-gray-300">
                                 @foreach($recentTrips as $trip)
                                     <tr>
                                         <td class="pr-4 whitespace-nowrap {{ $loop->first ? 'pt-2.5' : '' }}">{{ $trip->route->name }}</td>
@@ -161,7 +161,7 @@
                         </table>
                     </div>
                 @else
-                    <p class="bg-white/80 rounded-[4px] ml-2 px-3 py-3 text-[14px] text-slate-400">No has realizado viajes todavía.</p>
+                    <p class="bg-white/80 rounded-[4px] ml-2 px-3 py-3 text-[14px] text-slate-400 dark:bg-gray-700/40 dark:text-gray-400">No has realizado viajes todavía.</p>
                 @endif
 
                 <div class="mt-5 flex justify-center">
@@ -173,16 +173,16 @@
 
     {{-- Modal de reporte de incidencia/emergencia --}}
     <div id="emergency-modal" class="fixed inset-0 z-50 hidden items-center justify-center overflow-y-auto bg-[#1e2a4a]/35 p-4 backdrop-blur-sm">
-        <div class="my-auto w-full max-w-md rounded-[28px] border border-white/70 bg-white p-6 shadow-2xl shadow-[#4a5a8a]/20">
+        <div class="my-auto w-full max-w-md rounded-[28px] border border-white/70 bg-white p-6 shadow-2xl shadow-[#4a5a8a]/20 dark:border-white/10 dark:bg-gray-800">
             <div class="mb-5 flex items-start justify-between gap-4">
                 <div>
-                    <h3 class="text-lg font-bold text-[#1e2a4a]">Reportar incidencia</h3>
-                    <p class="mt-1 text-xs text-[#5b6788]">
+                    <h3 class="text-lg font-bold text-[#1e2a4a] dark:text-gray-100">Reportar incidencia</h3>
+                    <p class="mt-1 text-xs text-[#5b6788] dark:text-gray-400">
                         El administrador recibirá el reporte con la ubicación de tu unidad.
                     </p>
                 </div>
                 <button type="button" onclick="closeEmergencyModal()" aria-label="Cerrar modal"
-                    class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200">
+                    class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
@@ -191,11 +191,11 @@
                 @csrf
 
                 <div>
-                    <label for="emergency-type" class="mb-1.5 block text-xs font-semibold text-[#3d4a6b]">
+                    <label for="emergency-type" class="mb-1.5 block text-xs font-semibold text-[#3d4a6b] dark:text-gray-300">
                         Tipo de incidencia
                     </label>
                     <select id="emergency-type" name="type" required
-                        class="h-11 w-full rounded-2xl border border-white/70 bg-[#f7f9fd] px-3.5 text-sm text-[#1e2a4a] focus:border-[#6b7bad] focus:ring-4 focus:ring-[#6b7bad]/25">
+                        class="h-11 w-full rounded-2xl border border-white/70 bg-[#f7f9fd] px-3.5 text-sm text-[#1e2a4a] focus:border-[#6b7bad] focus:ring-4 focus:ring-[#6b7bad]/25 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
                         <option value="accident">Accidente</option>
                         <option value="breakdown">Avería mecánica</option>
                         <option value="medical">Emergencia médica</option>
@@ -205,24 +205,24 @@
                 </div>
 
                 <div>
-                    <label for="emergency-description" class="mb-1.5 block text-xs font-semibold text-[#3d4a6b]">
+                    <label for="emergency-description" class="mb-1.5 block text-xs font-semibold text-[#3d4a6b] dark:text-gray-300">
                         Descripción
                     </label>
                     <textarea id="emergency-description" name="description" rows="4" maxlength="500" required
                         oninput="document.getElementById('emergency-counter').textContent = this.value.length + '/500'"
                         placeholder="Describe qué ocurrió..."
-                        class="w-full resize-none rounded-2xl border border-white/70 bg-[#f7f9fd] px-3.5 py-3 text-sm text-[#1e2a4a] placeholder:text-[#8a94b3] focus:border-[#6b7bad] focus:ring-4 focus:ring-[#6b7bad]/25"></textarea>
+                        class="w-full resize-none rounded-2xl border border-white/70 bg-[#f7f9fd] px-3.5 py-3 text-sm text-[#1e2a4a] placeholder:text-[#8a94b3] focus:border-[#6b7bad] focus:ring-4 focus:ring-[#6b7bad]/25 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder:text-gray-400"></textarea>
                     <p class="mt-1 text-right text-[10px] text-[#8a94b3]"><span id="emergency-counter">0/500</span></p>
                 </div>
 
-                <p class="rounded-2xl bg-amber-50 px-3.5 py-2.5 text-[11px] leading-relaxed text-amber-700">
+                <p class="rounded-2xl bg-amber-50 px-3.5 py-2.5 text-[11px] leading-relaxed text-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
                     Al enviar, tu unidad cambiará a estado <strong>emergencia</strong> y dejará de aparecer
                     como en servicio hasta que el administrador lo resuelva.
                 </p>
 
                 <div class="flex flex-col gap-2 sm:flex-row">
                     <button type="button" onclick="closeEmergencyModal()"
-                        class="h-10 flex-1 rounded-full border border-slate-200 bg-white px-5 text-xs font-semibold text-[#5b6788] transition hover:bg-slate-50">
+                        class="h-10 flex-1 rounded-full border border-slate-200 bg-white px-5 text-xs font-semibold text-[#5b6788] transition hover:bg-slate-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
                         Cancelar
                     </button>
                     <button type="submit"

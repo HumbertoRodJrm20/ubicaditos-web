@@ -32,18 +32,7 @@ class ReportController extends Controller
             ->where('started_at', '>=', now()->subDays(30))
             ->groupBy('date')
             ->orderBy('date')
-            ->get()
-            ->pluck('count', 'date')
-            ->toArray();
-
-        // Completar días faltantes con 0
-        $dates = [];
-        $counts = [];
-        for ($i = 29; $i >= 0; $i--) {
-            $date = now()->subDays($i)->format('Y-m-d');
-            $dates[] = now()->subDays($i)->format('d/m');
-            $counts[] = $tripsByDay[$date] ?? 0;
-        }
+            ->get();
 
         // Uso de autobuses
         $busUsage = Bus::withCount(['trips' => function($query) {
@@ -69,14 +58,6 @@ class ReportController extends Controller
             ->limit(5)
             ->get();
 
-        // Ocupación promedio por hora
-        $occupancyByHour = Trip::selectRaw("CAST(strftime('%H', started_at) AS INTEGER) as hour, AVG(total_passengers) as avg_passengers")
-            ->where('started_at', '>=', now()->subDays(7))
-            ->whereNotNull('total_passengers')
-            ->groupBy('hour')
-            ->orderBy('hour')
-            ->get();
-
         // Emergencias por tipo
         $emergenciesByType = EmergencyReport::selectRaw('type, COUNT(*) as count')
             ->groupBy('type')
@@ -86,12 +67,10 @@ class ReportController extends Controller
 
         return view('admin.reports', compact(
             'stats',
-            'dates',
-            'counts',
+            'tripsByDay',
             'busUsage',
             'topDrivers',
             'topRoutes',
-            'occupancyByHour',
             'emergenciesByType'
         ));
     }

@@ -147,8 +147,8 @@ import Pusher from 'pusher-js';
                     wsHost: config.wsHost || global.location.hostname,
                     wsPort: config.wsPort,
                     wssPort: config.wssPort,
-                    forceTLS: config.forceTLS,
-                    enabledTransports: ['ws', 'wss'],
+                    forceTLS: false,
+                    enabledTransports: ['ws'],
                     disableStats: true,
                 });
 

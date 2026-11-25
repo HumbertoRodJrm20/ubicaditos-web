@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Bus, Route, Stop, User, Trip, EmergencyReport};
+use App\Models\{Bus, EmergencyReport, Incident, Route, Stop, Trip, User};
 use Illuminate\Http\Request;
 
 class AdminController extends Controller
@@ -13,11 +13,16 @@ class AdminController extends Controller
         $stats = [
             'total_buses' => Bus::count(),
             'active_buses' => Bus::where('status', 'active')->count(),
+            'maintenance_buses' => Bus::where('status', 'maintenance')->count(),
+            'emergency_buses' => Bus::where('status', 'emergency')->count(),
+            'inactive_buses' => Bus::where('status', 'inactive')->count(),
             'total_routes' => Route::count(),
             'total_stops' => Stop::count(),
             'total_drivers' => User::where('role', 'driver')->count(),
             'total_passengers' => User::where('role', 'passenger')->count(),
             'trips_today' => Trip::whereDate('started_at', today())->count(),
+            'pending_incidents' => Incident::where('status', Incident::STATUS_PENDING)->count(),
+            'pending_emergencies' => EmergencyReport::where('status', 'pending')->count(),
         ];
 
         $recentTrips = Trip::with(['bus', 'driver', 'route'])
@@ -41,26 +46,6 @@ class AdminController extends Controller
             ->get();
 
         return view('admin.dashboard', compact('stats', 'recentTrips', 'activeBuses', 'routes', 'stops', 'buses'));
-    }
-
-    public function statistics()
-    {
-        $tripsByDay = Trip::selectRaw('DATE(started_at) as date, COUNT(*) as count')
-            ->where('started_at', '>=', now()->subDays(30))
-            ->groupBy('date')
-            ->get();
-
-        $busUsage = Bus::withCount(['trips' => function($query) {
-            $query->where('started_at', '>=', now()->subDays(30));
-        }])->get();
-
-        $topDrivers = User::where('role', 'driver')
-            ->withCount('trips')
-            ->orderBy('trips_count', 'desc')
-            ->limit(10)
-            ->get();
-
-        return view('admin.statistics', compact('tripsByDay', 'busUsage', 'topDrivers'));
     }
 
     public function drivers(Request $request)

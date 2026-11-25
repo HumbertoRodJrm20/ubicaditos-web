@@ -41,7 +41,7 @@ class DashboardController extends Controller
                     'driver' => $bus->driver?->name,
                     'route' => $bus->routes->first()?->name,
                     'route_color' => $bus->routes->first()?->color,
-                    'last_update' => $bus->last_location_update?->diffForHumans(),
+                    'last_update' => $bus->last_location_update?->toISOString(),
                 ];
             });
 

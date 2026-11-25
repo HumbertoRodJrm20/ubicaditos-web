@@ -12,12 +12,6 @@
     @endphp
 
     <style>
-        .drivers-page {
-            background:
-                radial-gradient(circle at 8% 12%, rgba(151, 169, 211, .30), transparent 31%),
-                radial-gradient(circle at 96% 8%, rgba(178, 207, 232, .48), transparent 30%),
-                linear-gradient(135deg, #f5f7fb 0%, #edf1f8 52%, #f9fafc 100%);
-        }
         .drivers-table th { font-size: 11px; letter-spacing: .01em; }
         .drivers-table td { font-size: 12px; }
         .drivers-table tbody tr { transition: background-color .15s ease; }
@@ -74,7 +68,7 @@
                                 Buscar
                             </button>
                             @if(request('search'))
-                                <a href="{{ route('admin.drivers') }}" class="rounded-full border border-slate-200 bg-white/80 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-white dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">Limpiar</a>
+                                <a href="{{ route('admin.drivers') }}" class="rounded-full border border-slate-200 bg-white/80 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-white dark:hover:bg-gray-600 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">Limpiar</a>
                             @endif
                         </form>
 

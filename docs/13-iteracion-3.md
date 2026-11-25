@@ -307,18 +307,19 @@ Los partials `resources/views/profile/partials/*` (`update-profile-information-f
 
 ## Pruebas E2E con Selenium
 
-Scripts de navegador real en `tests/selenium/`, escritos con **bun** + `selenium-webdriver ^4.27` (Chrome headless, `unhandledPromptBehavior: 'accept'` para los `confirm()` de la interfaz). **No se ejecutaron en esta rama**: están previstos para la rama de pruebas, contra un servidor local con datos sembrados.
+Scripts de navegador real en `tests/selenium/`, escritos con **Python** + `selenium` + `pytest` (Chrome headless, `unhandledPromptBehavior: 'accept'` para los `confirm()` de la interfaz). **No se ejecutaron en esta rama**: están previstos para la rama de pruebas, contra un servidor local con datos sembrados (`pip install -r requirements.txt` y `python3 -m pytest`).
 
 | Archivo | Contenido |
 |---------|-----------|
-| `config.js` | Build del driver (Chrome headless, viewports, *timeouts*), `login()` con borrado de cookies explícito, `waitForFlash()` (detecta el `[role="alert"]` de sesión por color: éxito `bg-emerald` / error `bg-rose`), `buttonByText()`, `countVisibleBusCards()` y `horizontalOverflow()` |
-| `auth.test.js` | Login válido/inválido y registro de pasajero |
-| `passenger.test.js` | Lista de autobuses, búsqueda instantánea, chips de estado y ruta, modal de detalles con asientos, contador de flota del mapa |
-| `driver.test.js` | Panel (unidad, acceso a estadísticas), ciclo iniciar/finalizar viaje **idempotente** (finaliza viajes residuales de corridas anteriores), estadísticas con KPIs |
-| `incident-admin.test.js` | Ciclo completo: conductor reporta avería → admin ve la tarjeta con la placa → resuelve → verifica "Resueltas" → **la unidad vuelve a "En servicio"** |
-| `responsive.test.js` | 10 vistas clave × 2 viewports; falla si hay scroll horizontal (> 4 px de tolerancia) |
+| `config.py` | Build del driver (Chrome headless, viewports, *timeouts*), `login()` con borrado de cookies explícito, `wait_for_flash()` (detecta el `[role="alert"]` de sesión por color: éxito `bg-emerald` / error `bg-rose`), `button_by_text()`, `count_visible_bus_cards()` y `horizontal_overflow()` |
+| `conftest.py` | Fixtures de pytest: navegador compartido por corrida (`driver`) y fábrica de navegadores por viewport (`driver_factory`) |
+| `test_auth.py` | Login válido/inválido y registro de pasajero |
+| `test_passenger.py` | Lista de autobuses, búsqueda instantánea, chips de estado y ruta, modal de detalles con asientos, contador de flota del mapa |
+| `test_driver.py` | Panel (unidad, acceso a estadísticas), ciclo iniciar/finalizar viaje **idempotente** (finaliza viajes residuales de corridas anteriores), estadísticas con KPIs |
+| `test_incident_admin.py` | Ciclo completo: conductor reporta avería → admin ve la tarjeta con la placa → resuelve → verifica "Resueltas" → **la unidad vuelve a "En servicio"** |
+| `test_responsive.py` | 10 vistas clave × 2 viewports; falla si hay scroll horizontal (> 4 px de tolerancia) |
 | `README.md` | Requisitos, ejecución, viewports, credenciales y notas |
-| `package.json` | Scripts bun: `test`, `test:auth`, `test:passenger`, `test:driver`, `test:incident`, `test:responsive` |
+| `requirements.txt` | Dependencias: `selenium` y `pytest` |
 
 | Aspecto | Valor |
 |---------|-------|
@@ -327,7 +328,7 @@ Scripts de navegador real en `tests/selenium/`, escritos con **bun** + `selenium
 | Credenciales (seeder) | `admin@ubicaditos.com`, `chofer1@ubicaditos.com`, `pasajero1@ubicaditos.com` / `password` |
 | Preparación recomendada | `php artisan migrate:fresh --seed` + `php artisan serve` (+ `php artisan reverb:start` opcional para el WebSocket en vivo) |
 
-El inicio de viaje funciona sin GPS real porque el seeder coloca cada unidad cerca de la primera parada de su ruta; `incident-admin.test.js` muta datos, pero la resolución restaura la unidad, por lo que la suite es re-ejecutable.
+El inicio de viaje funciona sin GPS real porque el seeder coloca cada unidad cerca de la primera parada de su ruta; `test_incident_admin.py` muta datos, pero la resolución restaura la unidad, por lo que la suite es re-ejecutable.
 
 ## Pruebas de carga con k6
 
@@ -375,7 +376,7 @@ k6 run tests/load/ubicaditos-iteration3-load.js -e K6_ROLE=passenger -e K6_VUS=2
 | JavaScript | `resources/js/realtime.js` (nuevo), `resources/js/app.js` (importa el módulo) |
 | Entorno | `package.json`/`bun.lock`, `composer.json`/`composer.lock` (Reverb), `config/reverb.php`, `.env.example`, `.env.production.example`, `.env.staging.example` |
 | Pruebas PHP | `tests/Feature/RealTime/`, `tests/Feature/Passenger/`, `tests/Feature/Bus/`, `tests/Feature/Driver/`, `tests/Feature/Admin/` |
-| Pruebas E2E | `tests/selenium/` (`package.json`, `config.js`, 5 specs, `README.md`) |
+| Pruebas E2E | `tests/selenium/` (`config.py`, `conftest.py`, 5 specs, `requirements.txt`, `README.md`) |
 | Pruebas de carga | `tests/load/ubicaditos-iteration3-load.js` + §13 de `tests/load/README.md` |
 | Documentación | `docs/13-iteracion-3.md` (este documento), `docs/10-pruebas-y-estado.md`, `docs/README.md`, `docs/_devlog.md`, `docs/swagger.yaml` |
 

@@ -16,12 +16,6 @@
     @endphp
 
     <style>
-        .users-form-page {
-            background:
-                radial-gradient(circle at 8% 12%, rgba(151, 169, 211, .30), transparent 31%),
-                radial-gradient(circle at 96% 8%, rgba(178, 207, 232, .48), transparent 30%),
-                linear-gradient(135deg, #f5f7fb 0%, #edf1f8 52%, #f9fafc 100%);
-        }
         .users-form-page .field-error { font-size: 12px; }
     </style>
 
@@ -208,7 +202,7 @@
 
                     <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                         <a href="{{ url()->previous() }}"
-                           class="rounded-full border border-slate-200 bg-white/85 px-5 py-2.5 text-center text-xs font-semibold text-slate-600 transition hover:bg-white dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
+                           class="rounded-full border border-slate-200 bg-white/85 px-5 py-2.5 text-center text-xs font-semibold text-slate-600 transition hover:bg-white dark:hover:bg-gray-600 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
                             Cancelar
                         </a>
                         <button type="submit"

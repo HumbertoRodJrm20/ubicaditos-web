@@ -11,13 +11,19 @@ classDiagram
     User "1" --> "*" Trip : trips
     User "1" --> "*" Rating : ratingsGiven / ratingsReceived
     User "*" --> "*" Stop : favoriteStops
+    User "*" --> "*" Route : favoriteRoutes
+    User "1" --> "*" Like : likes
+    User "1" --> "*" LocationShare : locationShares
+    User "1" --> "*" Incident : incidents
     User "1" --> "*" Message : sentMessages / receivedMessages
     User "1" --> "*" EmergencyReport : reporter
     Bus "*" --> "*" Route : routes (bus_route)
     Bus "1" --> "*" Trip : trips
     Bus "1" --> "*" Message : messages
     Route "*" --> "*" Stop : stops (route_stop)
+    Route "1" --> "*" Like : likes (morph)
     Route "1" --> "*" Trip : trips
+    Stop "1" --> "*" Like : likes (morph)
     Trip "1" --> "*" Rating : ratings
 ```
 
@@ -32,6 +38,10 @@ classDiagram
 | `Trip` | `trips` | Viaje realizado por un conductor en un autobús sobre una ruta. |
 | `Rating` | `ratings` | Calificación (1–5) de un pasajero a un conductor. |
 | `FavoriteStop` | `favorite_stops` | Parada marcada como favorita por un usuario. |
+| `FavoriteRoute` | `favorite_routes` | Ruta guardada por un pasajero (marcador personal, distinto del like). |
+| `Like` | `likes` | Me gusta polimórfico sobre rutas o paradas. |
+| `LocationShare` | `location_shares` | Enlace temporal para compartir la ubicación en vivo de un pasajero. |
+| `Incident` | `incidents` | Reporte ciudadano de una incidencia del servicio. |
 | `EmergencyReport` | `emergency_reports` | Reporte de emergencia generado por un conductor. |
 | `Message` | `messages` | Mensaje entre usuarios asociado opcionalmente a un autobús. |
 
@@ -70,6 +80,10 @@ Atributos ocultos: `password`, `remember_token`.
 | `ratingsGiven()` | `hasMany` | `Rating` | `passenger_id` | Calificaciones emitidas como pasajero. |
 | `ratingsReceived()` | `hasMany` | `Rating` | `driver_id` | Calificaciones recibidas como conductor. |
 | `favoriteStops()` | `belongsToMany` | `Stop` | `favorite_stops` | Paradas favoritas, con pivote `nickname` y timestamps. |
+| `favoriteRoutes()` | `belongsToMany` | `Route` | `favorite_routes` | Rutas guardadas por el pasajero. |
+| `likes()` | `hasMany` | `Like` | `user_id` | Me gusta emitidos por el usuario. |
+| `locationShares()` | `hasMany` | `LocationShare` | `user_id` | Enlaces de ubicación creados por el usuario. |
+| `incidents()` | `hasMany` | `Incident` | `user_id` | Reportes de incidencia enviados por el usuario. |
 
 ### Accesores y métodos
 
@@ -141,6 +155,8 @@ Atributos ocultos: `password`, `remember_token`.
 | `buses()` | `belongsToMany` | `Bus` (`bus_route`) | Autobuses que cubren la ruta. |
 | `stops()` | `belongsToMany` | `Stop` (`route_stop`) | Paradas con pivotes `order` y `estimated_time_from_previous`, ordenadas por `order`. |
 | `trips()` | `hasMany` | `Trip` | Viajes realizados en la ruta. |
+| `likes()` | `morphMany` | `Like` | Me gusta sobre la ruta. |
+| `favoritedByUsers()` | `belongsToMany` | `User` (`favorite_routes`) | Usuarios que guardaron la ruta como favorita. |
 
 ### Métodos
 
@@ -148,6 +164,8 @@ Atributos ocultos: `password`, `remember_token`.
 |--------|-------------|
 | `getActiveBuses()` | Autobuses de la ruta con `status = active`. |
 | `getOrderedStops()` | Paradas ordenadas por `route_stop.order`. Lo usan el mapa del conductor, la validación de inicio de viaje y el simulador. |
+| `isLikedBy(User $user)` | Indica si el usuario ya dio me gusta a la ruta. |
+| `isFavoritedBy(User $user)` | Indica si el usuario guardó la ruta en favoritos. |
 
 ## Stop
 
@@ -165,6 +183,8 @@ Atributos ocultos: `password`, `remember_token`.
 |---------|-------------|
 | `routes()` | `belongsToMany` con `Route` vía `route_stop` (pivotes `order`, `estimated_time_from_previous`). |
 | `favoritedByUsers()` | `belongsToMany` con `User` vía `favorite_stops` (pivote `nickname`). |
+| `likes()` | `morphMany` con `Like`: me gusta sobre la parada. |
+| `isLikedBy(User $user)` | Indica si el usuario ya dio me gusta a la parada. |
 | `$stop->coordinates` | Accesor que devuelve `['lat' => float, 'lng' => float]`. |
 
 ## Trip
@@ -203,6 +223,58 @@ Atributos ocultos: `password`, `remember_token`.
 ## FavoriteStop
 
 `App\Models\FavoriteStop` — modelo explícito de la tabla pivote `favorite_stops`, con relaciones `user()` y `stop()` y el atributo `nickname`. En los controladores la gestión de favoritos se hace a través de `User::favoriteStops()` con `attach()` y `detach()`. Existe una restricción única sobre (`user_id`, `stop_id`).
+
+## FavoriteRoute
+
+`App\Models\FavoriteRoute` — modelo explícito de la tabla `favorite_routes` con relaciones `user()` y `route()`. La gestión se hace principalmente con `User::favoriteRoutes()` (`attach()` / `detach()`). Restricción única (`user_id`, `route_id`).
+
+## Like
+
+`App\Models\Like` — me gusta **polimórfico** sobre rutas y paradas.
+
+| Atributo | Descripción |
+|----------|-------------|
+| `user_id` | Usuario que emite el like (`user()`). |
+| `likeable_type`, `likeable_id` | Entidad destino (`likeable()` → `Route` o `Stop`). |
+
+La tabla impone un índice único (`user_id`, `likeable_type`, `likeable_id`), de modo que cada usuario puede dar un solo like por entidad. El contador es público (`likes_count` con `withCount('likes')`) y el estado personal se resuelve con `isLikedBy()`.
+
+## LocationShare
+
+`App\Models\LocationShare` — enlace temporal para compartir la ubicación en vivo.
+
+| Atributo | Tipo / cast | Descripción |
+|----------|-------------|-------------|
+| `user_id` | FK | Pasajero que comparte (`user()`). |
+| `token` | string(48), único | Token aleatorio del enlace público. |
+| `latitude`, `longitude` | `decimal:7`, nullable | Última posición compartida. |
+| `accuracy` | integer, nullable | Precisión en metros. |
+| `expires_at` | datetime | Caducidad (30 minutos por defecto, `TTL_MINUTES`). |
+| `revoked_at` | datetime, nullable | Marca de detención manual. |
+
+| Método | Descripción |
+|--------|-------------|
+| `scopeActive()` | Enlaces sin revocar y con `expires_at` futuro. |
+| `isActive()` / `isRevoked()` | Comprobaciones de estado. |
+| `startFor(User, array)` | Revoca el enlace activo previo y crea uno nuevo con token aleatorio. |
+| `updatePosition(array)` | Actualiza coordenadas y precisión. |
+| `revoke()` | Detiene la compartición. |
+| `publicUrl()` | URL pública `share.show`. |
+| `toPublicArray()` | Payload público (`id`, `token`, `url`, coordenadas, precisión, estado y fechas); nunca expone datos personales. |
+
+## Incident
+
+`App\Models\Incident` — reporte ciudadano de una incidencia.
+
+| Atributo | Descripción |
+|----------|-------------|
+| `user_id` | Autor del reporte (`user()`). |
+| `category` | `route`, `bus`, `service`, `driver`, `stop` u `other`. |
+| `description` | Texto de hasta 1000 caracteres. |
+| `status` | `pending`, `in_review` o `resolved` (por defecto `pending`). |
+| `resolved_at` | Fecha de resolución; se limpia si el reporte se reabre. |
+
+Incluye los accessors `category_label` y `status_label`, y los ayudantes `isPending()`, `isInReview()` e `isResolved()`.
 
 ## EmergencyReport
 

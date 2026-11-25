@@ -56,6 +56,7 @@ La aplicación usa **autenticación por sesión (Laravel Breeze)** para todo, in
 | `/passenger/*` | ➜ login | ✅ | 🔒 403 | 🔒 403 |
 | `/api/*` | ➜ login | ✅ | ✅ | ✅ |
 | `/profile` | ➜ login | ✅ | ✅ | ✅ |
+| `/incidents*` | ➜ login | ✅ | ✅ | ✅ |
 
 ## Modelos
 
@@ -87,7 +88,7 @@ Inventario de modelos de la iteración 1 (detalle completo de columnas en `05-ba
 
 ## Endpoints
 
-Resumen de las rutas documentadas (todas las 75 rutas de la aplicación están descritas en `08-rutas.md`).
+Resumen de las rutas documentadas (todas las 93 rutas de la aplicación están descritas en `08-rutas.md`).
 
 ### Autenticación (sesión)
 
@@ -174,7 +175,7 @@ La **iteración 3** amplía `swagger.yaml` con nuevas rutas web (vista de KPIs d
 | `EmergencyReport.status` con `in_progress` | Enum actualizado | Tabla "Cambios en schemas existentes" |
 | `info.description` | Párrafo de ampliaciones de iteración 3 | Párrafo introductorio de esta sección |
 
-Validación de la especificación tras la ampliación: `python3 -c "import yaml; yaml.safe_load(open('docs/swagger.yaml'))"` → **YAML OK** (OpenAPI 3.0.3, 31 paths, 20 schemas, todas las referencias `$ref` resueltas).
+Validación de la especificación tras la ampliación: `python3 -c "import yaml; yaml.safe_load(open('docs/swagger.yaml'))"` → **YAML OK** (OpenAPI 3.0.3, 43 paths, 27 schemas, todas las referencias `$ref` resueltas).
 
 ## Informe de ejecución de pruebas
 
@@ -202,3 +203,75 @@ Resultado: **40 pruebas pasadas, 172 aserciones, 0 fallos**. Duración aproximad
 | **Total** | **40** | **172 aserciones** |
 
 Los detalles de los hallazgos y las correcciones están en `10-pruebas-y-estado.md` y en el [_devlog](_devlog.md).
+
+## Ampliaciones de la iteración 4
+
+La iteración 4 añade a `swagger.yaml` los endpoints de interacción social (me gusta y rutas favoritas), la compartición temporal de ubicación y la gestión administrativa de reportes ciudadanos.
+
+### Nuevos endpoints
+
+| Método | URI | Tag | Descripción | Respuestas clave |
+|--------|-----|-----|-------------|------------------|
+| POST | `/likes/routes/{route}` | Social | Alterna el me gusta del usuario sobre una ruta. | 200 `{liked, count}`, 401/403, 404 |
+| POST | `/likes/stops/{stop}` | Social | Alterna el me gusta del usuario sobre una parada. | 200 `{liked, count}`, 401/403, 404 |
+| POST | `/passenger/favorite-routes/{route}` | Pasajero | Guarda una ruta en los favoritos del pasajero. | 200, 400 (duplicado), 403 |
+| DELETE | `/passenger/favorite-routes/{route}` | Pasajero | Quita una ruta de favoritos. | 200, 403, 404 |
+| POST | `/passenger/share-location` | Pasajero | Crea un enlace temporal y revoca el anterior. | 200, 422 |
+| GET | `/passenger/share-location/current` | Pasajero | Devuelve el enlace activo del usuario. | 200 |
+| PATCH | `/passenger/share-location/{share}` | Pasajero | Actualiza la posición compartida. | 200, 403, 404 |
+| DELETE | `/passenger/share-location/{share}` | Pasajero | Detiene la compartición. | 200, 403, 404 |
+| GET | `/share/{token}` | Público | Página pública del mapa compartido. | 200, 404 |
+| GET | `/api/share/{token}` | Público | Última posición compartida (sin datos personales). | 200, 404 |
+| GET | `/admin/incidents` | Administración | Listado global de reportes ciudadanos con filtros y búsqueda. | 200, 403 |
+| PATCH | `/admin/incidents/{incident}` | Administración | Cambia el estado y ajusta `resolved_at`. | 302, 403, 404, 422 |
+
+### Nuevos modelos y schemas
+
+| Modelo | Tabla | Descripción |
+|--------|-------|-------------|
+| `Like` | `likes` | Me gusta polimórfico sobre `Route` o `Stop`; índice único por usuario y entidad. |
+| `FavoriteRoute` | `favorite_routes` | Ruta guardada por un pasajero; distinta del like. |
+| `LocationShare` | `location_shares` | Enlace con token de 48 caracteres, caducidad de 30 minutos y revocación. |
+| `Incident` | `incidents` | Reporte ciudadano con categoría, estado y `resolved_at`. |
+
+Schemas añadidos: `LikeToggleResponse` (`liked`, `count`), `FavoriteRouteResponse`, `LocationShare`, `LocationSharePosition`, `Incident` e `IncidentStatusRequest`.
+
+### Privacidad y seguridad
+
+| Aspecto | Implementación |
+|---------|----------------|
+| Datos expuestos | El endpoint público solo devuelve coordenadas, precisión, caducidad y estado; nunca nombre, correo ni ID del pasajero. |
+| Caducidad | `expires_at = now + 30 min` (`LocationShare::TTL_MINUTES`); los enlaces vencidos responden 404. |
+| Revocación | Un nuevo enlace revoca el anterior del mismo usuario; el dueño puede detenerlo antes de caducar. |
+| Autorización | Actualizar o detener un enlace ajeno devuelve 403. Los likes exigen sesión; las rutas favoritas exigen rol `passenger`. |
+| Integridad | Los índices únicos evitan likes duplicados y rutas favoritas repetidas. |
+
+Validación de la especificación tras la ampliación: `python3 -c "import yaml; yaml.safe_load(open('docs/swagger.yaml'))"` → **YAML OK** (OpenAPI 3.0.3, todas las referencias `$ref` resueltas).
+
+## Ampliaciones de las iteraciones 5 y 6
+
+La **iteración 5** documenta el flujo de reportes ciudadanos del propio usuario. La **iteración 6** precisa el comportamiento del listado de rutas, la actualización del perfil y el cierre de sesión seguro.
+
+### Nuevos endpoints
+
+| Método | URI | Tag | Descripción | Respuestas clave |
+|--------|-----|-----|-------------|------------------|
+| GET | `/incidents` | Incidencias ciudadanas | Listado de los reportes del usuario autenticado. | 200 (HTML), 302 a login |
+| GET | `/incidents/create` | Incidencias ciudadanas | Formulario con categorías y comentarios. | 200 (HTML), 302 a login |
+| POST | `/incidents` | Incidencias ciudadanas | Registra un reporte con estado inicial `pending`. | 302 (flash), 422 |
+
+### Cambios en schemas existentes
+
+| Schema | Cambio (Iteraciones 5 y 6) |
+|--------|----------------------------|
+| `ProfileUpdateRequest` | `phone` se documenta como opcional, con longitud exacta de 10 y patrón numérico; se mantienen obligatorios los tres campos de nombre y el correo. |
+| `IncidentCreateRequest` | Nuevo schema con `category` (enum cerrado) y `description` (máximo 1000). No admite `status`, `user_id` ni `resolved_at`. |
+| `Incident` | Se reutiliza para describir la respuesta de los reportes; el estado inicial siempre es `pending`. |
+
+### Seguridad del cierre de sesión
+
+`POST /logout` exige token CSRF. Antes de destruir la sesión, el backend revoca los enlaces `location_shares` activos del usuario, invalida la sesión y regenera el token CSRF. Esto evita que un enlace público de ubicación siga activo después de que el pasajero cierre sesión.
+
+### Verificación
+
+Validación de la especificación tras la ampliación: `python3 -c "import yaml; yaml.safe_load(open('docs/swagger.yaml'))"` → **YAML OK** (OpenAPI 3.0.3, 43 paths, 27 schemas, todas las referencias `$ref` resueltas). Suite completa: **143 pruebas / 554 aserciones en verde**.

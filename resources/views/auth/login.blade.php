@@ -7,20 +7,22 @@
 
     <title>Iniciar sesión · Ubicaditos</title>
 
+    @include('partials.theme-init')
+
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="font-sans antialiased text-[#1e2a4a] bg-white">
-    <div class="relative min-h-screen overflow-hidden bg-white">
+<body class="bg-white font-sans text-[#1e2a4a] antialiased transition-colors duration-200 dark:bg-slate-950 dark:text-gray-100">
+    <div class="relative min-h-screen overflow-hidden bg-white transition-colors duration-200 dark:bg-slate-950">
 
         {{-- Fondo con manchas difuminadas --}}
         <div aria-hidden="true" class="pointer-events-none absolute inset-0">
-            <div class="absolute -top-32 -left-32 h-[520px] w-[620px] rounded-full bg-[#c3d7ec] blur-[110px] opacity-90"></div>
-            <div class="absolute -top-24 -right-24 h-[460px] w-[560px] rounded-full bg-[#c5cbe6] blur-[110px] opacity-90"></div>
-            <div class="absolute -bottom-40 left-1/4 h-[420px] w-[720px] rounded-full bg-[#cfd6ee] blur-[120px] opacity-80"></div>
-            <div class="absolute -bottom-32 -right-20 h-[360px] w-[520px] rounded-full bg-[#c9d3ea] blur-[110px] opacity-70"></div>
+            <div class="absolute -top-32 -left-32 h-[520px] w-[620px] rounded-full bg-[#c3d7ec] opacity-90 blur-[110px] dark:bg-slate-800/70"></div>
+            <div class="absolute -top-24 -right-24 h-[460px] w-[560px] rounded-full bg-[#c5cbe6] opacity-90 blur-[110px] dark:bg-slate-800/60"></div>
+            <div class="absolute -bottom-40 left-1/4 h-[420px] w-[720px] rounded-full bg-[#cfd6ee] opacity-80 blur-[120px] dark:bg-slate-900/70"></div>
+            <div class="absolute -bottom-32 -right-20 h-[360px] w-[520px] rounded-full bg-[#c9d3ea] opacity-70 blur-[110px] dark:bg-slate-900/60"></div>
         </div>
 
         <div class="relative mx-auto flex min-h-screen max-w-[1400px] flex-col px-6 py-6 sm:px-10 lg:px-12">
@@ -37,6 +39,9 @@
                     </svg>
                 </div>
                 <span class="text-lg font-bold tracking-tight">Ubicaditos</span>
+                <div class="ml-auto">
+                    <x-theme-toggle />
+                </div>
             </header>
 
             {{-- Contenido principal --}}
@@ -47,13 +52,13 @@
                     <h1 class="text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl lg:text-[56px]">
                         Sigue tu autobús<br class="hidden sm:block"> en tiempo real.
                     </h1>
-                    <p class="mt-6 max-w-md text-base leading-relaxed text-[#5b6788] sm:text-lg">
+                    <p class="mt-6 max-w-md text-base leading-relaxed text-[#5b6788] dark:text-gray-400 sm:text-lg">
                         Rutas, paradas y tiempos de llegada del transporte público de tu ciudad, siempre a la mano.
                     </p>
 
                     <div class="mt-8 flex flex-wrap gap-3">
                         {{-- Tarjeta ruta --}}
-                        <div class="flex items-center gap-3 rounded-2xl bg-white/80 px-4 py-3 shadow-sm shadow-[#4a5a8a]/10 backdrop-blur">
+                        <div class="flex items-center gap-3 rounded-2xl bg-white/80 px-4 py-3 shadow-sm shadow-[#4a5a8a]/10 backdrop-blur dark:border dark:border-white/10 dark:bg-gray-800/70">
                             <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#7b88b8] to-[#4a5a8a]">
                                 <svg class="h-5 w-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                                     <rect x="4" y="4" width="16" height="13" rx="3" />
@@ -63,12 +68,12 @@
                             </div>
                             <div>
                                 <p class="text-sm font-semibold leading-tight">Ruta 2 · Universidad</p>
-                                <p class="text-xs text-[#6b7699]">Llega en 4 min</p>
+                                <p class="text-xs text-[#6b7699] dark:text-gray-400">Llega en 4 min</p>
                             </div>
                         </div>
 
                         {{-- Tarjeta autobuses activos --}}
-                        <div class="flex items-center gap-3 rounded-2xl bg-white/80 px-4 py-3 shadow-sm shadow-[#4a5a8a]/10 backdrop-blur">
+                        <div class="flex items-center gap-3 rounded-2xl bg-white/80 px-4 py-3 shadow-sm shadow-[#4a5a8a]/10 backdrop-blur dark:border dark:border-white/10 dark:bg-gray-800/70">
                             <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#4f8f9c] to-[#7fb8b4]">
                                 <svg class="h-5 w-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21Z" />
@@ -77,7 +82,7 @@
                             </div>
                             <div>
                                 <p class="text-sm font-semibold leading-tight">12 autobuses</p>
-                                <p class="text-xs text-[#6b7699]">activos ahora</p>
+                                <p class="text-xs text-[#6b7699] dark:text-gray-400">activos ahora</p>
                             </div>
                         </div>
                     </div>
@@ -85,10 +90,10 @@
 
                 {{-- Columna derecha: tarjeta de login --}}
                 <section class="flex justify-center lg:justify-end lg:pr-4">
-                    <div class="w-full max-w-md rounded-[28px] border border-white/70 bg-white/75 p-8 shadow-xl shadow-[#4a5a8a]/10 backdrop-blur-xl">
+                    <div class="w-full max-w-md rounded-[28px] border border-white/70 bg-white/75 p-8 shadow-xl shadow-[#4a5a8a]/10 backdrop-blur-xl dark:border-white/10 dark:bg-gray-800/80">
 
                         <h2 class="text-2xl font-bold tracking-tight">Bienvenido de nuevo</h2>
-                        <p class="mt-1 text-xs text-[#5b6788]">Inicia sesión para ver tus rutas y autobuses en tiempo real.</p>
+                        <p class="mt-1 text-xs text-[#5b6788] dark:text-gray-400">Inicia sesión para ver tus rutas y autobuses en tiempo real.</p>
 
                         <!-- Session Status -->
                         <x-auth-session-status class="mt-4" :status="session('status')" />
@@ -98,7 +103,7 @@
 
                             <!-- Email Address -->
                             <div>
-                                <label for="email" class="block text-xs font-medium text-[#3d4a6b]">Correo electrónico</label>
+                                <label for="email" class="block text-xs font-medium text-[#3d4a6b] dark:text-gray-300">Correo electrónico</label>
                                 <div class="relative mt-2">
                                     <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-[#6b7699]">
                                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -113,7 +118,7 @@
                                         @input="validateEmail"
                                         @blur="touchedFields.email = true; validateEmail()"
                                         :class="touchedFields.email && errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : 'border-slate-200 focus:border-[#6b7bad] focus:ring-[#6b7bad]/25'"
-                                        class="block h-12 w-full rounded-xl border bg-white pl-11 pr-4 text-sm text-[#1e2a4a] placeholder:text-[#9aa3bd] shadow-sm focus:ring-4" />
+                                        class="block h-12 w-full rounded-xl border bg-white pl-11 pr-4 text-sm text-[#1e2a4a] placeholder:text-[#9aa3bd] shadow-sm focus:ring-4 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder:text-gray-400" />
                                 </div>
                                 <p x-show="touchedFields.email && errors.email" x-text="errors.email" x-cloak class="mt-1 text-xs text-red-600"></p>
                                 <x-input-error :messages="$errors->get('email')" class="mt-2" />
@@ -121,7 +126,7 @@
 
                             <!-- Password -->
                             <div class="mt-5">
-                                <label for="password" class="block text-xs font-medium text-[#3d4a6b]">Contraseña</label>
+                                <label for="password" class="block text-xs font-medium text-[#3d4a6b] dark:text-gray-300">Contraseña</label>
                                 <div class="relative mt-2">
                                     <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-[#6b7699]">
                                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -136,7 +141,7 @@
                                         @input="validatePassword"
                                         @blur="touchedFields.password = true; validatePassword()"
                                         :class="touchedFields.password && errors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : 'border-slate-200 focus:border-[#6b7bad] focus:ring-[#6b7bad]/25'"
-                                        class="block h-12 w-full rounded-xl border bg-white pl-11 pr-12 text-sm text-[#1e2a4a] placeholder:text-[#9aa3bd] shadow-sm focus:ring-4" />
+                                        class="block h-12 w-full rounded-xl border bg-white pl-11 pr-12 text-sm text-[#1e2a4a] placeholder:text-[#9aa3bd] shadow-sm focus:ring-4 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder:text-gray-400" />
 
                                     <button type="button" @click="showPassword = !showPassword"
                                         class="absolute inset-y-0 right-0 flex items-center pr-4 text-[#6b7699] hover:text-[#3d4a6b] focus:outline-none"
@@ -163,12 +168,12 @@
                                 <label for="remember_me" class="inline-flex cursor-pointer items-center">
                                     <input id="remember_me" type="checkbox" name="remember"
                                         class="h-4 w-4 rounded border-slate-300 text-[#4a5a8a] shadow-sm focus:ring-[#6b7bad]" />
-                                    <span class="ms-2 text-xs text-[#5b6788]">Recuérdame</span>
+                                    <span class="ms-2 text-xs text-[#5b6788] dark:text-gray-400">Recuérdame</span>
                                 </label>
 
                                 @if (Route::has('password.request'))
                                     <a href="{{ route('password.request') }}"
-                                        class="rounded-md text-xs font-medium text-[#4a5a8a] hover:underline focus:outline-none focus:ring-2 focus:ring-[#6b7bad] focus:ring-offset-2">
+                                        class="rounded-md text-xs font-medium text-[#4a5a8a] hover:underline focus:outline-none focus:ring-2 focus:ring-[#6b7bad] focus:ring-offset-2 dark:text-blue-300">
                                         ¿Olvidaste tu contraseña?
                                     </a>
                                 @endif
@@ -181,9 +186,9 @@
                             </button>
 
                             @if (Route::has('register'))
-                                <p class="mt-5 text-xs text-[#5b6788]">
+                                <p class="mt-5 text-xs text-[#5b6788] dark:text-gray-400">
                                     ¿Aún no tienes cuenta?
-                                    <a href="{{ route('register') }}" class="font-semibold text-[#1e2a4a] hover:underline">Regístrate</a>
+                                    <a href="{{ route('register') }}" class="font-semibold text-[#1e2a4a] hover:underline dark:text-gray-100">Regístrate</a>
                                 </p>
                             @endif
                         </form>

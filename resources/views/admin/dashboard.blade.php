@@ -1,6 +1,6 @@
 @php
     $card = 'bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-white/80 dark:border-white/10 shadow-[0_20px_50px_-20px_rgba(60,70,110,0.35)] rounded-[34px]';
-    $tile = 'flex items-center gap-3 rounded-[22px] bg-white/85 dark:bg-gray-700/60 px-3 py-[10px] hover:bg-white transition';
+    $tile = 'flex items-center gap-3 rounded-[22px] bg-white/85 dark:bg-gray-700/60 px-3 py-[10px] hover:bg-white dark:hover:bg-gray-700 transition';
     $tileIcon = 'w-11 h-11 rounded-[14px] text-white flex items-center justify-center shrink-0 shadow-md';
     $statRow = 'flex items-center justify-between rounded-[18px] bg-white/85 dark:bg-gray-700/60 px-3 py-3';
     $userPlus = '<svg class="w-11 h-11" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>';
@@ -13,7 +13,7 @@
     $clockSvg = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
 @endphp
 
-<x-passenger-layout title="Ubicaditos · Inicio">
+<x-passenger-layout title="Ubicaditos · Inicio" surface="admin">
     <x-slot name="head">
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
               integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
@@ -23,6 +23,8 @@
     <style>
         #admin-map { background: #e8edf8; }
         #admin-map .leaflet-tile-pane { filter: saturate(.3) brightness(1.08) contrast(.88); opacity: .8; }
+        .dark #admin-map { background: #0f172a; }
+        .dark #admin-map .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.85) contrast(.9); opacity: .7; }
         .leaflet-popup-content-wrapper { border-radius: 16px; box-shadow: 0 12px 30px rgba(60, 70, 110, .25); }
     </style>
 
@@ -121,6 +123,37 @@
                     <div class="text-[12px] text-slate-500 dark:text-gray-400">Total de viajes registrados hoy</div>
                 </div>
                 <span class="text-[#8fcfcf] mr-2 [&>svg]:w-9 [&>svg]:h-9">{!! $clockSvg !!}</span>
+            </div>
+        </div>
+
+        <div class="{{ $card }} p-6 mt-5">
+            <h3 class="text-[16px] font-semibold text-[#2f3a5f] dark:text-gray-100 mb-4">Estado de la flota y reportes</h3>
+            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <a href="{{ route('admin.buses.index', ['status' => 'maintenance']) }}" class="rounded-[22px] bg-white/85 dark:bg-gray-700/60 px-4 py-3 transition hover:bg-white dark:hover:bg-gray-700">
+                    <p class="text-[11px] font-semibold uppercase tracking-[.1em] text-slate-400 dark:text-gray-500">Mantenimiento</p>
+                    <p class="mt-1 text-[22px] font-bold leading-tight text-amber-600 dark:text-amber-300">{{ $stats['maintenance_buses'] }}</p>
+                    <p class="text-[11px] text-slate-500 dark:text-gray-400">Unidades en taller</p>
+                </a>
+                <a href="{{ route('admin.buses.index', ['status' => 'emergency']) }}" class="rounded-[22px] bg-white/85 dark:bg-gray-700/60 px-4 py-3 transition hover:bg-white dark:hover:bg-gray-700">
+                    <p class="text-[11px] font-semibold uppercase tracking-[.1em] text-slate-400 dark:text-gray-500">Emergencias</p>
+                    <p class="mt-1 text-[22px] font-bold leading-tight text-rose-600 dark:text-rose-300">{{ $stats['emergency_buses'] }}</p>
+                    <p class="text-[11px] text-slate-500 dark:text-gray-400">Unidades fuera de servicio</p>
+                </a>
+                <a href="{{ route('admin.buses.index', ['status' => 'inactive']) }}" class="rounded-[22px] bg-white/85 dark:bg-gray-700/60 px-4 py-3 transition hover:bg-white dark:hover:bg-gray-700">
+                    <p class="text-[11px] font-semibold uppercase tracking-[.1em] text-slate-400 dark:text-gray-500">Inactivas</p>
+                    <p class="mt-1 text-[22px] font-bold leading-tight text-slate-600 dark:text-gray-200">{{ $stats['inactive_buses'] }}</p>
+                    <p class="text-[11px] text-slate-500 dark:text-gray-400">Sin operación</p>
+                </a>
+                <a href="{{ route('admin.incidents.index', ['status' => 'pending']) }}" class="rounded-[22px] bg-white/85 dark:bg-gray-700/60 px-4 py-3 transition hover:bg-white dark:hover:bg-gray-700">
+                    <p class="text-[11px] font-semibold uppercase tracking-[.1em] text-slate-400 dark:text-gray-500">Incidencias</p>
+                    <p class="mt-1 text-[22px] font-bold leading-tight text-amber-600 dark:text-amber-300">{{ $stats['pending_incidents'] }}</p>
+                    <p class="text-[11px] text-slate-500 dark:text-gray-400">Pendientes de atención</p>
+                </a>
+                <a href="{{ route('admin.emergencies') }}" class="rounded-[22px] bg-white/85 dark:bg-gray-700/60 px-4 py-3 transition hover:bg-white dark:hover:bg-gray-700">
+                    <p class="text-[11px] font-semibold uppercase tracking-[.1em] text-slate-400 dark:text-gray-500">Emergencias reportadas</p>
+                    <p class="mt-1 text-[22px] font-bold leading-tight text-rose-600 dark:text-rose-300">{{ $stats['pending_emergencies'] }}</p>
+                    <p class="text-[11px] text-slate-500 dark:text-gray-400">Pendientes de resolver</p>
+                </a>
             </div>
         </div>
 
@@ -245,6 +278,8 @@
             maxZoom: 19,
         }).addTo(adminMap);
 
+        adminMap.on('zoomend moveend', refreshStopVisibility);
+
         // ===== Paneles flotantes colapsables (data-collapse-target) =====
         document.querySelectorAll('[data-collapse-target]').forEach(function(button) {
             const body = document.getElementById(button.dataset.collapseTarget);
@@ -260,7 +295,7 @@
         let busMarkers = {};
         let stopMarkers = {};
         let routePolylines = {};
-        let routePathsOSRM = {};
+        let routePaths = {};
         let simulationIntervals = {};
         let routesLoaded = {};
 
@@ -291,6 +326,14 @@
             iconSize: [16, 16],
             iconAnchor: [8, 8],
             popupAnchor: [0, -8]
+        });
+
+        const stopMinorIcon = L.divIcon({
+            html: '<div style="background-color: #fff; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #6b7aa8; box-shadow: 0 1px 4px rgba(40,50,90,0.28); opacity: .88;"></div>',
+            className: 'stop-marker stop-marker--minor',
+            iconSize: [12, 12],
+            iconAnchor: [6, 6],
+            popupAnchor: [0, -6]
         });
 
         const userLocationIcon = L.divIcon({
@@ -331,101 +374,105 @@
         const stops = @json($stops);
         const buses = @json($buses);
 
+        const stopRoutesById = new Map();
+        routes.forEach(route => {
+            (route.stops || []).forEach(stop => {
+                const stopId = Number(stop.id);
+                const routeId = Number(route.id);
+
+                if (!stopRoutesById.has(stopId)) {
+                    stopRoutesById.set(stopId, []);
+                }
+
+                const routeList = stopRoutesById.get(stopId);
+                if (!routeList.some(item => Number(item.id) === routeId)) {
+                    routeList.push({
+                        id: route.id,
+                        code: route.code,
+                        name: route.name,
+                        color: route.color,
+                    });
+                }
+            });
+        });
+
         console.log('Autobuses cargados:', buses.length);
         console.log('Rutas cargadas:', routes.length);
         console.log('Paradas cargadas:', stops.length);
 
         let simulatedBuses = [];
 
+        let routeManager = null;
+
+        async function waitForRouteLayer(timeout = 3000) {
+            const startedAt = Date.now();
+            while (!window.UbicaditosRouteLayer && Date.now() - startedAt < timeout) {
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+            return window.UbicaditosRouteLayer || null;
+        }
+
+        function getRouteManager() {
+            if (!routeManager && typeof L !== 'undefined' && window.UbicaditosRouteLayer) {
+                routeManager = window.UbicaditosRouteLayer.createMapRoutes({
+                    map: adminMap,
+                    routes,
+                    options: { sharedColor: '#64748b' }
+                });
+            }
+            return routeManager;
+        }
+
         async function drawRoute(route) {
-            if (routesLoaded[route.id]) {
-                return;
+            const manager = getRouteManager();
+            if (!manager || !route) {
+                return null;
             }
 
-            const routeStops = stops.filter(stop =>
-                route.stops && route.stops.some(s => s.id === stop.id)
-            ).sort((a, b) => {
-                const aOrder = route.stops.find(s => s.id === a.id)?.pivot?.order || 0;
-                const bOrder = route.stops.find(s => s.id === b.id)?.pivot?.order || 0;
-                return aOrder - bOrder;
-            });
-
-            if (routeStops.length < 2) {
-                console.warn('Ruta sin suficientes paradas:', route.name);
-                return;
+            const polyline = manager.getRouteLine(route.id) || manager.ensureRouteLine(route.id);
+            if (!polyline) {
+                console.warn('Ruta sin trazado suficiente:', route.name);
+                return null;
             }
 
-            const waypoints = routeStops.map(stop =>
-                `${stop.longitude},${stop.latitude}`
-            ).join(';');
+            polyline.addTo(adminMap);
+            routePolylines[route.id] = polyline;
+            routePaths[route.id] = manager.getPath(route.id);
+            routesLoaded[route.id] = true;
 
-            for (let attempt = 1; attempt <= 3; attempt++) {
-                try {
-                    console.log(`[Admin - ${route.name}] Intento ${attempt}/3 de cargar ruta sobre calles...`);
-
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-                    const response = await fetch(
-                        `https://router.project-osrm.org/route/v1/driving/${waypoints}?overview=full&geometries=geojson`,
-                        { signal: controller.signal }
-                    );
-                    clearTimeout(timeoutId);
-                    const data = await response.json();
-
-                    if (data.code === 'Ok' && data.routes && data.routes[0]) {
-                        const pathCoords = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
-
-                        routePathsOSRM[route.id] = pathCoords;
-
-                        const polyline = L.polyline(pathCoords, {
-                            color: route.color || '#4b5a85',
-                            weight: 5,
-                            opacity: 0.9,
-                            lineCap: 'round',
-                            lineJoin: 'round'
-                        }).addTo(adminMap);
-
-                        polyline.bindPopup(`
-                            <div class="font-semibold">${route.name}</div>
-                            <div class="text-sm text-gray-600">${route.code}</div>
-                            <div class="text-xs mt-1">${route.description}</div>
-                        `);
-
-                        routePolylines[route.id] = polyline;
-                        routesLoaded[route.id] = true;
-                        console.log(`✅ [Admin - ${route.name}] Ruta cargada sobre calles correctamente`);
-                        return;
-                    } else {
-                        console.warn(`⚠ [Admin - ${route.name}] OSRM retornó: ${data.code}`);
-                    }
-                } catch (error) {
-                    console.warn(`⚠ [Admin - ${route.name}] Error en intento ${attempt}:`, error.message);
-                }
-
-                if (attempt < 3) {
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                }
-            }
-
-            console.error(`❌ [Admin - ${route.name}] No se pudo cargar sobre calles después de 3 intentos - LA RUTA NO SE MOSTRARÁ`);
+            return polyline;
         }
 
         async function loadVisibleRoutes() {
-            const routesToLoad = new Set();
+            const manager = getRouteManager();
+            if (!manager) {
+                console.warn('No se pudo inicializar la capa de rutas del administrador.');
+                return;
+            }
 
+            const routeIds = new Set();
             buses.forEach(bus => {
                 if (bus.routes && bus.routes[0]) {
-                    routesToLoad.add(bus.routes[0].id);
+                    routeIds.add(bus.routes[0].id);
                 }
             });
 
-            for (const routeId of routesToLoad) {
-                const route = routes.find(r => r.id === routeId);
-                if (route && !routesLoaded[routeId]) {
-                    await drawRoute(route);
-                }
-            }
+            const visibleIds = routeIds.size > 0
+                ? routeIds
+                : new Set(routes.map(route => route.id));
+
+            manager.showNetwork(visibleIds);
+
+            routes.forEach(route => {
+                routePaths[route.id] = manager.getPath(route.id);
+                routesLoaded[route.id] = true;
+            });
+
+            const stats = manager.stats();
+            console.log(
+                `🧭 Red de rutas (admin): ${stats.totalSegments} tramos únicos ` +
+                `(${stats.sharedSegments} compartidos, ${stats.deduplicatedSegments} dibujos evitados)`
+            );
         }
 
         function initializeSimulatedBuses() {
@@ -442,9 +489,9 @@
                     return null;
                 }
 
-                const routePath = routePathsOSRM[route.id];
+                const routePath = routePaths[route.id];
                 if (!routePath || routePath.length < 2) {
-                    console.warn('Ruta OSRM no disponible aún para:', bus.license_plate);
+                    console.warn('Trazado no disponible aún para:', bus.license_plate);
                     return null;
                 }
 
@@ -476,21 +523,115 @@
                 };
             }).filter(bus => bus !== null);
 
-            console.log('Autobuses inicializados sobre rutas OSRM:', simulatedBuses.length);
+            console.log('Autobuses inicializados sobre rutas:', simulatedBuses.length);
+        }
+
+        function routesForStop(stopId) {
+            return stopRoutesById.get(Number(stopId)) || [];
+        }
+
+        function stopPopupHtml(stop) {
+            const renderer = window.UbicaditosStopPopup?.render;
+            const routeList = routesForStop(stop.id);
+
+            if (typeof renderer === 'function') {
+                return renderer(stop, {
+                    routes: routeList,
+                    eyebrow: 'Parada del recorrido',
+                    hint: 'Vista administrativa de la red de transporte.',
+                });
+            }
+
+            return `
+                <div class="font-semibold">${stop.name}</div>
+                <div class="text-sm text-gray-600">${stop.address || ''}</div>
+            `;
+        }
+
+        function shouldShowStop(stop, zoom) {
+            const routeCount = routesForStop(stop.id).length;
+
+            if (zoom >= 16) return true;
+            if (zoom >= 15) return routeCount >= 2;
+            if (zoom >= 14) return routeCount >= 3;
+
+            return routeCount >= 6;
+        }
+
+        function refreshStopVisibility() {
+            const zoom = adminMap.getZoom();
+            const viewport = adminMap.getBounds().pad(0.12);
+            const minScreenDistance = zoom >= 17 ? 0 : (zoom >= 16 ? 22 : (zoom >= 15 ? 26 : 34));
+            const candidates = [];
+
+            stops.forEach(stop => {
+                const marker = stopMarkers[stop.id];
+                if (!marker) return;
+
+                const icon = routesForStop(stop.id).length >= 4
+                    ? stopIcon
+                    : stopMinorIcon;
+
+                if (marker.options.icon !== icon) {
+                    marker.setIcon(icon);
+                }
+
+                if (!shouldShowStop(stop, zoom)) {
+                    if (adminMap.hasLayer(marker)) adminMap.removeLayer(marker);
+                    return;
+                }
+
+                const latlng = L.latLng(Number(stop.latitude), Number(stop.longitude));
+                if (!viewport.contains(latlng)) {
+                    if (adminMap.hasLayer(marker)) adminMap.removeLayer(marker);
+                    return;
+                }
+
+                candidates.push({ stop, marker, latlng });
+            });
+
+            candidates.sort((a, b) => (
+                routesForStop(b.stop.id).length - routesForStop(a.stop.id).length
+            ));
+
+            const shownPoints = [];
+
+            candidates.forEach(({ marker, latlng }) => {
+                const point = adminMap.latLngToContainerPoint(latlng);
+                const isOpen = marker.isPopupOpen?.();
+
+                if (minScreenDistance > 0 && !isOpen) {
+                    const overlaps = shownPoints.some(shown => (
+                        Math.hypot(shown.x - point.x, shown.y - point.y) < minScreenDistance
+                    ));
+
+                    if (overlaps) {
+                        if (adminMap.hasLayer(marker)) adminMap.removeLayer(marker);
+                        return;
+                    }
+                }
+
+                shownPoints.push(point);
+                if (!adminMap.hasLayer(marker)) marker.addTo(adminMap);
+            });
         }
 
         function drawStops() {
             stops.forEach(stop => {
                 if (!stopMarkers[stop.id]) {
-                    const marker = L.marker([stop.latitude, stop.longitude], { icon: stopIcon })
+                    const marker = L.marker([stop.latitude, stop.longitude], { icon: stopMinorIcon })
                         .addTo(adminMap)
-                        .bindPopup(`
-                            <div class="font-semibold">${stop.name}</div>
-                            <div class="text-sm text-gray-600">${stop.address || ''}</div>
-                        `);
+                        .bindPopup(stopPopupHtml(stop), {
+                            className: 'ub-stop-popup-wrap',
+                            maxWidth: 320,
+                            autoPanPadding: [24, 24],
+                        });
+
                     stopMarkers[stop.id] = marker;
                 }
             });
+
+            refreshStopVisibility();
         }
 
         function drawBuses() {
@@ -738,6 +879,11 @@
         console.log('🚀 Inicializando mapa de administrador...');
 
         (async function init() {
+            // El módulo de rutas se carga con Vite (script type="module"), que
+            // puede ejecutarse después de este script inline. Esperamos un
+            // instante acotado para no dibujar rutas sin la capa compartida.
+            await waitForRouteLayer();
+
             drawStops();
 
             await loadVisibleRoutes();
