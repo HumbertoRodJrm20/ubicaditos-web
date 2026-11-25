@@ -25,6 +25,22 @@ body {
     background: #0f172a;
 }
 
+/* Fondo único para todas las vistas administrativas. Se aplica en el layout
+   (no en cada vista) para que no se perciban dos superficies distintas. */
+.admin-surface {
+    background:
+        radial-gradient(circle at 8% 12%, rgba(151, 169, 211, 0.30), transparent 31%),
+        radial-gradient(circle at 96% 8%, rgba(178, 207, 232, 0.48), transparent 30%),
+        linear-gradient(135deg, #f5f7fb 0%, #edf1f8 52%, #f9fafc 100%);
+}
+
+.dark .admin-surface {
+    background:
+        radial-gradient(circle at 8% 12%, rgba(71, 85, 105, 0.28), transparent 31%),
+        radial-gradient(circle at 96% 8%, rgba(30, 58, 95, 0.35), transparent 30%),
+        linear-gradient(135deg, #0f172a 0%, #111827 52%, #0b1220 100%);
+}
+
 .dark #admin-map .leaflet-tile-pane,
 .dark #map .leaflet-tile-pane,
 .dark #passenger-map .leaflet-tile-pane,

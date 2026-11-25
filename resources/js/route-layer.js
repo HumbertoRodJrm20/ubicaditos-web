@@ -104,17 +104,13 @@ export function pathFromStops(route) {
 }
 
 /**
- * Trazado de una ruta. Prefiere el guardado en BD y cae a líneas rectas entre
- * paradas si la ruta todavía no tiene `path_coordinates`.
+ * Trazado de una ruta. Usa únicamente `path_coordinates`, que se genera una
+ * sola vez sobre las calles. No se inventan líneas rectas entre paradas: eso
+ * dibujaría recorridos que atraviesan casas y construcciones. Si falta el
+ * trazado, la ruta simplemente no se pinta hasta regenerarlo.
  */
 export function pathForRoute(route) {
-    const stored = normalizePath(route);
-    if (stored.length >= 2) {
-        return stored;
-    }
-
-    const fromStops = pathFromStops(route);
-    return fromStops.length >= 2 ? fromStops : [];
+    return normalizePath(route);
 }
 
 function squaredDistance(a, b) {
@@ -126,7 +122,7 @@ function squaredDistance(a, b) {
 /**
  * Índice del punto del trazado más cercano a cada parada, respetando el orden
  * de recorrido. Si no se puede emparejar de forma monótona se devuelve null y
- * el llamador usa líneas rectas.
+ * la ruta no se divide en tramos (no se inventan líneas rectas).
  */
 function splitIndices(path, stops) {
     const indices = [];
@@ -177,34 +173,35 @@ export function segmentsForRoute(route) {
     }
 
     const path = pathForRoute(route);
-    const indices = path.length >= 2 ? splitIndices(path, stops) : null;
+    if (path.length < 2) {
+        return [];
+    }
+
+    // Sin un emparejamiento monótono entre paradas y trazado no hay forma de
+    // saber qué parte de la calle corresponde a cada tramo. Se omite la red en
+    // vez de unir paradas con líneas rectas que cruzarían casas.
+    const indices = splitIndices(path, stops);
+    if (!indices) {
+        return [];
+    }
+
     const segments = [];
 
     for (let i = 0; i < stops.length - 1; i += 1) {
         const from = stops[i];
         const to = stops[i + 1];
-        const fromPoint = stopPoint(from);
-        const toPoint = stopPoint(to);
+        const start = indices[i];
+        const end = indices[i + 1];
 
-        if (!fromPoint || !toPoint) {
+        if (end <= start) {
             continue;
-        }
-
-        let segmentPath = [fromPoint, toPoint];
-
-        if (indices) {
-            const start = indices[i];
-            const end = indices[i + 1];
-            if (end > start) {
-                segmentPath = path.slice(start, end + 1);
-            }
         }
 
         segments.push({
             key: segmentKey(from, to),
             from,
             to,
-            path: segmentPath,
+            path: path.slice(start, end + 1),
         });
     }
 

@@ -10,7 +10,7 @@ Esta iteración activa el **modo oscuro** en toda la aplicación, unifica el con
 | Aplicación consistente en componentes. | Variantes `dark:` en layouts, navegación, autenticación, mapas de pasajero/conductor/administrador, menú, rutas, autobuses, reportes, perfil, estadísticas y administración. |
 | Dashboard administrativo. | Nuevos contadores de flota (mantenimiento, emergencia, inactivos) y de reportes (incidencias y emergencias pendientes) con acceso directo a cada listado filtrado. |
 | Listados iniciales de autobuses y gestión. | Resumen de flota en cuatro tarjetas, chips de filtro por estado, búsqueda por placa/modelo/conductor, paginación validada y acciones de detalle, edición y eliminación. |
-| Calidad. | 19 pruebas nuevas y suite completa en verde. |
+| Calidad. | 23 pruebas nuevas y suite completa en verde. |
 
 ## Modo oscuro
 
@@ -128,12 +128,13 @@ flowchart LR
 | `tests/Feature/Admin/BusManagementTest.php` | Acceso por rol, listado con resumen, filtro por estado, estado inválido ignorado, búsqueda por placa/modelo/conductor, paginación validada, alta con rutas, rechazo de placa inválida y estado `emergency` en el CRUD, actualización, eliminación y protección de escrituras. |
 | `tests/Feature/Admin/AdminDashboardTest.php` | Acceso por rol, contadores de flota y reportes, render de la tarjeta de estado y estado vacío del dashboard. |
 | `tests/Feature/ThemeTest.php` | Inicialización del tema y toggle en login, layout del pasajero y layout administrativo. |
+| `tests/Feature/Admin/AdminReportsTest.php` | Vista única de reportes y estadísticas: acceso por rol, redirección de `admin.statistics`, datos de viajes, autobuses, conductores y accesos de exportación. |
 
 ## Verificación
 
 | Comando | Resultado |
 |---------|-----------|
-| `php artisan test` | **162 pruebas / 635 aserciones en verde**. |
+| `php artisan test` | **166 pruebas / 655 aserciones en verde**. |
 | `php artisan view:cache` | Todas las plantillas Blade compilan. |
 | `bun run build` | Assets compilados correctamente con Vite. |
 
@@ -146,15 +147,26 @@ flowchart LR
 | `resources/views/layouts/app.blade.php` | Inclusión del inicializador y fondo oscuro. |
 | `resources/views/layouts/guest.blade.php` | Inclusión del inicializador y toggle en autenticación. |
 | `resources/views/components/passenger-layout.blade.php` | Inclusión del inicializador y fondo oscuro. |
-| `resources/views/components/passenger-nav.blade.php` | Sustitución del toggle anterior por `<x-theme-toggle />`. |
-| `resources/css/app.css` | Reglas globales de tema, mapas Leaflet y popups oscuros. |
-| `app/Http/Controllers/Admin/AdminController.php` | Contadores de flota y reportes pendientes. |
+| `resources/views/components/passenger-nav.blade.php` | Sustitución del toggle anterior por `<x-theme-toggle />` y enlace único **Reportes** en la navegación administrativa. |
+| `resources/css/app.css` | Reglas globales de tema, mapas Leaflet y popups oscuros; fondos oscuros de las vistas administrativas. |
+| `app/Http/Controllers/Admin/AdminController.php` | Contadores de flota y reportes pendientes; se retiró `statistics()` al unificar la vista. |
+| `app/Http/Controllers/Admin/ReportController.php` | Datos de la vista única: viajes por día, autobuses, conductores, rutas y emergencias por tipo. |
 | `app/Http/Controllers/Admin/BusController.php` | Filtro por estado, paginación validada y resumen de flota. |
-| `resources/views/admin/dashboard.blade.php` | Tarjeta **Estado de la flota y reportes**. |
+| `resources/views/admin/dashboard.blade.php` | Tarjeta **Estado de la flota y reportes**; fondo y teselas del mapa adaptados al modo oscuro. |
 | `resources/views/admin/buses/index.blade.php` | Resumen, chips de filtro, búsqueda y paginación con filtros conservados. |
+| `resources/views/admin/reports.blade.php` | Vista única **Reportes y Estadísticas**, con exportaciones, rutas más utilizadas y emergencias por tipo. |
+| `resources/views/admin/statistics.blade.php` | **Eliminada.** `/admin/statistics` redirige a `/admin/reports`. |
+| `routes/web.php` | Redirección de `admin.statistics` a `admin.reports`. |
 | `tests/Feature/Admin/BusManagementTest.php` | **Nuevo.** Cobertura del listado y CRUD de autobuses. |
 | `tests/Feature/Admin/AdminDashboardTest.php` | **Nuevo.** Cobertura de contadores del dashboard. |
 | `tests/Feature/ThemeTest.php` | **Nuevo.** Cobertura del tema compartido. |
+| `tests/Feature/Admin/AdminReportsTest.php` | **Nuevo.** Cobertura de la vista única de reportes y estadísticas. |
+
+## Corrección posterior — fondos oscuros y vista única
+
+Al revisar el panel con el tema oscuro se detectó que los degradados locales de varias vistas administrativas seguían usando la paleta clara, por lo que el fondo se veía blanco. Se añadieron reglas globales `.dark .<page>` en `resources/css/app.css` para todas las superficies administrativas y se ajustó el mapa del dashboard para que sus teselas y su fondo también se oscurezcan.
+
+Además, `admin/reports` y `admin/statistics` se unificaron en una sola vista **Reportes y Estadísticas**. La ruta histórica `/admin/statistics` redirige a `/admin/reports`, la navegación administrativa muestra un único enlace y la vista incorpora las secciones de rutas más utilizadas y emergencias por tipo, además de los botones de exportación PDF/CSV. Se añadió `AdminReportsTest` para cubrir el acceso, la redirección y los datos de la vista unificada.
 
 ## Pendientes y siguientes pasos
 

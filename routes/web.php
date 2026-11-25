@@ -37,13 +37,11 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // CRUD Users
     Route::resource('users', \App\Http\Controllers\Admin\UserController::class);
 
-    // Statistics
-    Route::get('statistics', [AdminController::class, 'statistics'])->name('statistics');
-
-    // Reports
+    // Reportes y estadísticas (vista única)
     Route::get('reports', [\App\Http\Controllers\Admin\ReportController::class, 'index'])->name('reports');
     Route::get('reports/export-pdf', [\App\Http\Controllers\Admin\ReportController::class, 'exportPdf'])->name('reports.export-pdf');
     Route::get('reports/export-excel', [\App\Http\Controllers\Admin\ReportController::class, 'exportExcel'])->name('reports.export-excel');
+    Route::redirect('statistics', '/admin/reports')->name('statistics');
 
     // Emergencias / incidencias
     Route::get('emergencies', [AdminController::class, 'emergencies'])->name('emergencies');
@@ -80,6 +78,7 @@ Route::middleware(['auth', 'passenger'])->prefix('passenger')->name('passenger.'
     Route::get('/menu', [PassengerController::class, 'index'])->name('menu'); // Menú de opciones
     Route::get('/routes', [PassengerController::class, 'routes'])->name('routes');
     Route::get('/buses', [PassengerController::class, 'buses'])->name('buses');
+    Route::get('/search', [PassengerController::class, 'search'])->name('search');
 
     // Favorite Stops
     Route::post('/favorites/{stop}', [PassengerController::class, 'addFavorite'])->name('favorites.add');

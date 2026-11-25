@@ -31,7 +31,6 @@
             'Emergencias'  => 'admin.emergencies',
             'Incidencias'  => 'admin.incidents.index',
             'Reportes'     => 'admin.reports',
-            'Estadísticas' => 'admin.statistics',
         ];
     } else {
         $items = [

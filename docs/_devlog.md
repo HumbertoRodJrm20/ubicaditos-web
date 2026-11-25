@@ -467,14 +467,14 @@ Se activó el modo oscuro en toda la aplicación y se reforzó el panel administ
 | Controladores | `AdminController@index` agrega contadores de flota y reportes; `BusController@index` valida `status`/`per_page`, filtra y calcula `$summary`. |
 | Vistas | Nuevos `partials/theme-init` y `components/theme-toggle`; variantes oscuras en layouts y vistas; dashboard con tarjeta de estado; listado de autobuses con resumen y filtros. |
 | CSS | Reglas de `color-scheme`, transición de tema, mapas Leaflet oscuros y popups adaptados. |
-| Pruebas | `Admin/BusManagementTest` (12), `Admin/AdminDashboardTest` (4) y `ThemeTest` (3). |
+| Pruebas | `Admin/BusManagementTest` (12), `Admin/AdminDashboardTest` (4), `Admin/AdminReportsTest` (4) y `ThemeTest` (3). |
 | Documentación | `docs/18-iteracion-7.md`, `README.md`, `docs/README.md`, `07`, `10` y esta bitácora. |
 
 ### Verificación
 
 | Comando | Resultado |
 |---------|-----------|
-| `php artisan test` | 162 pruebas, 635 aserciones, 0 fallos. |
+| `php artisan test` | 166 pruebas, 655 aserciones, 0 fallos. |
 | `php artisan view:cache` | Todas las plantillas Blade compilan. |
 | `bun run build` | Vite compila CSS y JS correctamente. |
 
@@ -483,3 +483,18 @@ Se activó el modo oscuro en toda la aplicación y se reforzó el panel administ
 - Ejecutar Selenium y k6 en un entorno con Chrome y k6.
 - Añadir cobertura dedicada al CRUD de rutas y paradas.
 - Revisar el contraste de los mapas oscuros en dispositivos de gama baja.
+
+### Corrección posterior — fondos oscuros y vista única
+
+Al revisar el panel con el tema oscuro se detectó que los degradados locales de las vistas administrativas seguían usando la paleta clara. Se añadieron reglas globales `.dark .<page>` en `resources/css/app.css`, se retiró el `@media (prefers-color-scheme: dark)` de incidencias y se ajustó el mapa del dashboard para oscurecer fondo y teselas.
+
+También se unificaron `admin/reports` y `admin/statistics` en la vista **Reportes y Estadísticas**: `/admin/statistics` redirige a `/admin/reports`, la navegación muestra un solo enlace y la página incorpora rutas más utilizadas, emergencias por tipo y accesos de exportación PDF/CSV. `ReportController@index` pasó a entregar `tripsByDay` como colección y se retiró `AdminController@statistics`.
+
+| Capa | Cambios |
+|------|---------|
+| Controladores | `ReportController@index` entrega los datos de la vista única; se eliminó `AdminController@statistics`. |
+| Rutas | `admin.statistics` redirige a `admin.reports`. |
+| Vistas | `admin/reports` concentra reportes y estadísticas; se eliminó `admin/statistics`; navegación con un solo enlace. |
+| CSS | Fondos oscuros para `.buses-page`, `.buses-form-page`, `.bus-show-page`, `.drivers-page`, `.emergencies-page`, `.incidents-admin`, `.passengers-page`, `.reports-page`, `.routes-page`, `.routes-form-page` y `.users-form-page`. |
+| Pruebas | `Admin/AdminReportsTest` (4). |
+| Verificación | 166 pruebas, 655 aserciones; `view:cache` y `bun run build` correctos. |

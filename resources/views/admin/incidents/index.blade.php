@@ -108,7 +108,7 @@
                             Filtrar
                         </button>
                         @if ($status || $category || $search !== '')
-                            <a href="{{ route('admin.incidents.index') }}" class="inline-flex h-10 items-center justify-center rounded-full border border-slate-200 bg-white/85 px-4 text-xs font-semibold text-slate-600 transition hover:bg-white dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
+                            <a href="{{ route('admin.incidents.index') }}" class="inline-flex h-10 items-center justify-center rounded-full border border-slate-200 bg-white/85 px-4 text-xs font-semibold text-slate-600 transition hover:bg-white dark:hover:bg-gray-600 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
                                 Limpiar
                             </a>
                         @endif
@@ -192,18 +192,4 @@
             <p class="py-5 text-center text-xs text-slate-400 dark:text-gray-500">Ubicaditos · Gestión de reportes</p>
         </div>
     </div>
-
-    <style>
-        .incidents-admin {
-            background:
-                radial-gradient(circle at 8% 12%, rgba(151, 169, 211, .30), transparent 31%),
-                radial-gradient(circle at 96% 8%, rgba(178, 207, 232, .48), transparent 30%),
-                linear-gradient(135deg, #f5f7fb 0%, #edf1f8 52%, #f9fafc 100%);
-        }
-        @media (prefers-color-scheme: dark) {
-            .dark .incidents-admin {
-                background: linear-gradient(135deg, #0f172a 0%, #111827 52%, #0b1220 100%);
-            }
-        }
-    </style>
 </x-app-layout>

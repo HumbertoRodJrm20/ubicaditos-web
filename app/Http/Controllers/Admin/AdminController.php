@@ -48,26 +48,6 @@ class AdminController extends Controller
         return view('admin.dashboard', compact('stats', 'recentTrips', 'activeBuses', 'routes', 'stops', 'buses'));
     }
 
-    public function statistics()
-    {
-        $tripsByDay = Trip::selectRaw('DATE(started_at) as date, COUNT(*) as count')
-            ->where('started_at', '>=', now()->subDays(30))
-            ->groupBy('date')
-            ->get();
-
-        $busUsage = Bus::withCount(['trips' => function($query) {
-            $query->where('started_at', '>=', now()->subDays(30));
-        }])->get();
-
-        $topDrivers = User::where('role', 'driver')
-            ->withCount('trips')
-            ->orderBy('trips_count', 'desc')
-            ->limit(10)
-            ->get();
-
-        return view('admin.statistics', compact('tripsByDay', 'busUsage', 'topDrivers'));
-    }
-
     public function drivers(Request $request)
     {
         $search = $request->input('search');

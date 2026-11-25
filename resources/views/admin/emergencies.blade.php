@@ -28,12 +28,6 @@
     @endphp
 
     <style>
-        .emergencies-page {
-            background:
-                radial-gradient(circle at 8% 12%, rgba(151, 169, 211, .30), transparent 31%),
-                radial-gradient(circle at 96% 8%, rgba(178, 207, 232, .48), transparent 30%),
-                linear-gradient(135deg, #f5f7fb 0%, #edf1f8 52%, #f9fafc 100%);
-        }
         @media (prefers-reduced-motion: reduce) {
             .emergency-card { transition: none !important; }
         }
@@ -113,7 +107,7 @@
 
                         @if ($status || $type)
                             <a href="{{ route('admin.emergencies') }}"
-                                class="rounded-full border border-slate-200 bg-white/80 px-4 py-2.5 text-center text-sm font-medium text-slate-600 transition hover:bg-white dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
+                                class="rounded-full border border-slate-200 bg-white/80 px-4 py-2.5 text-center text-sm font-medium text-slate-600 transition hover:bg-white dark:hover:bg-gray-600 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
                                 Limpiar
                             </a>
                         @endif

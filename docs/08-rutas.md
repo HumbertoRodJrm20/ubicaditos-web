@@ -48,7 +48,6 @@ Prefijo `/admin`, nombre `admin.*`, middleware `auth` + `admin`.
 | Método | URI | Nombre | Acción |
 |--------|-----|--------|--------|
 | GET | `/admin` | `admin.dashboard` | `AdminController@index` |
-| GET | `/admin/statistics` | `admin.statistics` | `AdminController@statistics` |
 | GET | `/admin/drivers` | `admin.drivers` | `AdminController@drivers` |
 | POST | `/admin/drivers/{driver}/assign-bus` | `admin.drivers.assign-bus` | `AdminController@assignBusToDriver` |
 | DELETE | `/admin/drivers/{driver}/unassign-bus` | `admin.drivers.unassign-bus` | `AdminController@unassignBusFromDriver` |
@@ -60,6 +59,7 @@ Prefijo `/admin`, nombre `admin.*`, middleware `auth` + `admin`.
 | GET | `/admin/reports` | `admin.reports` | `ReportController@index` |
 | GET | `/admin/reports/export-pdf` | `admin.reports.export-pdf` | `ReportController@exportPdf` |
 | GET | `/admin/reports/export-excel` | `admin.reports.export-excel` | `ReportController@exportExcel` |
+| GET | `/admin/statistics` | `admin.statistics` | Redirección a `admin.reports` (vista única de reportes y estadísticas) |
 
 Las rutas de incidencias aceptan los parámetros de consulta `status` (`pending` | `in_progress` | `resolved`) y `type` (`accident` | `breakdown` | `medical` | `security` | `other`). La acción `resolve` solo aplica a incidencias **pendientes**; al resolverla, si el autobús asociado estaba en estado `emergency`, vuelve a `active`.
 

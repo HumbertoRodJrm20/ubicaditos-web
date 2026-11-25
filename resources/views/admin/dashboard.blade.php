@@ -1,6 +1,6 @@
 @php
     $card = 'bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-white/80 dark:border-white/10 shadow-[0_20px_50px_-20px_rgba(60,70,110,0.35)] rounded-[34px]';
-    $tile = 'flex items-center gap-3 rounded-[22px] bg-white/85 dark:bg-gray-700/60 px-3 py-[10px] hover:bg-white transition';
+    $tile = 'flex items-center gap-3 rounded-[22px] bg-white/85 dark:bg-gray-700/60 px-3 py-[10px] hover:bg-white dark:hover:bg-gray-700 transition';
     $tileIcon = 'w-11 h-11 rounded-[14px] text-white flex items-center justify-center shrink-0 shadow-md';
     $statRow = 'flex items-center justify-between rounded-[18px] bg-white/85 dark:bg-gray-700/60 px-3 py-3';
     $userPlus = '<svg class="w-11 h-11" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>';
@@ -13,7 +13,7 @@
     $clockSvg = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
 @endphp
 
-<x-passenger-layout title="Ubicaditos · Inicio">
+<x-passenger-layout title="Ubicaditos · Inicio" surface="admin">
     <x-slot name="head">
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
               integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
@@ -23,6 +23,8 @@
     <style>
         #admin-map { background: #e8edf8; }
         #admin-map .leaflet-tile-pane { filter: saturate(.3) brightness(1.08) contrast(.88); opacity: .8; }
+        .dark #admin-map { background: #0f172a; }
+        .dark #admin-map .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.85) contrast(.9); opacity: .7; }
         .leaflet-popup-content-wrapper { border-radius: 16px; box-shadow: 0 12px 30px rgba(60, 70, 110, .25); }
     </style>
 

@@ -48,7 +48,6 @@ El formato de las respuestas JSON se detalla en [Rutas y API](08-rutas.md#endpoi
 | Método | Ruta | Vista | Descripción |
 |--------|------|-------|-------------|
 | `index()` | `GET /admin` | `admin.dashboard` | Estadísticas generales (autobuses totales y activos, rutas, paradas, conductores, pasajeros, viajes de hoy), últimos 10 viajes, autobuses activos y datos para el mapa en vivo (rutas activas con paradas y autobuses, paradas activas). |
-| `statistics()` | `GET /admin/statistics` | `admin.statistics` | Viajes por día (30 días), uso de cada autobús (30 días) y top 10 conductores por número de viajes. |
 | `drivers(Request)` | `GET /admin/drivers` | `admin.drivers` | Lista paginada de conductores con búsqueda por nombre, apellidos o correo; incluye autobús asignado, número de viajes y calificación promedio; y la lista de autobuses sin conductor para asignar. |
 | `assignBusToDriver(Request, User $driver)` | `POST /admin/drivers/{driver}/assign-bus` | — | Valida `bus_id`, libera el autobús que el conductor tuviera antes y asigna el nuevo. Garantiza la relación uno a uno conductor ↔ autobús. |
 | `unassignBusFromDriver(User $driver)` | `DELETE /admin/drivers/{driver}/unassign-bus` | — | Quita el conductor de su autobús. |
@@ -132,7 +131,7 @@ Reglas de validación:
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| `index()` | `GET /admin/reports` | Panel de reportes con: estadísticas generales (viajes totales y del mes, flota, usuarios, rutas, paradas, calificación promedio, emergencias totales y pendientes); serie de viajes por día de los últimos 30 días (rellenando con 0 los días sin viajes); top 10 autobuses por uso; top 10 conductores con calificación; top 5 rutas; ocupación promedio por hora (últimos 7 días); y emergencias por tipo. |
+| `index()` | `GET /admin/reports` | Vista única **Reportes y Estadísticas** con: estadísticas generales (viajes totales y del mes, flota, usuarios, calificación promedio); serie de viajes por día de los últimos 30 días; top 10 autobuses por uso; top 10 conductores con calificación; top 5 rutas más utilizadas; y emergencias por tipo. Incluye accesos directos a la exportación PDF y CSV. La ruta histórica `/admin/statistics` redirige aquí. |
 | `exportPdf()` | `GET /admin/reports/export-pdf` | Genera con DomPDF la vista `admin.reports-pdf` y la descarga como `reporte-ubicaditos-AAAA-MM-DD.pdf`. |
 | `exportExcel()` | `GET /admin/reports/export-excel` | Construye los datos con `App\Exports\ReportsExport` y los transmite como `reporte-ubicaditos-AAAA-MM-DD.csv` (UTF-8 con BOM, compatible con Excel). |
 

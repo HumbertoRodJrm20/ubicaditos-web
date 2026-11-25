@@ -28,13 +28,13 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans antialiased text-[#1e2a4a] transition-colors duration-200 dark:text-gray-100">
-        <div class="min-h-screen bg-gradient-to-br from-[#eef2f9] via-[#e8edf7] to-[#f7f9fc] dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+        <div class="admin-surface min-h-screen transition-colors duration-200">
             @include('layouts.navigation')
 
             <!-- Page Heading -->
             @isset($header)
                 <header class="border-b border-white/60 bg-white/60 backdrop-blur-xl dark:border-white/10 dark:bg-slate-800/60">
-                    <div class="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+                    <div class="mx-auto max-w-7xl px-4 py-5 text-center sm:px-6 lg:px-8">
                         {{ $header }}
                     </div>
                 </header>

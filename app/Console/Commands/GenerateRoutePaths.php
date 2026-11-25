@@ -103,6 +103,10 @@ class GenerateRoutePaths extends Command
                 })->toArray();
 
                 $route->path_coordinates = $pathCoordinates;
+                $route->estimated_duration = $this->estimateDurationMinutes(
+                    $pathCoordinates,
+                    $stops->count()
+                );
                 $route->save();
 
                 $this->info("✓ {$route->code}: {$this->pointCount($pathCoordinates)} puntos guardados.");
@@ -124,6 +128,42 @@ class GenerateRoutePaths extends Command
         );
 
         return $failed > 0 ? self::FAILURE : self::SUCCESS;
+    }
+
+    /**
+     * @param array<int, array{lat: float, lng: float}> $path
+     */
+    private function estimateDurationMinutes(array $path, int $stopCount): int
+    {
+        $distanceKm = 0.0;
+
+        for ($i = 1; $i < count($path); $i++) {
+            $distanceKm += $this->distanceKm(
+                (float) $path[$i - 1]['lat'],
+                (float) $path[$i - 1]['lng'],
+                (float) $path[$i]['lat'],
+                (float) $path[$i]['lng']
+            );
+        }
+
+        // 20 km/h promedio urbano más una pequeña espera por parada.
+        $minutes = ($distanceKm / 20) * 60 + ($stopCount * 0.5);
+
+        return max(1, (int) round($minutes));
+    }
+
+    private function distanceKm(float $lat1, float $lng1, float $lat2, float $lng2): float
+    {
+        $earthRadiusKm = 6371.0;
+        $phi1 = deg2rad($lat1);
+        $phi2 = deg2rad($lat2);
+        $deltaPhi = deg2rad($lat2 - $lat1);
+        $deltaLambda = deg2rad($lng2 - $lng1);
+
+        $a = sin($deltaPhi / 2) ** 2
+            + cos($phi1) * cos($phi2) * sin($deltaLambda / 2) ** 2;
+
+        return $earthRadiusKm * 2 * atan2(sqrt($a), sqrt(1 - $a));
     }
 
     private function pointCount(array $path): int

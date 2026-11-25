@@ -255,8 +255,8 @@
         // Centro inicial del mapa. Si el autobús aún no tiene una posición GPS
         // guardada NO se inventa su ubicación (no se dibuja marcador): solo se
         // usa Oaxaca como vista de referencia para que el mapa no quede en un
-        // punto vacío del océano. Cuando hay ruta, generateRoute() o
-        // fallbackStraightLine() ajustan la vista a las paradas reales.
+        // punto vacío del océano. Cuando hay ruta, generateRoute() ajusta la
+        // vista al trazado real guardado sobre las calles.
         const DEFAULT_CENTER = [17.0654, -96.7256];
         const initialCenter = hasStoredCoords ? [busData.latitude, busData.longitude] : DEFAULT_CENTER;
         const map = L.map('map', { zoomControl: false }).setView(initialCenter, hasStoredCoords ? 14 : 12);
@@ -374,14 +374,10 @@
             }
 
             if (routePathCoords.length < 2) {
-                routePathCoords = stops
-                    .map(stop => [parseFloat(stop.latitude), parseFloat(stop.longitude)])
-                    .filter(([lat, lng]) => Number.isFinite(lat) && Number.isFinite(lng));
-            }
-
-            if (routePathCoords.length < 2) {
-                console.warn('La ruta no tiene un trazado válido; usando líneas rectas.');
-                fallbackStraightLine();
+                // No se inventa un recorrido uniendo paradas con líneas rectas:
+                // eso atraviesa casas y construcciones. Si falta el trazado, es
+                // mejor no dibujar la ruta hasta regenerarla sobre las calles.
+                console.warn('La ruta no tiene un trazado guardado sobre calles; no se dibuja el recorrido.');
                 return;
             }
 
@@ -399,24 +395,6 @@
             map.fitBounds(routePolyline.getBounds(), { padding: [50, 50] });
 
             console.log('Ruta dibujada desde el trazado guardado en la base de datos');
-        }
-
-        function fallbackStraightLine() {
-            if (!stops || stops.length < 2) return;
-
-            routePath = stops.map(stop => [parseFloat(stop.latitude), parseFloat(stop.longitude)]);
-            const color = route?.color || '#4b5a85';
-
-            routePolyline = L.polyline(routePath, {
-                color: color,
-                weight: 5,
-                opacity: 0.9,
-                lineCap: 'round',
-                dashArray: '10, 10'
-            }).addTo(map);
-
-            map.fitBounds(routePolyline.getBounds(), { padding: [50, 50] });
-            console.log('Ruta generada con líneas rectas (fallback)');
         }
 
         function drawStops() {

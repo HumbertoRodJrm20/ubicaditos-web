@@ -22,12 +22,6 @@
     @endphp
 
     <style>
-        .bus-show-page {
-            background:
-                radial-gradient(circle at 8% 12%, rgba(151, 169, 211, .30), transparent 31%),
-                radial-gradient(circle at 96% 8%, rgba(178, 207, 232, .48), transparent 30%),
-                linear-gradient(135deg, #f5f7fb 0%, #edf1f8 52%, #f9fafc 100%);
-        }
         .bus-show-table th { font-size: 11px; }
         .bus-show-table td { font-size: 12px; }
         .bus-show-wrap { scrollbar-width: thin; scrollbar-color: #c5ccdc transparent; }
@@ -42,8 +36,8 @@
             @endif
 
             {{-- Encabezado --}}
-            <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div class="flex min-w-0 items-center gap-4">
+            <div class="mb-6 flex flex-col items-center gap-4 text-center">
+                <div class="flex min-w-0 flex-col items-center gap-3 sm:flex-row sm:items-center sm:justify-center">
                     <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white shadow-md shadow-[#4a5a8a]/25"
                          style="background-color: {{ $bus->routes->first()?->color ?? '#6b7bad' }}">
                         <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -56,7 +50,7 @@
                         <h1 class="truncate text-2xl font-bold tracking-tight text-[#252e4b] dark:text-gray-100 sm:text-3xl">
                             Unidad {{ $bus->license_plate }}
                         </h1>
-                        <div class="mt-1 flex flex-wrap items-center gap-2">
+                        <div class="mt-1 flex flex-wrap items-center justify-center gap-2">
                             <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 {{ $statusStyle['classes'] }}">
                                 <span class="h-1.5 w-1.5 rounded-full {{ $statusStyle['dot'] }}"></span>
                                 {{ $statusStyle['label'] }}
@@ -66,10 +60,10 @@
                     </div>
                 </div>
 
-                <div class="flex flex-wrap gap-2">
+                <div class="flex flex-wrap justify-center gap-2">
                     @if ($bus->current_latitude && $bus->current_longitude)
                         <a href="{{ route('admin.dashboard') }}#mapa"
-                            class="inline-flex h-10 items-center justify-center rounded-full border border-slate-200 bg-white/85 px-4 text-xs font-semibold text-slate-600 transition hover:bg-white dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
+                            class="inline-flex h-10 items-center justify-center rounded-full border border-slate-200 bg-white/85 px-4 text-xs font-semibold text-slate-600 transition hover:bg-white dark:hover:bg-gray-600 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
                             Ver en el mapa
                         </a>
                     @endif
@@ -78,7 +72,7 @@
                         Editar autobús
                     </a>
                     <a href="{{ route('admin.buses.index') }}"
-                        class="inline-flex h-10 items-center justify-center rounded-full border border-slate-200 bg-white/85 px-4 text-xs font-semibold text-slate-600 transition hover:bg-white dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
+                        class="inline-flex h-10 items-center justify-center rounded-full border border-slate-200 bg-white/85 px-4 text-xs font-semibold text-slate-600 transition hover:bg-white dark:hover:bg-gray-600 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
                         Volver al listado
                     </a>
                 </div>
@@ -211,7 +205,7 @@
                         </ul>
 
                         <a href="{{ route('admin.emergencies') }}"
-                            class="mt-4 inline-flex h-9 w-full items-center justify-center rounded-full border border-slate-200 bg-white/85 px-4 text-xs font-semibold text-slate-600 transition hover:bg-white dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
+                            class="mt-4 inline-flex h-9 w-full items-center justify-center rounded-full border border-slate-200 bg-white/85 px-4 text-xs font-semibold text-slate-600 transition hover:bg-white dark:hover:bg-gray-600 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
                             Ver todas las incidencias
                         </a>
                     @endif

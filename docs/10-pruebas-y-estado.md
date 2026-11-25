@@ -35,6 +35,7 @@ composer run test
 | `tests/Feature/Admin/BusShowTest.php` | Detalle de autobús del administrador: KPIs, viajes y emergencias (iteración 3). |
 | `tests/Feature/Admin/BusManagementTest.php` | Listado y gestión de autobuses: acceso por rol, resumen de flota, filtro por estado, búsqueda, paginación validada, alta con rutas, actualización, eliminación y rechazo de estado `emergency` en el CRUD (iteración 7). |
 | `tests/Feature/Admin/AdminDashboardTest.php` | Contadores del dashboard administrativo: flota por estado, incidencias y emergencias pendientes, tarjeta de estado y render vacío (iteración 7). |
+| `tests/Feature/Admin/AdminReportsTest.php` | Vista única de reportes y estadísticas: acceso por rol, redirección de `admin.statistics`, datos de viajes, autobuses, conductores y accesos de exportación (iteración 7). |
 | `tests/Feature/ThemeTest.php` | Modo oscuro: inicialización sin destello y toggle compartido en login, layout del pasajero y layout administrativo (iteración 7). |
 | `tests/Feature/RealTime/BusLocationUpdatedTest.php` | Evento `BusLocationUpdated`: payload, canal privado `buses`, autorización de canal con el driver reverb y `ShouldBroadcastNow` (iteración 3). |
 | `tests/Feature/Likes/LikeTest.php` | Me gusta polimórfico en rutas y paradas: alternancia, contador público, unicidad por usuario y estado personal (iteración 4). |
@@ -45,7 +46,7 @@ composer run test
 | `tests/Feature/Passenger/RouteListingTest.php` | Listado completo de rutas activas, recorrido completo de paradas, exclusión de rutas inactivas y marcado de favoritas (iteración 6). |
 | `tests/Unit/ExampleTest.php` | Ejemplo unitario. |
 
-**Estado actual:** la suite completa está **en verde (162 pruebas, 635 aserciones)** tras la iteración 7. El detalle de las pruebas de la iteración 1 está en [API Swagger — Iteración 1](12-swagger-api.md); las de la iteración 3, en [Iteración 3](13-iteracion-3.md); las de la iteración 4, en [Iteración 4](16-iteracion-4.md); las de las iteraciones 5 y 6, en [Iteración 5 y 6](17-iteracion-5-6.md); las de la iteración 7, en [Iteración 7](18-iteracion-7.md); y el histórico, en el [_devlog](_devlog.md).
+**Estado actual:** la suite completa está **en verde (166 pruebas, 655 aserciones)** tras la iteración 7. El detalle de las pruebas de la iteración 1 está en [API Swagger — Iteración 1](12-swagger-api.md); las de la iteración 3, en [Iteración 3](13-iteracion-3.md); las de la iteración 4, en [Iteración 4](16-iteracion-4.md); las de las iteraciones 5 y 6, en [Iteración 5 y 6](17-iteracion-5-6.md); las de la iteración 7, en [Iteración 7](18-iteracion-7.md); y el histórico, en el [_devlog](_devlog.md).
 
 Además de `php artisan test`, el proyecto incorpora scripts de prueba **no ejecutados en este entorno** (previstos para la rama de pruebas):
 
