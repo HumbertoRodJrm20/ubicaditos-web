@@ -7,10 +7,14 @@ use App\Http\Controllers\LikeController;
 use App\Http\Controllers\LocationShareController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\IncidentManagementController;
+use App\Http\Controllers\Admin\RouteManagementController;
 use App\Http\Controllers\Driver\DriverController;
 use App\Http\Controllers\Passenger\FavoriteRouteController;
 use App\Http\Controllers\Passenger\PassengerController;
 use Illuminate\Support\Facades\Route;
+
+
+
 
 Route::get('/', function () {
     return redirect()->route('login');
@@ -130,5 +134,14 @@ Route::get('/share/{token}', [LocationShareController::class, 'show'])
 Route::get('/api/share/{token}', [LocationShareController::class, 'data'])
     ->where('token', '[A-Za-z0-9]{48}')
     ->name('api.share.data');
+
+// CRUD Buses
+Route::resource('buses', \App\Http\Controllers\Admin\BusController::class);
+
+// Estudio de rutas y paradas (debe declararse antes del resource de rutas)
+Route::get('routes/manage', [RouteManagementController::class, 'index'])->name('routes.manage');
+
+// CRUD Routes
+Route::resource('routes', \App\Http\Controllers\Admin\RouteController::class);
 
 require __DIR__.'/auth.php';
