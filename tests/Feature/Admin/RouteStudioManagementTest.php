@@ -79,6 +79,8 @@ class RouteStudioManagementTest extends TestCase
             ->assertSee('data-csrf', false)
             ->assertSee($this->jsUrl(route('admin.routes.manage.data')), false)
             ->assertSee($this->jsUrl(route('admin.stops.store')), false)
+            ->assertSee($this->jsUrl(route('admin.stops.data')), false)
+            ->assertSee($this->jsUrl(route('admin.routes.stops.data', $route)), false)
             ->assertSee($this->jsUrl(route('admin.routes.stops.sync', $route)), false)
             ->assertSee($this->jsUrl(route('admin.routes.geometry.regenerate', $route)), false);
 
@@ -89,6 +91,29 @@ class RouteStudioManagementTest extends TestCase
             ->assertJsonPath('stops.0.name', 'Parada Centro')
             ->assertJsonMissingPath('stops.0.email')
             ->assertJsonMissingPath('routes.0.users');
+    }
+
+    public function test_studio_load_does_not_call_osrm_and_exposes_unsaved_change_status(): void
+    {
+        Http::fake();
+        $route = $this->makeRoute();
+        $firstStop = $this->makeStop('Primera parada', 17.060);
+        $secondStop = $this->makeStop('Segunda parada', 17.061);
+        $route->stops()->attach($firstStop->id, ['order' => 0, 'estimated_time_from_previous' => 0]);
+        $route->stops()->attach($secondStop->id, ['order' => 1, 'estimated_time_from_previous' => 3]);
+        $admin = $this->admin();
+
+        $this->actingAs($admin)
+            ->get(route('admin.routes.manage'))
+            ->assertOk()
+            ->assertSee('Cambios sin guardar')
+            ->assertSee('x-show="hasUnsavedChanges"', false);
+
+        $this->actingAs($admin)
+            ->getJson(route('admin.routes.manage.data'))
+            ->assertOk();
+
+        Http::assertNothingSent();
     }
 
     public function test_write_endpoints_are_protected_from_other_roles(): void

@@ -3,7 +3,9 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\Bus;
+use App\Models\EmergencyReport;
 use App\Models\Route;
+use App\Models\Trip;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -28,7 +30,7 @@ class BusManagementTest extends TestCase
         static $plate = 100;
 
         return Bus::create(array_merge([
-            'license_plate' => 'BUS' . $plate++,
+            'license_plate' => 'BUS'.$plate++,
             'model' => 'Yutong',
             'capacity' => 40,
             'status' => 'active',
@@ -223,6 +225,89 @@ class BusManagementTest extends TestCase
             ->assertRedirect();
 
         $this->assertDatabaseMissing('buses', ['id' => $bus->id]);
+    }
+
+    public function test_deleting_a_bus_with_completed_trips_deactivates_it_and_preserves_history(): void
+    {
+        $bus = $this->bus(['license_plate' => 'HIS123']);
+        $route = Route::create([
+            'name' => 'Ruta Histórica',
+            'code' => 'RH-1',
+            'color' => '#2563EB',
+            'is_active' => true,
+        ]);
+        $driver = User::factory()->create(['role' => 'driver']);
+        $trip = Trip::create([
+            'bus_id' => $bus->id,
+            'route_id' => $route->id,
+            'driver_id' => $driver->id,
+            'started_at' => now()->subHour(),
+            'completed_at' => now(),
+            'status' => 'completed',
+        ]);
+        $report = EmergencyReport::create([
+            'reporter_id' => $driver->id,
+            'bus_id' => $bus->id,
+            'type' => 'other',
+            'description' => 'Reporte histórico de la unidad',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->delete(route('admin.buses.destroy', $bus))
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('buses', [
+            'id' => $bus->id,
+            'is_active' => false,
+            'status' => 'inactive',
+        ]);
+        $this->assertDatabaseHas('trips', ['id' => $trip->id]);
+        $this->assertDatabaseHas('emergency_reports', [
+            'id' => $report->id,
+            'bus_id' => $bus->id,
+        ]);
+    }
+
+    public function test_bus_with_an_active_trip_cannot_be_deleted(): void
+    {
+        $bus = $this->bus(['license_plate' => 'ACT123']);
+        $route = Route::create([
+            'name' => 'Ruta activa',
+            'code' => 'RA-2',
+            'color' => '#2563EB',
+            'is_active' => true,
+        ]);
+        $driver = User::factory()->create(['role' => 'driver']);
+        $trip = Trip::create([
+            'bus_id' => $bus->id,
+            'route_id' => $route->id,
+            'driver_id' => $driver->id,
+            'started_at' => now(),
+            'status' => 'in_progress',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->from(route('admin.buses.index'))
+            ->delete(route('admin.buses.destroy', $bus))
+            ->assertRedirect(route('admin.buses.index'))
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseHas('buses', ['id' => $bus->id, 'is_active' => true]);
+        $this->assertDatabaseHas('trips', ['id' => $trip->id, 'status' => 'in_progress']);
+    }
+
+    public function test_bus_assigned_to_a_driver_cannot_be_deleted(): void
+    {
+        $driver = User::factory()->create(['role' => 'driver']);
+        $bus = $this->bus(['license_plate' => 'ASN123', 'driver_id' => $driver->id]);
+
+        $this->actingAs($this->admin)
+            ->from(route('admin.buses.index'))
+            ->delete(route('admin.buses.destroy', $bus))
+            ->assertRedirect(route('admin.buses.index'))
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseHas('buses', ['id' => $bus->id, 'driver_id' => $driver->id]);
     }
 
     public function test_non_admin_cannot_create_update_or_delete_buses(): void

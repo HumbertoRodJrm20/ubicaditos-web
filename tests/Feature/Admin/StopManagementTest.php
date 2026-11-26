@@ -147,6 +147,22 @@ class StopManagementTest extends TestCase
         $this->assertDatabaseHas('route_stop', ['route_id' => $route->id, 'stop_id' => $stop->id]);
     }
 
+    public function test_favorited_and_liked_stop_is_deactivated_with_associations_preserved(): void
+    {
+        $stop = Stop::create($this->payload());
+        $passenger = $this->admin();
+        $passenger->favoriteStops()->attach($stop->id, ['nickname' => 'Mi parada']);
+        $like = $stop->likes()->create(['user_id' => $passenger->id]);
+
+        $this->actingAs($this->admin())
+            ->delete(route('admin.stops.destroy', $stop))
+            ->assertRedirect(route('admin.routes.manage'));
+
+        $this->assertDatabaseHas('stops', ['id' => $stop->id, 'is_active' => false]);
+        $this->assertDatabaseHas('favorite_stops', ['user_id' => $passenger->id, 'stop_id' => $stop->id]);
+        $this->assertDatabaseHas('likes', ['id' => $like->id]);
+    }
+
     public function test_unused_stop_can_be_deleted(): void
     {
         $stop = Stop::create($this->payload());

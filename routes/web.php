@@ -1,20 +1,22 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\BusController;
+use App\Http\Controllers\Admin\IncidentManagementController;
+use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\RouteController;
+use App\Http\Controllers\Admin\RouteManagementController;
+use App\Http\Controllers\Admin\StopController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Driver\DriverController;
 use App\Http\Controllers\IncidentController;
 use App\Http\Controllers\LikeController;
 use App\Http\Controllers\LocationShareController;
-use App\Http\Controllers\Admin\AdminController;
-use App\Http\Controllers\Admin\IncidentManagementController;
-use App\Http\Controllers\Admin\RouteManagementController;
-use App\Http\Controllers\Driver\DriverController;
 use App\Http\Controllers\Passenger\FavoriteRouteController;
 use App\Http\Controllers\Passenger\PassengerController;
+use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
-
-
-
 
 Route::get('/', function () {
     return redirect()->route('login');
@@ -30,30 +32,32 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/', [AdminController::class, 'index'])->name('dashboard');
 
     // CRUD Buses
-    Route::resource('buses', \App\Http\Controllers\Admin\BusController::class);
+    Route::resource('buses', BusController::class);
 
     // Estudio de rutas y paradas (declarado antes del resource para que
     // "/routes/manage" no sea capturado como "{route}").
     Route::get('routes/manage', [RouteManagementController::class, 'index'])->name('routes.manage');
     Route::get('routes/manage/data', [RouteManagementController::class, 'data'])->name('routes.manage.data');
+    Route::get('routes/{route}/stops', [RouteManagementController::class, 'stops'])->name('routes.stops.data');
     Route::post('routes/{route}/stops', [RouteManagementController::class, 'syncStops'])->name('routes.stops.sync');
     Route::post('routes/{route}/geometry', [RouteManagementController::class, 'regenerateGeometry'])->name('routes.geometry.regenerate');
     Route::patch('routes/{route}/status', [RouteManagementController::class, 'toggleStatus'])->name('routes.status');
 
     // CRUD Routes
-    Route::resource('routes', \App\Http\Controllers\Admin\RouteController::class);
+    Route::resource('routes', RouteController::class);
 
     // CRUD Stops
-    Route::patch('stops/{stop}/status', [\App\Http\Controllers\Admin\StopController::class, 'toggleStatus'])->name('stops.status');
-    Route::resource('stops', \App\Http\Controllers\Admin\StopController::class);
+    Route::get('stops/data', [StopController::class, 'data'])->name('stops.data');
+    Route::patch('stops/{stop}/status', [StopController::class, 'toggleStatus'])->name('stops.status');
+    Route::resource('stops', StopController::class);
 
     // CRUD Users
-    Route::resource('users', \App\Http\Controllers\Admin\UserController::class);
+    Route::resource('users', UserController::class);
 
     // Reportes y estadísticas (vista única)
-    Route::get('reports', [\App\Http\Controllers\Admin\ReportController::class, 'index'])->name('reports');
-    Route::get('reports/export-pdf', [\App\Http\Controllers\Admin\ReportController::class, 'exportPdf'])->name('reports.export-pdf');
-    Route::get('reports/export-excel', [\App\Http\Controllers\Admin\ReportController::class, 'exportExcel'])->name('reports.export-excel');
+    Route::get('reports', [ReportController::class, 'index'])->name('reports');
+    Route::get('reports/export-pdf', [ReportController::class, 'exportPdf'])->name('reports.export-pdf');
+    Route::get('reports/export-excel', [ReportController::class, 'exportExcel'])->name('reports.export-excel');
     Route::redirect('statistics', '/admin/reports')->name('statistics');
 
     // Emergencias / incidencias

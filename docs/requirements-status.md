@@ -1,0 +1,11 @@
+# Estado de requisitos
+
+Registro incremental de los requisitos auditados contra el código fuente. Los requisitos que aún no aparecen en la tabla no se consideran verificados ni completados; se incorporarán conforme avance el backlog.
+
+| ID | Estado | Pruebas de trazabilidad | Fecha |
+|----|--------|-------------------------|-------|
+| RNF-05 | Parcial: catálogo de paradas acotado y formularios heredados de ruta sin consultas al catálogo; quedan sin medir/guardas de N+1 otros listados principales | `tests/Feature/Admin/StopCatalogTest.php`, `tests/Feature/Admin/RouteCrudCharacterizationTest.php::test_legacy_route_forms_do_not_load_or_render_the_stop_catalog`, `tests/Feature/Admin/RouteStudioManagementTest.php` | 2026-11-25 |
+| RNF-12 | Completado en la capa de aplicación: ruta/parada/autobús/conductor conservan historial mediante desactivación o bloqueo; índice único de pivote aprobado e incluido. Migración probada en SQLite en memoria; PostgreSQL no se ejecutó en este entorno. | `tests/Feature/Admin/RouteCrudCharacterizationTest.php`, `StopManagementTest.php`, `BusManagementTest.php`, `DriverLifecycleTest.php`, `ProfileTest.php`, `AuthenticationTest.php` | 2026-11-25 |
+| HU-038 | Completado: autobús con viaje activo o conductor asignado no se elimina; con historial se desactiva y conserva viajes/reportes. | `tests/Feature/Admin/BusManagementTest.php::test_deleting_a_bus_with_completed_trips_deactivates_it_and_preserves_history`, `test_bus_with_an_active_trip_cannot_be_deleted`, `test_bus_assigned_to_a_driver_cannot_be_deleted` | 2026-11-25 |
+| HU-043 | Completado: el conductor se desactiva, se libera/desactiva su autobús, se conservan viajes/calificaciones y se bloquea si tiene viaje activo; login inactivo rechazado. | `tests/Feature/Admin/DriverLifecycleTest.php`, `tests/Feature/ProfileTest.php`, `tests/Feature/Auth/AuthenticationTest.php::test_inactive_users_cannot_authenticate` | 2026-11-25 |
+| HU-047 | Completado: ruta con viajes, autobuses, likes o favoritos se desactiva y conserva sus asociaciones. | `tests/Feature/Admin/RouteCrudCharacterizationTest.php::test_destroy_deactivates_a_route_with_trips`, `test_destroy_deactivates_a_favorited_route_and_preserves_the_favorite`, `test_destroy_deactivates_a_route_with_a_bus_assignment`, `test_destroy_deactivates_a_liked_route_and_preserves_the_like` | 2026-11-25 |

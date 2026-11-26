@@ -164,7 +164,7 @@ erDiagram
 | `routes` | Rutas de transporte. | — |
 | `stops` | Paradas. | — |
 | `bus_route` | Asignación autobús ↔ ruta. | `bus_id`, `route_id` (**cascade**) |
-| `route_stop` | Paradas de cada ruta con orden y tiempo desde la anterior. | `route_id`, `stop_id` (**cascade**) |
+| `route_stop` | Paradas de cada ruta con orden y tiempo desde la anterior; índice único (`route_id`, `stop_id`). | `route_id`, `stop_id` (**cascade**) |
 | `trips` | Viajes. | `bus_id`, `route_id`, `driver_id → users` (**cascade**) |
 | `ratings` | Calificaciones. | `passenger_id`, `driver_id` (**cascade**); `trip_id` (**set null**) |
 | `favorite_stops` | Paradas favoritas. Índice único (`user_id`, `stop_id`). | `user_id`, `stop_id` (**cascade**) |
@@ -227,6 +227,9 @@ Se ejecutan en orden cronológico según el prefijo del nombre del archivo:
 | `2026_11_08_000002_create_favorite_routes_table` | Crea `favorite_routes`. |
 | `2026_11_08_000003_create_location_shares_table` | Crea `location_shares`. |
 | `2026_11_08_000004_add_resolved_at_to_incidents_table` | Agrega `resolved_at` a `incidents`. |
+| `2026_11_25_000001_add_unique_route_stop_pair_index` | Agrega índice único a `(route_id, stop_id)` tras comprobar que no haya pares duplicados. |
+
+La migración de unicidad cuenta los duplicados y falla con la pareja conflictiva; no elimina ni reescribe datos. Se probó mediante las migraciones SQLite en memoria de PHPUnit. El DDL usa el índice único estándar de Laravel, compatible con SQLite y PostgreSQL; no se ejecutó contra una instancia PostgreSQL en esta sesión. El SQLite de desarrollo no se migró.
 
 Comandos útiles:
 

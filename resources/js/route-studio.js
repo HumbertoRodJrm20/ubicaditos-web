@@ -15,7 +15,7 @@ const DEFAULT_ZOOM = 13;
 
 function round(value) {
     const number = Number(value);
-    return Number.isFinite(number) ? Math.round(number * 1e6) / 1e6 : '';
+    return Number.isFinite(number) ? Math.round(number * 1e7) / 1e7 : '';
 }
 
 function escapeHtml(value) {
@@ -45,6 +45,10 @@ function asId(value) {
 Alpine.data('routeStudio', (initial = {}) => ({
     routes: Array.isArray(initial.routes) ? initial.routes : [],
     stops: Array.isArray(initial.stops) ? initial.stops : [],
+    mainStops: Array.isArray(initial.stops) ? initial.stops : [],
+    stopPage: 1,
+    stopLastPage: 1,
+    stopSearchRequest: 0,
     endpoints: {
         data: initial.endpoints?.data ?? '',
         routes: initial.endpoints?.routes ?? {},
@@ -57,6 +61,8 @@ Alpine.data('routeStudio', (initial = {}) => ({
     selectedRouteId: asId(new URLSearchParams(window.location.search).get('route')),
     selectedStopId: asId(new URLSearchParams(window.location.search).get('stop')),
     sequence: [],
+    savedSequence: [],
+    frequentReviewNeeded: false,
     draft: {
         id: null,
         name: '',
@@ -82,7 +88,37 @@ Alpine.data('routeStudio', (initial = {}) => ({
     },
 
     get selectedStop() {
-        return this.stops.find((stop) => Number(stop.id) === Number(this.selectedStopId)) ?? null;
+        return this.visibleStops.find((stop) => Number(stop.id) === Number(this.selectedStopId)) ?? null;
+    },
+
+    get sequenceDirty() {
+        return this.sequence.length !== this.savedSequence.length
+            || this.sequence.some((id, index) => Number(id) !== Number(this.savedSequence[index]));
+    },
+
+    get stopDraftDirty() {
+        if (this.mode === 'create') {
+            return Boolean(this.draft.name || this.draft.address || this.draft.latitude !== '' || this.draft.longitude !== '');
+        }
+
+        const stop = this.selectedStop;
+        if (!stop) return false;
+
+        return this.draft.name !== (stop.name ?? '')
+            || this.draft.address !== (stop.address ?? '')
+            || Number(this.draft.latitude) !== Number(stop.latitude)
+            || Number(this.draft.longitude) !== Number(stop.longitude);
+    },
+
+    get hasUnsavedChanges() {
+        return this.sequenceDirty || this.stopDraftDirty;
+    },
+
+    get visibleStops() {
+        const selectedRouteStops = this.selectedRoute?.stops ?? [];
+        return [...new Map(
+            [...this.stops, ...selectedRouteStops].map((stop) => [Number(stop.id), stop])
+        ).values()];
     },
 
     get filteredRoutes() {
@@ -122,6 +158,7 @@ Alpine.data('routeStudio', (initial = {}) => ({
 
         this.csrfToken = document.querySelector('[data-csrf]')?.value ?? '';
         this.syncSequenceFromSelection();
+        window.addEventListener('beforeunload', (event) => this.protectUnsavedChanges(event));
 
         if (typeof L === 'undefined') {
             window.addEventListener('load', () => this.setupMap(), { once: true });
@@ -164,7 +201,13 @@ Alpine.data('routeStudio', (initial = {}) => ({
         }
     },
 
-    async refresh({ silent = true } = {}) {
+    async refresh({ silent = true, confirmDiscard = true, preserveSequence = false } = {}) {
+        if (confirmDiscard && this.hasUnsavedChanges) {
+            if (!this.confirmDiscardChanges()) return null;
+            this.resetDraft();
+        }
+
+        const keepSequence = preserveSequence && this.sequenceDirty;
         const data = await this.run(
             async () => (await axios.get(this.endpoints.data, { headers: this.headers() })).data,
             silent ? '' : 'Datos actualizados.'
@@ -173,17 +216,77 @@ Alpine.data('routeStudio', (initial = {}) => ({
         if (!data) return null;
 
         this.routes = Array.isArray(data.routes) ? data.routes : [];
-        this.stops = Array.isArray(data.stops) ? data.stops : [];
+        this.mainStops = Array.isArray(data.stops) ? data.stops : [];
+        this.stops = this.mainStops;
+        this.stopPage = 1;
+        this.stopLastPage = 1;
         this.endpoints = { ...this.endpoints, ...(data.endpoints ?? {}) };
 
         if (this.selectedRouteId && !this.selectedRoute) this.selectedRouteId = null;
+
+        if (this.selectedRoute) {
+            await this.loadSelectedRouteStops({ syncSequence: !keepSequence });
+        }
+
+        if (this.searchStop.trim()) {
+            await this.searchStopCatalog({ reset: true });
+        }
+
         if (this.selectedStopId && !this.selectedStop) this.resetDraft();
 
-        this.syncSequenceFromSelection();
+        if (!keepSequence) this.syncSequenceFromSelection();
         this.rebuildLayer();
         this.applyRouteFilter();
 
         return data;
+    },
+
+    confirmDiscardChanges() {
+        return !this.hasUnsavedChanges || window.confirm('Hay cambios sin guardar. ¿Deseas descartarlos?');
+    },
+
+    protectUnsavedChanges(event) {
+        if (!this.hasUnsavedChanges) return;
+
+        event.preventDefault();
+        event.returnValue = '';
+    },
+
+    async searchStopCatalog({ reset = true } = {}) {
+        const query = this.searchStop.trim();
+        const requestId = ++this.stopSearchRequest;
+
+        if (!query) {
+            this.stops = this.mainStops;
+            this.stopPage = 1;
+            this.stopLastPage = 1;
+            this.renderMarkers();
+            return;
+        }
+
+        if (!this.endpoints.stops.data) return;
+
+        const page = reset ? 1 : this.stopPage + 1;
+        const data = await this.run(async () => (
+            await axios.get(this.endpoints.stops.data, {
+                params: { q: query, page, per_page: 50 },
+                headers: this.headers(),
+            })
+        ).data);
+
+        if (!data) return;
+        if (requestId !== this.stopSearchRequest || query !== this.searchStop.trim()) return;
+
+        const pageStops = Array.isArray(data.data) ? data.data : [];
+        this.stops = reset
+            ? pageStops
+            : [...new Map([...this.stops, ...pageStops].map((stop) => [Number(stop.id), stop])).values()];
+        this.stopPage = Number(data.current_page ?? page);
+        this.stopLastPage = Number(data.last_page ?? this.stopPage);
+
+        if (this.selectedStopId && !this.selectedStop) this.resetDraft();
+
+        this.renderMarkers();
     },
 
     setupMap() {
@@ -245,7 +348,7 @@ Alpine.data('routeStudio', (initial = {}) => ({
         }
 
         const points = this.sequence
-            .map((id) => this.stops.find((stop) => Number(stop.id) === Number(id)))
+            .map((id) => this.visibleStops.find((stop) => Number(stop.id) === Number(id)))
             .filter(Boolean)
             .map((stop) => [Number(stop.latitude), Number(stop.longitude)]);
 
@@ -286,7 +389,7 @@ Alpine.data('routeStudio', (initial = {}) => ({
         this.markerLayer = L.layerGroup();
         this.markers.clear();
 
-        this.stops.forEach((stop) => {
+        this.visibleStops.forEach((stop) => {
             const latitude = Number(stop.latitude);
             const longitude = Number(stop.longitude);
             if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
@@ -368,13 +471,20 @@ Alpine.data('routeStudio', (initial = {}) => ({
     },
 
     beginCreateAt(latitude, longitude) {
+        const replacingStop = this.mode === 'edit';
+
+        if (this.mode === 'edit' && this.stopDraftDirty
+            && !window.confirm('Hay cambios de la parada sin guardar. ¿Deseas descartarlos?')) {
+            return;
+        }
+
         this.mode = 'create';
         this.selectedStopId = null;
         this.panel = 'stops';
         this.draft = {
             id: null,
-            name: this.draft.name ?? '',
-            address: this.draft.address ?? '',
+            name: replacingStop ? '' : (this.draft.name ?? ''),
+            address: replacingStop ? '' : (this.draft.address ?? ''),
             latitude: round(latitude),
             longitude: round(longitude),
         };
@@ -384,29 +494,75 @@ Alpine.data('routeStudio', (initial = {}) => ({
     syncSequenceFromSelection() {
         if (!this.selectedRoute) {
             this.sequence = [];
+            this.savedSequence = [];
             return;
         }
 
         this.sequence = this.selectedRoute.stops
             .filter((stop) => !Boolean(stop.pivot?.is_frequent))
             .map((stop) => Number(stop.id));
+        this.savedSequence = [...this.sequence];
     },
 
-    selectRoute(id) {
+    async selectRoute(id) {
         const routeId = asId(id);
         if (!routeId || !this.routes.some((route) => Number(route.id) === routeId)) return;
+        if (routeId === Number(this.selectedRouteId)) return;
+        if (!this.confirmDiscardChanges()) return;
 
         this.selectedRouteId = routeId;
         this.selectedStopId = null;
+        this.frequentReviewNeeded = false;
         this.mode = 'create';
         this.resetDraft();
         this.syncSequenceFromSelection();
         this.applyRouteFilter();
+        await this.loadSelectedRouteStops();
     },
 
-    selectStop(id) {
-        const stop = this.stops.find((item) => Number(item.id) === asId(id));
+    async loadSelectedRouteStops({ syncSequence = true } = {}) {
+        const route = this.selectedRoute;
+        if (!route?.urls?.stops || route.stopsLoaded) return;
+
+        const routeId = Number(route.id);
+        const data = await this.run(async () => (
+            await axios.get(route.urls.stops, { headers: this.headers() })
+        ).data);
+
+        if (!data) return;
+
+        route.stops = Array.isArray(data.stops) ? data.stops : [];
+        route.stopsLoaded = true;
+
+        if (syncSequence && Number(this.selectedRouteId) === routeId) {
+            this.syncSequenceFromSelection();
+            this.applyRouteFilter();
+        }
+    },
+
+    async selectStop(id) {
+        const stopId = asId(id);
+        if (!stopId) return;
+
+        let stop = this.visibleStops.find((item) => Number(item.id) === stopId);
+
+        if (!stop && this.endpoints.stops.data) {
+            const data = await this.run(async () => (
+                await axios.get(this.endpoints.stops.data, {
+                    params: { stop_id: stopId, per_page: 1 },
+                    headers: this.headers(),
+                })
+            ).data);
+            stop = data?.data?.[0] ?? null;
+
+            if (stop) {
+                this.stops = [stop, ...this.stops];
+            }
+        }
+
         if (!stop) return;
+        if (this.mode === 'edit' && Number(this.selectedStopId) === stopId) return;
+        if (this.stopDraftDirty && !window.confirm('Hay cambios de la parada sin guardar. ¿Deseas descartarlos?')) return;
 
         this.selectedStopId = Number(stop.id);
         this.mode = 'edit';
@@ -431,6 +587,13 @@ Alpine.data('routeStudio', (initial = {}) => ({
         return this.stops.find((stop) => Number(stop.id) === Number(id))?.name
             ?? this.selectedRoute?.stops.find((stop) => Number(stop.id) === Number(id))?.name
             ?? 'Parada';
+    },
+
+    stopMinutes(id) {
+        const stop = this.selectedRoute?.stops.find((item) => Number(item.id) === Number(id));
+        const minutes = stop?.pivot?.estimated_time_from_previous;
+
+        return minutes === null || minutes === undefined ? '—' : `${minutes} min`;
     },
 
     frequentStops() {
@@ -482,7 +645,9 @@ Alpine.data('routeStudio', (initial = {}) => ({
 
         if (!result) return;
 
-        await this.refresh();
+        this.savedSequence = this.sequence.map(Number);
+        this.frequentReviewNeeded = Boolean(result.frequent_review_needed);
+        await this.refresh({ confirmDiscard: false });
 
         if (result.frequent_review_needed) {
             this.success = 'Orden guardado. Revisa las paradas frecuentes ancladas.';
@@ -493,11 +658,17 @@ Alpine.data('routeStudio', (initial = {}) => ({
 
     async regenerate() {
         if (!this.selectedRoute) return;
+        if (!this.confirmDiscardChanges()) return;
 
         if (this.selectedRoute.has_path && !window.confirm(
             'Esta ruta ya tiene trazado. ¿Regenerarlo desde las paradas actuales?'
         )) {
             return;
+        }
+
+        if (this.hasUnsavedChanges) {
+            this.resetDraft();
+            this.syncSequenceFromSelection();
         }
 
         const result = await this.run(async () => {
@@ -512,12 +683,18 @@ Alpine.data('routeStudio', (initial = {}) => ({
 
         if (!result) return;
 
-        await this.refresh();
+        await this.refresh({ confirmDiscard: false });
         this.success = `Trazado regenerado con ${result.points ?? 0} puntos.`;
     },
 
     async toggleRouteStatus() {
         if (!this.selectedRoute) return;
+        if (!this.confirmDiscardChanges()) return;
+
+        if (this.hasUnsavedChanges) {
+            this.resetDraft();
+            this.syncSequenceFromSelection();
+        }
 
         const result = await this.run(async () => {
             const response = await axios.patch(
@@ -531,7 +708,7 @@ Alpine.data('routeStudio', (initial = {}) => ({
 
         if (!result) return;
 
-        await this.refresh();
+        await this.refresh({ confirmDiscard: false });
         this.success = result.message ?? 'Estado de la ruta actualizado.';
     },
 
@@ -575,28 +752,46 @@ Alpine.data('routeStudio', (initial = {}) => ({
         if (!result) return;
 
         const savedStop = result.stop ?? null;
-        await this.refresh();
+        this.resetDraft();
+        await this.refresh({ confirmDiscard: false, preserveSequence: true });
 
-        if (isCreate && savedStop) {
+        if (savedStop && !this.stops.some((stop) => Number(stop.id) === Number(savedStop.id))) {
+            this.stops = [savedStop, ...this.stops];
+            this.renderMarkers();
+        }
+
+        if (savedStop && isCreate) {
             if (this.selectedRoute && !this.sequence.includes(Number(savedStop.id))) {
                 this.sequence.push(Number(savedStop.id));
                 await this.saveSequence();
             } else {
                 this.selectStop(savedStop.id);
             }
+        } else if (savedStop) {
+            this.selectStop(savedStop.id);
         }
+    },
+
+    clearDraft() {
+        if (this.stopDraftDirty && !window.confirm('Hay cambios de la parada sin guardar. ¿Deseas descartarlos?')) return;
+
+        this.resetDraft();
     },
 
     async deleteStop() {
         if (!this.selectedStop) return;
+        if (this.stopDraftDirty && !window.confirm('Hay cambios de la parada sin guardar. ¿Deseas descartarlos?')) return;
 
         if (!window.confirm(`¿Eliminar la parada "${this.selectedStop.name}"?`)) {
             return;
         }
 
+        const destroyUrl = this.selectedStop.urls.destroy;
+        this.resetDraft();
+
         const result = await this.run(async () => {
             const response = await axios.delete(
-                this.selectedStop.urls.destroy,
+                destroyUrl,
                 { headers: this.headers() }
             );
 
@@ -605,8 +800,7 @@ Alpine.data('routeStudio', (initial = {}) => ({
 
         if (!result) return;
 
-        this.resetDraft();
-        await this.refresh();
+        await this.refresh({ confirmDiscard: false, preserveSequence: true });
         this.success = result.message ?? 'Parada eliminada.';
     },
 

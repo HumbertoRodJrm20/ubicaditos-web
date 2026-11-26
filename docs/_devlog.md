@@ -498,3 +498,21 @@ También se unificaron `admin/reports` y `admin/statistics` en la vista **Report
 | CSS | Fondos oscuros para `.buses-page`, `.buses-form-page`, `.bus-show-page`, `.drivers-page`, `.emergencies-page`, `.incidents-admin`, `.passengers-page`, `.reports-page`, `.routes-page`, `.routes-form-page` y `.users-form-page`. |
 | Pruebas | `Admin/AdminReportsTest` (4). |
 | Verificación | 166 pruebas, 655 aserciones; `view:cache` y `bun run build` correctos. |
+
+## 2026-11-25 — Catálogo acotado del Estudio (RNF-05, parcial)
+
+El payload inicial del Estudio incluye como máximo 200 paradas principales distintas; las secuencias completas (incluidas las frecuentes) se solicitan solo para la ruta seleccionada. `GET /admin/stops/data` ofrece búsqueda, lookup validado por ID y paginación de hasta 50 elementos. En este seguimiento, `RouteController@create/edit` dejó de consultar/renderizar todo el catálogo: los formularios heredados se limitan a metadatos y enlazan al Estudio para asignar paradas.
+
+El Estudio compara la secuencia local con la guardada, avisa antes de descartar cambios, protege la salida de página y muestra `estimated_time_from_previous`. La lectura de la secuencia usa `route_stop.id` como desempate estable. La generación OSRM permanece en la acción explícita y mantiene la geometría guardada cuando falla.
+
+La revisión de paradas frecuentes se indica al guardar, pero no se persiste porque el campo requeriría una migración pendiente de aprobación. RNF-05 sigue parcial hasta medir/añadir guardas de consultas en otros listados principales. Sin migraciones en esta fase.
+
+Pruebas de trazabilidad: `StopCatalogTest`, `RouteCrudCharacterizationTest::test_legacy_route_forms_do_not_load_or_render_the_stop_catalog`, `RouteCrudCharacterizationTest::test_selected_route_stops_endpoint_preserves_combined_order` y `RouteStudioManagementTest::test_studio_load_does_not_call_osrm_and_exposes_unsaved_change_status`. Verificación: suite enfocada (26 pruebas, 156 aserciones), suite completa (234 pruebas, 970 aserciones), `bun run build` y Pint en los archivos PHP tocados; no se afirma revisión manual de navegador.
+
+## 2026-11-25 — Integridad referencial y bajas seguras (RNF-12, HU-038, HU-043, HU-047)
+
+Con aprobación del propietario, se agregó un índice único a `route_stop(route_id, stop_id)`; la migración hace preflight y falla ante duplicados sin borrar datos. El SQLite de desarrollo no se migró; la migración se ejercitó en SQLite en memoria con PHPUnit. El DDL usa el índice único portable de Laravel, pero PostgreSQL no estuvo disponible para una ejecución directa.
+
+Las rutas con viajes, asignaciones, likes o favoritos se desactivan; los autobuses con viaje activo o conductor asignado no se eliminan y los autobuses con historial se desactivan; los conductores con viaje activo no se desactivan. La baja administrativa y propia de un conductor desactiva usuario/autobús, libera la asignación y preserva viajes/calificaciones/reportes; el login rechaza usuarios inactivos. El borrado de pasajeros conserva el flujo Breeze existente.
+
+Trazabilidad: `RouteCrudCharacterizationTest`, `StopManagementTest`, `BusManagementTest`, `DriverLifecycleTest`, `ProfileTest` y `AuthenticationTest`. Verificación final: `php artisan test` (250 pruebas, 1,038 aserciones), `php artisan view:cache`, Pint y `git diff --check`; PostgreSQL y navegador no se ejecutaron.

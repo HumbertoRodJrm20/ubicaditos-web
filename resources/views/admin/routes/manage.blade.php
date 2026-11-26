@@ -52,7 +52,7 @@
                                 <span class="h-3 w-3 shrink-0 rounded-full ring-1 ring-white/70" :style="`background-color: ${route.color || '#64748b'}`"></span>
                                 <span class="min-w-0 flex-1">
                                     <span class="block truncate text-[13px] font-semibold text-[#2f3a5f] dark:text-gray-100" x-text="route.name"></span>
-                                    <span class="block text-[11px] text-slate-500 dark:text-gray-400" x-text="route.code + ' · ' + route.stops.length + ' paradas'"></span>
+                                    <span class="block text-[11px] text-slate-500 dark:text-gray-400" x-text="route.code + ' · ' + route.stop_count + ' paradas'"></span>
                                 </span>
                                 <span class="rounded-full px-2 py-0.5 text-[10px] font-semibold" :class="route.is_active ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200' : 'bg-slate-200 text-slate-600 dark:bg-gray-600 dark:text-gray-300'" x-text="route.is_active ? 'Activa' : 'Inactiva'"></span>
                             </button>
@@ -64,7 +64,7 @@
                 <div x-show="panel === 'stops'" class="flex min-h-0 flex-1 flex-col" style="display: none;">
                     <div class="p-3">
                         <label class="sr-only" for="studio-stop-search">Buscar parada</label>
-                        <input id="studio-stop-search" class="{{ $input }}" type="search" placeholder="Buscar parada..." x-model="searchStop">
+                        <input id="studio-stop-search" class="{{ $input }}" type="search" placeholder="Buscar parada..." x-model="searchStop" @input.debounce.300ms="searchStopCatalog()">
                     </div>
                     <div class="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-3">
                         <template x-for="stop in filteredStops" :key="stop.id">
@@ -77,6 +77,7 @@
                             </button>
                         </template>
                         <p x-show="filteredStops.length === 0" class="px-2 py-6 text-center text-[12px] text-slate-500 dark:text-gray-400">No hay paradas que coincidan con la búsqueda.</p>
+                        <button x-show="stopPage < stopLastPage" type="button" class="{{ $softButton }} w-full" @click="searchStopCatalog({ reset: false })" :disabled="loading">Cargar más paradas</button>
                     </div>
                 </div>
             </aside>
@@ -89,15 +90,18 @@
                             <span class="truncate text-[13px] font-semibold text-[#2f3a5f] dark:text-gray-100" x-text="selectedRoute.name"></span>
                             <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-600 dark:bg-gray-700 dark:text-gray-300" x-text="selectedRoute.code"></span>
                             <span class="text-[11px] text-slate-500 dark:text-gray-400" x-text="(selectedRoute.estimated_duration || '—') + ' min'"></span>
+                            <a :href="selectedRoute.urls.edit" class="{{ $softButton }}">Editar datos</a>
                             <button type="button" class="{{ $softButton }}" @click="toggleRouteStatus()" :disabled="loading" x-text="selectedRoute.is_active ? 'Desactivar' : 'Activar'"></button>
                             <button type="button" class="{{ $softButton }}" @click="regenerate()" :disabled="loading">Regenerar trazado</button>
-                            <button type="button" class="{{ $button }}" @click="saveSequence()" :disabled="loading">Guardar orden</button>
+                            <button type="button" class="{{ $button }}" @click="saveSequence()" :disabled="loading || !sequenceDirty">Guardar orden</button>
                         </div>
                     </template>
                     <template x-if="!selectedRoute">
                         <p class="text-[12px] text-slate-500 dark:text-gray-400">Selecciona una ruta para ver su trazado y sus paradas.</p>
                     </template>
                 </div>
+                <p x-show="hasUnsavedChanges" x-cloak class="rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-2 text-[12px] text-amber-800 dark:border-amber-800 dark:bg-amber-900/25 dark:text-amber-200" role="status">Cambios sin guardar. Guarda el orden o los datos de la parada antes de salir.</p>
+                <p x-show="frequentReviewNeeded" x-cloak class="rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-2 text-[12px] text-amber-800 dark:border-amber-800 dark:bg-amber-900/25 dark:text-amber-200" role="status">Revisa las paradas frecuentes: se conservaron ancladas a la secuencia principal.</p>
 
                 <div class="relative overflow-hidden rounded-[24px] border border-white/80 bg-white/60 shadow-[0_14px_35px_-20px_rgba(40,50,90,0.35)] dark:border-white/10 dark:bg-gray-800/60">
                     <div id="route-studio-map" class="h-[420px] w-full sm:h-[520px] lg:h-[calc(100vh-19rem)]" aria-label="Mapa del estudio de rutas"></div>
@@ -130,6 +134,7 @@
                                         <div class="flex items-center gap-2 rounded-xl bg-white/80 px-2 py-1.5 dark:bg-gray-700/50">
                                             <span class="w-5 text-center text-[11px] font-bold text-[#697aa8] dark:text-[#aab7df]" x-text="index + 1"></span>
                                             <span class="min-w-0 flex-1 truncate text-[12px] text-slate-700 dark:text-gray-200" x-text="stopName(stopId)"></span>
+                                            <span class="shrink-0 text-[10px] text-slate-500 dark:text-gray-400" x-text="stopMinutes(stopId)"></span>
                                             <button type="button" class="rounded-lg px-2 py-1 text-[11px] text-slate-500 hover:bg-slate-100 disabled:opacity-30 dark:hover:bg-gray-600" :disabled="index === 0" @click="move(index, -1)" aria-label="Subir parada">↑</button>
                                             <button type="button" class="rounded-lg px-2 py-1 text-[11px] text-slate-500 hover:bg-slate-100 disabled:opacity-30 dark:hover:bg-gray-600" :disabled="index === sequence.length - 1" @click="move(index, 1)" aria-label="Bajar parada">↓</button>
                                             <button type="button" class="rounded-lg px-2 py-1 text-[11px] text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30" @click="removeFromSequence(index)" aria-label="Quitar parada">✕</button>
@@ -184,7 +189,7 @@
                             <p class="text-[11px] text-slate-500 dark:text-gray-400">Haz clic en el mapa para elegir una ubicación o arrastra un marcador para ajustarla.</p>
                             <div class="flex flex-wrap gap-2 pt-1">
                                 <button type="button" class="{{ $button }}" @click="saveStop()" :disabled="loading">Guardar parada</button>
-                                <button type="button" class="{{ $softButton }}" @click="resetDraft()">Limpiar</button>
+                                <button type="button" class="{{ $softButton }}" @click="clearDraft()">Limpiar</button>
                                 <button x-show="mode === 'edit'" type="button" class="rounded-full px-3 py-2 text-[12px] font-medium text-rose-600 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-900/30" @click="deleteStop()" :disabled="loading">Eliminar</button>
                             </div>
                         </div>

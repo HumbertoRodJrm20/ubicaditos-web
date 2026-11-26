@@ -43,7 +43,11 @@
                     Gestión de Rutas
                 </h1>
                 <p class="mt-2 text-sm text-slate-500 dark:text-gray-400">Consulta las rutas del sistema, sus paradas y autobuses asignados.</p>
-                <div class="mt-4 flex justify-center">
+                <div class="mt-4 flex flex-wrap justify-center gap-2">
+                    <a href="{{ route('admin.routes.manage') }}"
+                        class="inline-flex h-9 items-center justify-center rounded-full border border-slate-200 bg-white/85 px-5 text-xs font-semibold text-slate-600 transition hover:bg-white dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
+                        Estudio de rutas
+                    </a>
                     <a href="{{ route('admin.routes.create') }}"
                         class="inline-flex h-9 items-center justify-center rounded-full bg-gradient-to-b from-[#7b8db8] to-[#53658f] px-5 text-xs font-semibold text-white shadow-sm transition hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-[#8295c5] focus:ring-offset-2">
                         Agregar Ruta

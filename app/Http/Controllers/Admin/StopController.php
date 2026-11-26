@@ -16,6 +16,38 @@ class StopController extends Controller
         return redirect()->route('admin.routes.manage');
     }
 
+    public function data(Request $request)
+    {
+        $validated = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
+            'stop_id' => ['sometimes', 'integer', 'exists:stops,id'],
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:50'],
+        ]);
+
+        $query = Stop::query()->with('routes:id');
+        $search = trim((string) ($validated['q'] ?? ''));
+
+        if (isset($validated['stop_id'])) {
+            $query->whereKey($validated['stop_id']);
+        }
+
+        if ($search !== '') {
+            $query->where(function ($query) use ($search) {
+                $query->where('name', 'like', "%{$search}%")
+                    ->orWhere('address', 'like', "%{$search}%");
+            });
+        }
+
+        $stops = $query
+            ->orderBy('name')
+            ->orderBy('id')
+            ->paginate((int) ($validated['per_page'] ?? 50))
+            ->through(fn (Stop $stop) => $this->payload($stop));
+
+        return response()->json($stops);
+    }
+
     public function create()
     {
         return redirect()->route('admin.routes.manage', ['panel' => 'stops', 'create' => 1]);
@@ -114,14 +146,17 @@ class StopController extends Controller
      */
     private function payload(Stop $stop): array
     {
+        $stop->loadMissing('routes:id');
+
         return [
             'id' => $stop->id,
             'name' => $stop->name,
             'address' => $stop->address,
+            'description' => $stop->description,
             'latitude' => (float) $stop->latitude,
             'longitude' => (float) $stop->longitude,
             'is_active' => (bool) $stop->is_active,
-            'route_ids' => $stop->routes()->pluck('routes.id')->all(),
+            'route_ids' => $stop->routes->pluck('id')->all(),
             'urls' => [
                 'update' => route('admin.stops.update', $stop),
                 'destroy' => route('admin.stops.destroy', $stop),

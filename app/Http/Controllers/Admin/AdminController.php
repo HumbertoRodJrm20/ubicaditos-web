@@ -3,7 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Bus, EmergencyReport, Incident, Route, Stop, Trip, User};
+use App\Models\Bus;
+use App\Models\EmergencyReport;
+use App\Models\Incident;
+use App\Models\Route;
+use App\Models\Stop;
+use App\Models\Trip;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class AdminController extends Controller
@@ -35,7 +41,7 @@ class AdminController extends Controller
             ->get();
 
         // Agregar rutas y paradas para el mapa en tiempo real
-        $routes = Route::with(['stops', 'buses' => function($query) {
+        $routes = Route::with(['stops', 'buses' => function ($query) {
             $query->where('status', 'active');
         }])->where('is_active', true)->get();
 
@@ -54,12 +60,13 @@ class AdminController extends Controller
         $perPage = $request->input('per_page', 15);
 
         $drivers = User::where('role', 'driver')
-            ->when($search, function($query, $search) {
-                $query->where(function($q) use ($search) {
+            ->where('is_active', true)
+            ->when($search, function ($query, $search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('first_name', 'like', "%{$search}%")
-                      ->orWhere('last_name', 'like', "%{$search}%")
-                      ->orWhere('maternal_last_name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhere('maternal_last_name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
                 });
             })
             ->with(['drivingBus', 'trips'])
@@ -119,12 +126,12 @@ class AdminController extends Controller
         $perPage = $request->input('per_page', 15);
 
         $passengers = User::where('role', 'passenger')
-            ->when($search, function($query, $search) {
-                $query->where(function($q) use ($search) {
+            ->when($search, function ($query, $search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('first_name', 'like', "%{$search}%")
-                      ->orWhere('last_name', 'like', "%{$search}%")
-                      ->orWhere('maternal_last_name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhere('maternal_last_name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
                 });
             })
             ->withCount(['ratingsGiven', 'favoriteStops'])

@@ -14,14 +14,14 @@ Convenciones comunes:
 | Controlador | Middleware | Responsabilidad |
 |-------------|------------|-----------------|
 | `DashboardController` | `auth` | Redirección por rol y endpoints JSON de autobuses. |
-| `ProfileController` | `auth` | Edición y eliminación del perfil propio. |
+| `ProfileController` | `auth` | Edición del perfil; eliminación del pasajero o desactivación segura del conductor. |
 | `Admin\AdminController` | `auth`, `admin` | Dashboard, estadísticas, conductores, pasajeros y emergencias. |
 | `Admin\BusController` | `auth`, `admin` | CRUD de autobuses y detalle (`show`). |
 | `Admin\RouteController` | `auth`, `admin` | CRUD de rutas y sus paradas. |
 | `Admin\UserController` | `auth`, `admin` | Alta, edición y baja de usuarios. |
 | `Admin\ReportController` | `auth`, `admin` | Reportes, gráficas y exportación PDF/CSV. |
 | `Admin\IncidentManagementController` | `auth`, `admin` | Listado global, filtros y cambio de estado de los reportes ciudadanos. |
-| `Admin\StopController` | `auth`, `admin` | CRUD de paradas (**sin implementar**). |
+| `Admin\StopController` | `auth`, `admin` | CRUD de paradas, catálogo JSON acotado y eliminación segura. |
 | `Driver\DriverController` | `auth`, `driver` | Panel, mapa, estadísticas, viajes, GPS, pasajeros y emergencias. |
 | `Passenger\PassengerController` | `auth`, `passenger` | Mapa, rutas, autobuses, favoritos, calificaciones y accesos a reportes. |
 | `Passenger\FavoriteRouteController` | `auth`, `passenger` | Alta y baja de rutas favoritas. |
@@ -48,7 +48,7 @@ El formato de las respuestas JSON se detalla en [Rutas y API](08-rutas.md#endpoi
 | Método | Ruta | Vista | Descripción |
 |--------|------|-------|-------------|
 | `index()` | `GET /admin` | `admin.dashboard` | Estadísticas generales (autobuses totales y activos, rutas, paradas, conductores, pasajeros, viajes de hoy), últimos 10 viajes, autobuses activos y datos para el mapa en vivo (rutas activas con paradas y autobuses, paradas activas). |
-| `drivers(Request)` | `GET /admin/drivers` | `admin.drivers` | Lista paginada de conductores con búsqueda por nombre, apellidos o correo; incluye autobús asignado, número de viajes y calificación promedio; y la lista de autobuses sin conductor para asignar. |
+| `drivers(Request)` | `GET /admin/drivers` | `admin.drivers` | Lista paginada solo de conductores activos, con búsqueda por nombre, apellidos o correo; incluye autobús asignado, número de viajes y calificación promedio; y la lista de autobuses sin conductor para asignar. |
 | `assignBusToDriver(Request, User $driver)` | `POST /admin/drivers/{driver}/assign-bus` | — | Valida `bus_id`, libera el autobús que el conductor tuviera antes y asigna el nuevo. Garantiza la relación uno a uno conductor ↔ autobús. |
 | `unassignBusFromDriver(User $driver)` | `DELETE /admin/drivers/{driver}/unassign-bus` | — | Quita el conductor de su autobús. |
 | `passengers(Request)` | `GET /admin/passengers` | `admin.passengers` | Lista paginada de pasajeros con búsqueda; incluye conteo de calificaciones emitidas y paradas favoritas. |
@@ -67,7 +67,7 @@ Controlador de recurso (`Route::resource('buses', ...)`); además de las operaci
 | `store(Request)` | `POST /admin/buses` | Valida, crea el autobús y sincroniza sus rutas (`routes[]`). |
 | `edit(Bus $bus)` | `GET /admin/buses/{bus}/edit` | Formulario con conductores libres más el conductor actual. |
 | `update(Request, Bus $bus)` | `PUT/PATCH /admin/buses/{bus}` | Valida, actualiza y sincroniza rutas. |
-| `destroy(Bus $bus)` | `DELETE /admin/buses/{bus}` | Elimina el autobús (en cascada se borran sus viajes y asignaciones de ruta). |
+| `destroy(Bus $bus)` | `DELETE /admin/buses/{bus}` | Bloquea la acción si hay viaje activo o conductor asignado; si existen viajes, rutas, mensajes o reportes, desactiva la unidad (`is_active = false`, `status = inactive`) y conserva el historial. Solo elimina físicamente autobuses sin referencias históricas. |
 
 Reglas de validación:
 
@@ -86,11 +86,11 @@ Controlador de recurso (`Route::resource('routes', ...)`).
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | `index(Request)` | `GET /admin/routes` | Lista paginada con búsqueda por nombre, código o descripción; incluye conteo de autobuses y paradas. |
-| `create()` | `GET /admin/routes/create` | Formulario con todas las paradas disponibles. |
-| `store(Request)` | `POST /admin/routes` | Crea la ruta y sincroniza las paradas: el índice de cada elemento de `stops[]` se guarda como `order` en el pivote. |
-| `edit(Route $route)` | `GET /admin/routes/{route}/edit` | Formulario de edición. |
-| `update(Request, Route $route)` | `PUT/PATCH /admin/routes/{route}` | Actualiza y vuelve a sincronizar paradas con su orden. |
-| `destroy(Route $route)` | `DELETE /admin/routes/{route}` | Elimina la ruta. |
+| `create()` | `GET /admin/routes/create` | Formulario de metadatos; no consulta el catálogo de paradas y enlaza al Estudio para asignarlas. |
+| `store(Request)` | `POST /admin/routes` | Crea la ruta; si se envía `stops[]`, lo sincroniza mediante `RouteStopSyncService`. |
+| `edit(Route $route)` | `GET /admin/routes/{route}/edit` | Formulario de metadatos con enlace a la ruta seleccionada en el Estudio; no consulta el catálogo. |
+| `update(Request, Route $route)` | `PUT/PATCH /admin/routes/{route}` | Actualiza metadatos; sincroniza `stops[]` solo cuando se envía, y conserva las asignaciones si se omite. |
+| `destroy(Route $route)` | `DELETE /admin/routes/{route}` | Desactiva si tiene viajes, autobuses, likes o favoritos; elimina físicamente solo si carece de esas referencias. |
 
 Reglas de validación:
 
@@ -113,7 +113,7 @@ Controlador de recurso; solo implementa `create`, `store`, `edit`, `update` y `d
 | `store(Request)` | `POST /admin/users` | Crea el usuario con contraseña cifrada y `is_active = true`. Redirige a la lista de conductores o de pasajeros según el rol. |
 | `edit(User $user)` | `GET /admin/users/{user}/edit` | Formulario de edición. |
 | `update(Request, User $user)` | `PUT/PATCH /admin/users/{user}` | Actualiza; la contraseña solo cambia si se envía. |
-| `destroy(User $user)` | `DELETE /admin/users/{user}` | Elimina al usuario. **No permite eliminar administradores.** |
+| `destroy(User $user)` | `DELETE /admin/users/{user}` | Conductores: bloquea si tienen viaje activo; si no, los desactiva, libera y desactiva su autobús, conservando viajes y calificaciones. Pasajeros: elimina la cuenta. **No permite eliminar administradores.** |
 
 Reglas de validación:
 
@@ -146,7 +146,7 @@ Reglas de validación:
 
 ## Admin\StopController
 
-Está registrado como recurso (`/admin/stops`), pero todos sus métodos están vacíos: es el esqueleto generado por `make:controller --resource`. Las paradas actualmente solo se gestionan mediante seeders.
+`GET /admin/stops/data` entrega búsqueda y paginación con tope de 50. El CRUD y el cambio de estado se operan desde el Estudio. `destroy()` elimina físicamente solo paradas sin rutas, favoritos ni likes; en caso contrario las desactiva y conserva las asociaciones.
 
 ## Driver\DriverController
 
@@ -267,7 +267,7 @@ Proviene de Breeze.
 |--------|------|-------------|
 | `edit()` | `GET /profile` | Formulario de perfil, métricas reales (rutas/paradas favoritas, calificaciones emitidas, me gusta y reportes), listas de favoritos, cambio de contraseña y eliminación de cuenta. |
 | `update(ProfileUpdateRequest)` | `PATCH /profile` | Actualiza nombre, apellido paterno, apellido materno, teléfono y correo; si cambia el correo, anula su verificación. |
-| `destroy()` | `DELETE /profile` | Elimina la cuenta tras confirmar la contraseña, cierra sesión e invalida la sesión. |
+| `destroy()` | `DELETE /profile` | Tras confirmar la contraseña, elimina al pasajero o desactiva al conductor (bloqueado durante un viaje activo), conserva su historial/libera su autobús y cierra e invalida la sesión. |
 
 ## Controladores de autenticación
 
@@ -275,7 +275,7 @@ Ubicados en `app/Http/Controllers/Auth`, provienen de Breeze:
 
 | Controlador | Función |
 |-------------|---------|
-| `AuthenticatedSessionController` | Muestra el login, autentica (vía `LoginRequest`, con límite de 5 intentos) y cierra sesión. El logout revoca los enlaces de ubicación activos, invalida la sesión y regenera el token CSRF. Tras el login redirige a `/dashboard`. |
+| `AuthenticatedSessionController` | Muestra el login, autentica usuarios activos (vía `LoginRequest`, con límite de 5 intentos) y cierra sesión. El logout revoca los enlaces de ubicación activos, invalida la sesión y regenera el token CSRF. Tras el login redirige a `/dashboard`. |
 | `RegisteredUserController` | Registro de pasajeros con validación personalizada y método `checkEmail()` para comprobar disponibilidad del correo vía AJAX. |
 | `PasswordResetLinkController` | Envía el enlace de recuperación de contraseña. |
 | `NewPasswordController` | Restablece la contraseña con el token recibido. |

@@ -4,11 +4,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\DriverDeactivationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
+    public function __construct(private readonly DriverDeactivationService $driverDeactivation) {}
+
     public function create()
     {
         return view('admin.users.create');
@@ -24,7 +27,7 @@ class UserController extends Controller
             'password' => [
                 'required',
                 'min:8',
-                'regex:/^.*(?=.*[a-zA-Z])(?=.*[0-9])(?=.*[@$!%*#?&\-_+=\[\]{}|:;,.<>?~`^()]).+$/'
+                'regex:/^.*(?=.*[a-zA-Z])(?=.*[0-9])(?=.*[@$!%*#?&\-_+=\[\]{}|:;,.<>?~`^()]).+$/',
             ],
             'role' => 'required|in:admin,driver,passenger',
             'work_shift' => 'nullable|required_if:role,driver|in:morning,afternoon',
@@ -52,7 +55,7 @@ class UserController extends Controller
 
         User::create($validated);
 
-        return redirect()->route('admin.' . ($validated['role'] === 'driver' ? 'drivers' : 'passengers'))
+        return redirect()->route('admin.'.($validated['role'] === 'driver' ? 'drivers' : 'passengers'))
             ->with('success', 'Usuario creado exitosamente');
     }
 
@@ -67,11 +70,11 @@ class UserController extends Controller
             'first_name' => 'required|string|max:35|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/',
             'last_name' => 'required|string|max:35|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/',
             'maternal_last_name' => 'required|string|max:35|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/',
-            'email' => 'required|email|unique:users,email,' . $user->id,
+            'email' => 'required|email|unique:users,email,'.$user->id,
             'password' => [
                 'nullable',
                 'min:8',
-                'regex:/^.*(?=.*[a-zA-Z])(?=.*[0-9])(?=.*[@$!%*#?&\-_+=\[\]{}|:;,.<>?~`^()]).+$/'
+                'regex:/^.*(?=.*[a-zA-Z])(?=.*[0-9])(?=.*[@$!%*#?&\-_+=\[\]{}|:;,.<>?~`^()]).+$/',
             ],
             'role' => 'required|in:admin,driver,passenger',
             'work_shift' => 'nullable|required_if:role,driver|in:morning,afternoon',
@@ -95,7 +98,7 @@ class UserController extends Controller
             'phone.regex' => 'El teléfono solo puede contener números',
         ]);
 
-        if (!empty($validated['password'])) {
+        if (! empty($validated['password'])) {
             $validated['password'] = Hash::make($validated['password']);
         } else {
             unset($validated['password']);
@@ -103,7 +106,7 @@ class UserController extends Controller
 
         $user->update($validated);
 
-        return redirect()->route('admin.' . ($user->role === 'driver' ? 'drivers' : 'passengers'))
+        return redirect()->route('admin.'.($user->role === 'driver' ? 'drivers' : 'passengers'))
             ->with('success', 'Usuario actualizado exitosamente');
     }
 
@@ -111,6 +114,14 @@ class UserController extends Controller
     {
         if ($user->role === 'admin') {
             return back()->with('error', 'No se puede eliminar un administrador');
+        }
+
+        if ($user->role === 'driver') {
+            if (! $this->driverDeactivation->deactivate($user)) {
+                return back()->with('error', 'No se puede desactivar al conductor mientras tenga un viaje activo.');
+            }
+
+            return back()->with('success', 'El conductor se desactivó y su historial se conservó.');
         }
 
         $user->delete();

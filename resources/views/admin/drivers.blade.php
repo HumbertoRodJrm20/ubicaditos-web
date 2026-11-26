@@ -147,7 +147,7 @@
                                                 <form method="POST" action="{{ route('admin.users.destroy', $driver) }}" class="inline">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="font-medium text-rose-600 transition hover:text-rose-800 dark:text-rose-400" onclick="return confirm('¿Estás seguro de eliminar este conductor?')">Eliminar</button>
+                                                    <button type="submit" class="font-medium text-rose-600 transition hover:text-rose-800 dark:text-rose-400" onclick="return confirm('¿Desactivar este conductor? Se conservará su historial.')">Desactivar</button>
                                                 </form>
                                             </div>
                                         </td>

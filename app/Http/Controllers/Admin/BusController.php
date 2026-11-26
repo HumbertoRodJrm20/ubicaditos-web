@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Bus, Route, User};
+use App\Models\Bus;
+use App\Models\Route;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class BusController extends Controller
@@ -19,16 +21,16 @@ class BusController extends Controller
         $perPage = in_array($perPage, [10, 15, 20, 50], true) ? $perPage : 15;
 
         $buses = Bus::when($search !== '', function ($query) use ($search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('license_plate', 'like', "%{$search}%")
-                      ->orWhere('model', 'like', "%{$search}%")
-                      ->orWhereHas('driver', function ($driverQuery) use ($search) {
-                          $driverQuery->where('first_name', 'like', "%{$search}%")
-                                      ->orWhere('last_name', 'like', "%{$search}%")
-                                      ->orWhere('maternal_last_name', 'like', "%{$search}%");
-                      });
-                });
-            })
+            $query->where(function ($q) use ($search) {
+                $q->where('license_plate', 'like', "%{$search}%")
+                    ->orWhere('model', 'like', "%{$search}%")
+                    ->orWhereHas('driver', function ($driverQuery) use ($search) {
+                        $driverQuery->where('first_name', 'like', "%{$search}%")
+                            ->orWhere('last_name', 'like', "%{$search}%")
+                            ->orWhere('maternal_last_name', 'like', "%{$search}%");
+                    });
+            });
+        })
             ->when($status, fn ($query, $value) => $query->where('status', $value))
             ->with(['routes', 'driver'])
             ->latest()
@@ -75,6 +77,7 @@ class BusController extends Controller
         $drivers = User::where('role', 'driver')
             ->whereDoesntHave('drivingBus')
             ->get();
+
         return view('admin.buses.create', compact('routes', 'drivers'));
     }
 
@@ -111,18 +114,19 @@ class BusController extends Controller
         $routes = Route::all();
         // Mostrar conductores sin autobús asignado + el conductor actual del autobús (si tiene)
         $drivers = User::where('role', 'driver')
-            ->where(function($query) use ($bus) {
+            ->where(function ($query) use ($bus) {
                 $query->whereDoesntHave('drivingBus')
-                      ->orWhere('id', $bus->driver_id);
+                    ->orWhere('id', $bus->driver_id);
             })
             ->get();
+
         return view('admin.buses.edit', compact('bus', 'routes', 'drivers'));
     }
 
     public function update(Request $request, Bus $bus)
     {
         $validated = $request->validate([
-            'license_plate' => 'required|string|size:6|unique:buses,license_plate,' . $bus->id . '|regex:/^[A-Z]{3}[0-9]{3}$/',
+            'license_plate' => 'required|string|size:6|unique:buses,license_plate,'.$bus->id.'|regex:/^[A-Z]{3}[0-9]{3}$/',
             'model' => 'required|string|in:Foton AUV,Yutong,Mercedes-Benz,Dina,Toyota,Honda',
             'capacity' => 'required|integer|min:30|max:50',
             'driver_id' => 'nullable|exists:users,id',
@@ -149,7 +153,29 @@ class BusController extends Controller
 
     public function destroy(Bus $bus)
     {
+        if ($bus->trips()->where('status', 'in_progress')->exists() || $bus->driver()->exists()) {
+            return back()->with('error', 'No se puede eliminar el autobús mientras tenga un viaje activo o un conductor asignado.');
+        }
+
+        if ($this->hasHistory($bus)) {
+            $bus->update([
+                'is_active' => false,
+                'status' => 'inactive',
+            ]);
+
+            return back()->with('success', 'El autobús tiene historial; se desactivó en lugar de eliminarse.');
+        }
+
         $bus->delete();
+
         return back()->with('success', 'Autobús eliminado exitosamente');
+    }
+
+    private function hasHistory(Bus $bus): bool
+    {
+        return $bus->trips()->exists()
+            || $bus->routes()->exists()
+            || $bus->messages()->exists()
+            || $bus->emergencyReports()->exists();
     }
 }

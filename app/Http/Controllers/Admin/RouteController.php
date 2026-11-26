@@ -6,16 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreRouteRequest;
 use App\Http\Requests\Admin\UpdateRouteRequest;
 use App\Models\Route;
-use App\Models\Stop;
 use App\Services\RouteStopSyncService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class RouteController extends Controller
 {
-    public function __construct(private readonly RouteStopSyncService $stopSync)
-    {
-    }
+    public function __construct(private readonly RouteStopSyncService $stopSync) {}
 
     public function index(Request $request)
     {
@@ -39,9 +36,7 @@ class RouteController extends Controller
 
     public function create()
     {
-        $stops = Stop::orderBy('name')->get();
-
-        return view('admin.routes.create', compact('stops'));
+        return view('admin.routes.create');
     }
 
     public function store(StoreRouteRequest $request)
@@ -68,15 +63,7 @@ class RouteController extends Controller
 
     public function edit(Route $route)
     {
-        // Primero las paradas de la ruta en su orden real y después el resto,
-        // para que el formulario respete el order del pivote.
-        $attached = $route->stops()->orderByPivot('order')->get();
-        $remaining = Stop::whereNotIn('id', $attached->pluck('id'))
-            ->orderBy('name')
-            ->get();
-        $stops = $attached->concat($remaining);
-
-        return view('admin.routes.edit', compact('route', 'stops'));
+        return view('admin.routes.edit', compact('route'));
     }
 
     public function update(UpdateRouteRequest $request, Route $route)

@@ -7,6 +7,7 @@ use App\Models\Route;
 use App\Models\Stop;
 use App\Models\Trip;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -156,7 +157,19 @@ class RouteCrudCharacterizationTest extends TestCase
         $this->assertSame(1, $route->stops()->count());
     }
 
-    public function test_edit_form_lists_stops_in_route_order(): void
+    public function test_database_rejects_duplicate_route_stop_pairs(): void
+    {
+        $stop = $this->makeStop('Parada duplicada', 17.060);
+        $route = $this->makeRoute();
+        $pivot = ['order' => 0, 'estimated_time_from_previous' => 0, 'is_frequent' => false];
+
+        $route->stops()->attach($stop->id, $pivot);
+
+        $this->expectException(QueryException::class);
+        $route->stops()->attach($stop->id, $pivot);
+    }
+
+    public function test_selected_route_stops_endpoint_preserves_combined_order(): void
     {
         $a = $this->makeStop('Parada A', 17.060);
         $b = $this->makeStop('Parada B', 17.061);
@@ -164,13 +177,57 @@ class RouteCrudCharacterizationTest extends TestCase
 
         $route = $this->makeRoute();
         $route->stops()->attach($c->id, ['order' => 0, 'estimated_time_from_previous' => 1, 'is_frequent' => false]);
-        $route->stops()->attach($a->id, ['order' => 1, 'estimated_time_from_previous' => 1, 'is_frequent' => false]);
+        $route->stops()->attach($a->id, ['order' => 1, 'estimated_time_from_previous' => 1, 'is_frequent' => true]);
         $route->stops()->attach($b->id, ['order' => 2, 'estimated_time_from_previous' => 1, 'is_frequent' => false]);
 
         $this->actingAs($this->admin)
-            ->get(route('admin.routes.edit', $route))
+            ->getJson(route('admin.routes.stops.data', $route))
             ->assertOk()
-            ->assertSeeInOrder(['Parada C', 'Parada A', 'Parada B']);
+            ->assertJsonPath('stops.0.name', 'Parada C')
+            ->assertJsonPath('stops.1.name', 'Parada A')
+            ->assertJsonPath('stops.2.name', 'Parada B');
+    }
+
+    public function test_legacy_route_forms_do_not_load_or_render_the_stop_catalog(): void
+    {
+        $attached = $this->makeStop('Parada asignada', 17.060);
+        $this->makeStop('Parada no asignada', 17.061);
+        $route = $this->makeRoute();
+        $route->stops()->attach($attached->id, [
+            'order' => 0,
+            'estimated_time_from_previous' => 0,
+            'is_frequent' => false,
+        ]);
+
+        $this->actingAs($this->admin);
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $createResponse = $this->get(route('admin.routes.create'));
+        $createQueries = DB::getQueryLog();
+
+        DB::flushQueryLog();
+        $editResponse = $this->get(route('admin.routes.edit', $route));
+        $editQueries = DB::getQueryLog();
+        DB::disableQueryLog();
+
+        $createResponse
+            ->assertOk()
+            ->assertDontSee('name="stops[]"', false)
+            ->assertSee(route('admin.routes.manage'));
+
+        $editResponse
+            ->assertOk()
+            ->assertDontSee('name="stops[]"', false)
+            ->assertDontSee('Parada no asignada')
+            ->assertSee(route('admin.routes.manage'));
+
+        $stopQueries = array_filter(
+            [...$createQueries, ...$editQueries],
+            fn (array $query) => str_contains(strtolower($query['query']), 'from "stops"')
+        );
+
+        $this->assertSame([], array_values($stopQueries));
     }
 
     public function test_destroy_deactivates_a_route_with_trips(): void
@@ -202,6 +259,57 @@ class RouteCrudCharacterizationTest extends TestCase
 
         $this->assertDatabaseHas('routes', ['id' => $route->id, 'is_active' => false]);
         $this->assertDatabaseHas('trips', ['id' => $trip->id]);
+    }
+
+    public function test_destroy_deactivates_a_favorited_route_and_preserves_the_favorite(): void
+    {
+        $route = $this->makeRoute();
+        $passenger = User::factory()->create(['role' => 'passenger']);
+        $passenger->favoriteRoutes()->attach($route->id);
+
+        $this->actingAs($this->admin)
+            ->delete(route('admin.routes.destroy', $route))
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('routes', ['id' => $route->id, 'is_active' => false]);
+        $this->assertDatabaseHas('favorite_routes', [
+            'user_id' => $passenger->id,
+            'route_id' => $route->id,
+        ]);
+    }
+
+    public function test_destroy_deactivates_a_route_with_a_bus_assignment(): void
+    {
+        $route = $this->makeRoute();
+        $bus = Bus::create([
+            'license_plate' => 'ASN777',
+            'model' => 'Yutong',
+            'capacity' => 40,
+            'status' => 'active',
+            'is_active' => true,
+        ]);
+        $route->buses()->attach($bus->id);
+
+        $this->actingAs($this->admin)
+            ->delete(route('admin.routes.destroy', $route))
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('routes', ['id' => $route->id, 'is_active' => false]);
+        $this->assertDatabaseHas('bus_route', ['route_id' => $route->id, 'bus_id' => $bus->id]);
+    }
+
+    public function test_destroy_deactivates_a_liked_route_and_preserves_the_like(): void
+    {
+        $route = $this->makeRoute();
+        $passenger = User::factory()->create(['role' => 'passenger']);
+        $like = $route->likes()->create(['user_id' => $passenger->id]);
+
+        $this->actingAs($this->admin)
+            ->delete(route('admin.routes.destroy', $route))
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('routes', ['id' => $route->id, 'is_active' => false]);
+        $this->assertDatabaseHas('likes', ['id' => $like->id]);
     }
 
     public function test_color_must_be_a_valid_hex_value(): void

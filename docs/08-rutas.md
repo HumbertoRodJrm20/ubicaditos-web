@@ -84,9 +84,34 @@ Cada `Route::resource()` registra las siete rutas REST estándar:
 | `buses` | `Admin\BusController` | `index`, `create`, `store`, `show`, `edit`, `update`, `destroy` |
 | `routes` | `Admin\RouteController` | `index`, `create`, `store`, `edit`, `update`, `destroy` |
 | `users` | `Admin\UserController` | `create`, `store`, `edit`, `update`, `destroy` |
-| `stops` | `Admin\StopController` | Ninguna (métodos vacíos) |
+| `stops` | `Admin\StopController` | `index`, `create`, `show`, `edit` redirigen al Estudio; `store`, `update`, `destroy`, `toggleStatus`, `data` |
 
-`admin.buses.show` (`GET /admin/buses/{bus}`) es el único `show` implementado; el índice de autobuses incluye un enlace "Detalles" hacia él. Las acciones no implementadas (`show` en `routes`, `users` y `stops`, e `index` en `users`) están registradas pero producen un error si se visitan.
+`admin.buses.show` (`GET /admin/buses/{bus}`) es la única vista `show` de recurso; el índice de autobuses incluye un enlace "Detalles" hacia él. Las acciones `show` de `routes` y `users`, e `index` de `users`, siguen sin vista propia. Las acciones de lectura del recurso `stops` redirigen al Estudio de rutas y paradas.
+
+Las eliminaciones administrativas respetan historial: una ruta con viajes, autobuses asignados, likes o favoritos se desactiva; un autobús con viaje activo o conductor asignado no se elimina, y si tiene historial se desactiva; un conductor con viaje activo no se desactiva y, al retirarlo, se preservan sus viajes/calificaciones y se libera su autobús. Solo las entidades sin referencias protegidas se eliminan físicamente. El borrado propio de un pasajero mantiene el flujo de cuenta de Breeze; un conductor se desactiva y cierra su sesión.
+
+### Datos del Estudio de rutas y paradas
+
+El Estudio y sus endpoints JSON pertenecen al grupo `auth` + `admin`; no usan `/api`.
+
+| Método | URI | Nombre | Acción | Parámetros |
+|--------|-----|--------|--------|------------|
+| GET | `/admin/routes/manage` | `admin.routes.manage` | `RouteManagementController@index` | — |
+| GET | `/admin/routes/manage/data` | `admin.routes.manage.data` | `RouteManagementController@data` | — |
+| GET | `/admin/routes/{route}/stops` | `admin.routes.stops.data` | `RouteManagementController@stops` | Ruta seleccionada |
+| GET | `/admin/stops/data` | `admin.stops.data` | `StopController@data` | `q` (nombre/dirección, máx. 100), `stop_id` (opcional), `page` (≥ 1), `per_page` (1–50; predeterminado 50) |
+
+`GET /admin/stops/data` responde con un paginador JSON de Laravel; cada elemento incluye los datos de la parada, `route_ids` y URLs administrativas. `stop_id` permite resolver un enlace directo a una parada sin cargar el catálogo completo. La búsqueda se solicita desde el campo del Estudio y el botón «Cargar más paradas» consulta páginas adicionales. El valor máximo de `per_page` es 50 y un valor superior devuelve 422.
+
+El payload inicial `GET /admin/routes/manage/data` contiene como máximo **200 paradas principales distintas**, es decir, con al menos una asociación `route_stop.is_frequent = false`. Cada resumen de ruta solo incluye sus paradas principales y un `stop_count`; al seleccionar una ruta, `GET /admin/routes/{route}/stops` carga su secuencia completa, incluidas las paradas frecuentes y sus URLs de edición. Así, la capa inicial del mapa nunca coloca más de 200 marcadores, y las frecuentes solo aparecen al seleccionar una ruta. Esta mejora no requiere cambios de esquema.
+
+Los formularios heredados `admin/routes/create` y `admin/routes/edit` se conservan como fallback de metadatos de ruta, pero ya no consultan ni renderizan el catálogo de paradas. Indican que las asignaciones y el orden se gestionan en el Estudio; al editar una ruta, el enlace conserva su ID seleccionado. Las acciones `store/update` siguen aceptando `stops[]` para compatibilidad, aunque los formularios no lo envían; omitirlo en una actualización conserva las asignaciones actuales.
+
+Las secuencias detalladas se cargan en el orden combinado de `route_stop.order`, con `route_stop.id` como desempate estable. El Estudio muestra los minutos desde la parada principal anterior y alerta de cambios sin guardar; al abandonar la ruta o recargar, confirma antes de descartarlos. Los movimientos de marcadores siguen siendo locales hasta guardar. La generación de geometría ocurre solo al presionar «Regenerar trazado» y conserva la geometría anterior si OSRM falla.
+
+La indicación de revisión de paradas frecuentes aparece tras guardar un cambio que las afecta, pero no se persiste entre recargas: persistirla requiere una migración aún pendiente de aprobación del propietario. RNF-05 sigue **parcial** porque faltan mediciones/guardas de consultas en otros listados principales; no se atribuye a las vistas heredadas un límite de catálogo ya corregido.
+
+Cobertura: `tests/Feature/Admin/StopCatalogTest.php` (autorización, búsqueda, paginación, lookup por ID, límites y datos bajo demanda); `tests/Feature/Admin/RouteCrudCharacterizationTest.php` (formularios sin consultas al catálogo y orden combinado); `tests/Feature/Admin/RouteStudioManagementTest.php` (OSRM solo en acción explícita y preservación ante error); `tests/Feature/Admin/StopManagementTest.php` cubre el CRUD relacionado.
 
 ## Rutas del conductor
 

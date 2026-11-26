@@ -227,7 +227,7 @@
                                                 <form method="POST" action="{{ route('admin.buses.destroy', $bus) }}" class="inline">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="font-medium text-rose-600 transition hover:text-rose-800 dark:text-rose-400" onclick="return confirm('¿Estás seguro de eliminar este autobús?')">
+                                                    <button type="submit" class="font-medium text-rose-600 transition hover:text-rose-800 dark:text-rose-400" onclick="return confirm('Si tiene historial se desactivará; no se puede eliminar con un viaje activo o conductor asignado. ¿Continuar?')">
                                                         Eliminar
                                                     </button>
                                                 </form>

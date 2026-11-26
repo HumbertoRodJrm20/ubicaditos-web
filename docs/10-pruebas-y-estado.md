@@ -16,13 +16,13 @@ composer run test
 
 | Archivo | Cubre |
 |---------|-------|
-| `tests/Feature/Auth/AuthenticationTest.php` | Pantalla de login, inicio, cierre de sesión con limpieza de sesión y revocación de enlaces de ubicación activos. |
+| `tests/Feature/Auth/AuthenticationTest.php` | Pantalla de login, inicio, rechazo de cuentas inactivas, cierre de sesión con limpieza de sesión y revocación de enlaces de ubicación activos. |
 | `tests/Feature/Auth/RegistrationTest.php` | Registro de usuarios. |
 | `tests/Feature/Auth/PasswordResetTest.php` | Recuperación de contraseña. |
 | `tests/Feature/Auth/PasswordUpdateTest.php` | Cambio de contraseña. |
 | `tests/Feature/Auth/PasswordConfirmationTest.php` | Confirmación de contraseña. |
 | `tests/Feature/Auth/EmailVerificationTest.php` | Verificación de correo. |
-| `tests/Feature/ProfileTest.php` | Edición completa del perfil (nombres, apellido materno, teléfono y correo), validaciones y eliminación de la cuenta. |
+| `tests/Feature/ProfileTest.php` | Edición del perfil, validaciones, eliminación de pasajeros y desactivación segura de conductores con preservación del historial. |
 | `tests/Feature/RoleAccessTest.php` | Acceso por rol (admin/driver/passenger), redirección del dashboard y redirección de invitados. |
 | `tests/Feature/EndpointProtectionTest.php` | Protección con sesión de Breeze de los endpoints web y JSON, y restricción de acciones de conductor. |
 | `tests/Feature/DatabaseConfigurationTest.php` | SQLite en desarrollo/pruebas y PostgreSQL configurado solo para producción y staging. |
@@ -33,7 +33,8 @@ composer run test
 | `tests/Feature/Driver/DriverStatisticsTest.php` | Estadísticas del conductor: KPIs, promedios y desglose por ruta (iteración 3). |
 | `tests/Feature/Admin/EmergencyManagementTest.php` | Incidencias: listado, filtros, resolución solo de pendientes y vuelta de la unidad a servicio (iteración 3). |
 | `tests/Feature/Admin/BusShowTest.php` | Detalle de autobús del administrador: KPIs, viajes y emergencias (iteración 3). |
-| `tests/Feature/Admin/BusManagementTest.php` | Listado y gestión de autobuses: acceso por rol, resumen de flota, filtro por estado, búsqueda, paginación validada, alta con rutas, actualización, eliminación y rechazo de estado `emergency` en el CRUD (iteración 7). |
+| `tests/Feature/Admin/BusManagementTest.php` | Listado y gestión de autobuses: acceso por rol, resumen de flota, filtro por estado, búsqueda, paginación validada, alta con rutas, actualización, eliminación segura y rechazo de estado `emergency` en el CRUD. |
+| `tests/Feature/Admin/DriverLifecycleTest.php` | Desactivación de conductores, preservación de viajes/calificaciones, bloqueo con viajes activos y exclusión de la lista activa. |
 | `tests/Feature/Admin/AdminDashboardTest.php` | Contadores del dashboard administrativo: flota por estado, incidencias y emergencias pendientes, tarjeta de estado y render vacío (iteración 7). |
 | `tests/Feature/Admin/AdminReportsTest.php` | Vista única de reportes y estadísticas: acceso por rol, redirección de `admin.statistics`, datos de viajes, autobuses, conductores y accesos de exportación (iteración 7). |
 | `tests/Feature/ThemeTest.php` | Modo oscuro: inicialización sin destello y toggle compartido en login, layout del pasajero y layout administrativo (iteración 7). |
@@ -44,9 +45,13 @@ composer run test
 | `tests/Feature/Admin/IncidentManagementTest.php` | Gestión administrativa de reportes ciudadanos: listado, filtros, búsqueda, transiciones de estado y `resolved_at` (iteración 4). |
 | `tests/Feature/Incidents/IncidentTest.php` | Flujo de reportes del usuario: acceso desde menú y navegación, disponibilidad por rol, validaciones, persistencia, aislamiento por usuario y protección contra campos manipulados (iteración 5). |
 | `tests/Feature/Passenger/RouteListingTest.php` | Listado completo de rutas activas, recorrido completo de paradas, exclusión de rutas inactivas y marcado de favoritas (iteración 6). |
+| `tests/Feature/Admin/StopManagementTest.php` | CRUD de paradas del Estudio, validación de coordenadas, autorización, estado y eliminación segura con favoritos/likes preservados. |
+| `tests/Feature/Admin/StopCatalogTest.php` | Búsqueda/paginación del catálogo, autorización administrativa y límite de paradas principales iniciales en el mapa. |
+| `tests/Feature/Admin/RouteCrudCharacterizationTest.php` | CRUD de rutas, historial seguro, formularios heredados sin consultas al catálogo y lectura estable de la secuencia combinada. |
+| `tests/Feature/Admin/RouteStudioManagementTest.php` | Datos y escrituras del Estudio, sincronización ordenada, estado de cambios sin guardar, ausencia de OSRM al cargar y preservación de geometría ante error. |
 | `tests/Unit/ExampleTest.php` | Ejemplo unitario. |
 
-**Estado actual:** la suite completa está **en verde (166 pruebas, 655 aserciones)** tras la iteración 7. El detalle de las pruebas de la iteración 1 está en [API Swagger — Iteración 1](12-swagger-api.md); las de la iteración 3, en [Iteración 3](13-iteracion-3.md); las de la iteración 4, en [Iteración 4](16-iteracion-4.md); las de las iteraciones 5 y 6, en [Iteración 5 y 6](17-iteracion-5-6.md); las de la iteración 7, en [Iteración 7](18-iteracion-7.md); y el histórico, en el [_devlog](_devlog.md).
+**Estado verificado el 2026-11-25:** la suite completa está en verde (**250 pruebas, 1,038 aserciones**). El detalle de las pruebas de la iteración 1 está en [API Swagger — Iteración 1](12-swagger-api.md); las de la iteración 3, en [Iteración 3](13-iteracion-3.md); las de la iteración 4, en [Iteración 4](16-iteracion-4.md); las de las iteraciones 5 y 6, en [Iteración 5 y 6](17-iteracion-5-6.md); las de la iteración 7, en [Iteración 7](18-iteracion-7.md); y el histórico, en el [_devlog](_devlog.md).
 
 Además de `php artisan test`, el proyecto incorpora scripts de prueba **no ejecutados en este entorno** (previstos para la rama de pruebas):
 
@@ -82,7 +87,7 @@ public function definition(): array
 }
 ```
 
-La lógica propia del proyecto (roles, protección de endpoints, configuración de base de datos por ambiente) tiene cobertura en `RoleAccessTest`, `EndpointProtectionTest` y `DatabaseConfigurationTest`. A partir de la iteración 3 se añadieron pruebas de búsqueda/filtros, ciclo de viaje, estadísticas, incidencias y tiempo real; la iteración 4 incorpora likes, rutas favoritas, ubicación compartida y gestión administrativa de reportes ciudadanos. Las iteraciones 5 y 6 refuerzan el flujo de reportes del usuario, el listado completo de rutas, el formulario de perfil con teléfono y apellido materno, y el cierre de sesión seguro. La iteración 7 añade cobertura del listado y CRUD de autobuses, de los contadores del dashboard administrativo y del tema oscuro compartido. El CRUD de rutas y paradas sigue sin cobertura dedicada.
+La lógica propia del proyecto (roles, protección de endpoints, configuración de base de datos por ambiente) tiene cobertura en `RoleAccessTest`, `EndpointProtectionTest` y `DatabaseConfigurationTest`. A partir de la iteración 3 se añadieron pruebas de búsqueda/filtros, ciclo de viaje, estadísticas, incidencias y tiempo real; la iteración 4 incorpora likes, rutas favoritas, ubicación compartida y gestión administrativa de reportes ciudadanos. Las iteraciones 5 y 6 refuerzan el flujo de reportes del usuario, el listado completo de rutas, el formulario de perfil con teléfono y apellido materno, y el cierre de sesión seguro. La iteración 7 añade cobertura del listado y CRUD de autobuses, de los contadores del dashboard administrativo y del tema oscuro compartido. El Estudio cuenta ahora con cobertura dedicada para rutas, sincronización y paradas; el contador total vigente se registra después de ejecutar la suite completa.
 
 ## Observaciones técnicas
 
@@ -95,9 +100,9 @@ Hallazgos del análisis del código, ordenados por impacto.
 | 1 | `app/Models/Bus.php` | **Resuelto en la iteración 3:** `current_passengers` está en `$fillable` (además de los accessors `available_seats` y `occupancy_percentage`). |
 | 2 | `ProfileUpdateRequest` y `profile/partials/update-profile-information-form` | **Resuelto en la iteración 1:** ya validan y envían `first_name`, `last_name`, `maternal_last_name` y `phone`. |
 | 3 | `ReportController@index` | La consulta de ocupación por hora usa `strftime()`, exclusiva de SQLite; falla en PostgreSQL (producción/staging). Sustituir por `EXTRACT(HOUR FROM started_at)`. |
-| 4 | `Admin\StopController` | Registrado como recurso pero sin implementar; no hay forma de gestionar paradas desde la interfaz. |
+| 4 | `RouteManagementController@payload` / `StopController@data` / `RouteController@create/edit` | **Brecha del catálogo de rutas cerrada en 2026-11-25:** el mapa usa hasta 200 paradas principales, la búsqueda/paginación devuelve hasta 50 resultados y los formularios heredados dejaron de consultar/renderizar todo el catálogo. RNF-05 permanece parcial por consultas de otros listados aún no medidas. |
 | 5 | `resources/views/admin/emergencies.blade.php` | **Resuelto en la iteración 3:** existen `admin.emergencies` (listado con filtros) y `admin.emergencies.resolve` (solo pendientes; al resolverse la unidad vuelve a servicio). |
-| 6 | `Route::resource` en `routes/web.php` | Parcialmente resuelto: `admin.buses.show` sí está implementado (`Admin\BusController@show`, iteración 3); siguen sin implementar `show`/`index` de usuarios y el de paradas. Conviene usar `->except([...])` o `->only([...])`. |
+| 6 | `Route::resource` en `routes/web.php` | Parcialmente resuelto: `admin.buses.show` sí está implementado (`Admin\BusController@show`, iteración 3); siguen sin vista propia `show` de rutas/usuarios e `index` de usuarios. Las acciones de lectura del recurso de paradas redirigen al Estudio. Conviene usar `->except([...])` o `->only([...])` para rutas no soportadas. |
 | 7 | `DashboardController@getActiveBuses` | **Resuelto en la iteración 3:** `available_seats` es un accessor real de `Bus` (capacidad menos pasajeros a bordo, mínimo 0). |
 | 8 | `DriverController@startTrip` | Contempla el turno `night`, pero el enum `work_shift` solo admite `morning` y `afternoon`. |
 
@@ -137,7 +142,7 @@ Hallazgos del análisis del código, ordenados por impacto.
 | Prioridad | Mejora |
 |-----------|--------|
 | Alta | Corregir `$fillable` de `Bus`, el formulario de perfil y la factory; actualizar las pruebas para que la suite pase. **Hecho (iteraciones 1 y 3).** |
-| Alta | Implementar `StopController` y la gestión de emergencias (listado, cambio de estado y resolución). **Gestión de emergencias hecha en la iteración 3; `StopController` sigue pendiente.** |
+| Alta | Completar cobertura de `StopController` y la gestión de emergencias. **CRUD de paradas y gestión de emergencias implementados; ver `StopManagementTest` y `EmergencyManagementTest`.** |
 | Alta | Añadir validaciones de autorización (rol de destino, calificaciones solo tras un viaje). |
 | Media | Escribir pruebas Feature para middleware de roles, `startTrip`, CRUD de administración y favoritos. **Parcialmente hecho: roles (`RoleAccessTest`), viajes (`TripLifecycleTest`) y detalle de autobús (`BusShowTest`) en la iteración 3.** |
 | Media | Hacer portable la consulta por hora (`HOUR()` / `strftime()` según el driver). |
