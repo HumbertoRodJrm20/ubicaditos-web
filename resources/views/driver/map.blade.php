@@ -68,9 +68,36 @@
                                     </form>
                                 @else
                                     @if(auth()->user()->is_active && $bus->status === 'active')
-                                        <form method="POST" action="{{ route('driver.start-trip') }}">
+                                        <form method="POST" action="{{ route('driver.start-trip') }}" id="start-trip-form">
                                             @csrf
-                                            <button type="submit" class="w-full h-10 rounded-full bg-gradient-to-r from-[#86bcc0] to-[#3ed6e0] text-white text-[13px] font-medium flex items-center justify-center gap-2 hover:brightness-105 transition">
+                                            <div class="grid grid-cols-2 gap-2">
+                                                <label class="text-[11px] font-semibold text-slate-500 dark:text-gray-400" for="start-bus-id">
+                                                    Autobús
+                                                    <select id="start-bus-id" name="bus_id" class="mt-1 w-full rounded-xl border border-slate-200/90 bg-white/90 px-2.5 py-2 text-[12px] text-slate-800 focus:border-[#8295c5] focus:ring-2 focus:ring-[#8295c5]/20 dark:border-white/10 dark:bg-gray-700 dark:text-gray-100">
+                                                        @foreach($buses as $optionBus)
+                                                            <option value="{{ $optionBus->id }}" @selected($optionBus->id === $bus->id)>{{ $optionBus->license_plate }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </label>
+                                                <label class="text-[11px] font-semibold text-slate-500 dark:text-gray-400" for="start-route-id">
+                                                    Ruta
+                                                    <select id="start-route-id" name="route_id" class="mt-1 w-full rounded-xl border border-slate-200/90 bg-white/90 px-2.5 py-2 text-[12px] text-slate-800 focus:border-[#8295c5] focus:ring-2 focus:ring-[#8295c5]/20 dark:border-white/10 dark:bg-gray-700 dark:text-gray-100">
+                                                        <option value="">Automática</option>
+                                                        @foreach($routes as $optionRoute)
+                                                            <option value="{{ $optionRoute->id }}"
+                                                                    data-bus-ids="{{ $optionRoute->buses->pluck('id')->implode(',') }}"
+                                                                    @selected($route && $optionRoute->id === $route->id)>{{ $optionRoute->name }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </label>
+                                            </div>
+                                            @error('bus_id')
+                                                <p class="mt-1 text-[11px] text-rose-600">{{ $message }}</p>
+                                            @enderror
+                                            @error('route_id')
+                                                <p class="mt-1 text-[11px] text-rose-600">{{ $message }}</p>
+                                            @enderror
+                                            <button type="submit" class="mt-3 w-full h-10 rounded-full bg-gradient-to-r from-[#86bcc0] to-[#3ed6e0] text-white text-[13px] font-medium flex items-center justify-center gap-2 hover:brightness-105 transition">
                                                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>
                                                 Iniciar Viaje
                                             </button>
@@ -179,6 +206,10 @@
                     <p class="text-[11px] text-slate-500 dark:text-gray-400">
                         Se envía automáticamente a los pasajeros mientras esté activo.
                     </p>
+                    <p class="text-[11px] text-amber-600 dark:text-amber-300" role="status">
+                        Mantén esta pestaña abierta y la pantalla encendida: el navegador no puede enviar GPS en segundo plano. Si bloqueas la pantalla o cambias de aplicación, el rastreo se detiene.
+                    </p>
+                    <p id="wake-lock-status" class="hidden text-[11px] text-slate-500 dark:text-gray-400"></p>
 
                     <div class="text-[11px] text-slate-500 dark:text-gray-400">
                         Última actualización: <span id="last-update">Iniciando...</span>
@@ -241,6 +272,33 @@
             longitude: {{ $bus->current_longitude ?? 'null' }}
         };
 
+        // RF-10: el selector de rutas sólo ofrece las vinculadas al autobús
+        // elegido. El servidor repite la validación antes de crear el viaje.
+        const startBusSelect = document.getElementById('start-bus-id');
+        const startRouteSelect = document.getElementById('start-route-id');
+
+        if (startBusSelect && startRouteSelect) {
+            const filterStartRoutes = () => {
+                const selectedBusId = String(startBusSelect.value);
+
+                Array.from(startRouteSelect.options).forEach((option) => {
+                    if (option.value === '') {
+                        return;
+                    }
+
+                    const linkedBusIds = String(option.dataset.busIds || '').split(',');
+                    option.hidden = !linkedBusIds.includes(selectedBusId);
+
+                    if (option.hidden && startRouteSelect.value === option.value) {
+                        startRouteSelect.value = '';
+                    }
+                });
+            };
+
+            startBusSelect.addEventListener('change', filterStartRoutes);
+            filterStartRoutes();
+        }
+
         // Una posición GPS válida debe ser numérica, estar dentro de rango y no
         // ser el par (0, 0), que es la lectura "vacía" típica de un GPS sin fix.
         function isValidPosition(lat, lng) {
@@ -255,8 +313,8 @@
         // Centro inicial del mapa. Si el autobús aún no tiene una posición GPS
         // guardada NO se inventa su ubicación (no se dibuja marcador): solo se
         // usa Oaxaca como vista de referencia para que el mapa no quede en un
-        // punto vacío del océano. Cuando hay ruta, generateRoute() o
-        // fallbackStraightLine() ajustan la vista a las paradas reales.
+        // punto vacío del océano. Cuando hay ruta, generateRoute() ajusta la
+        // vista al trazado real guardado sobre las calles.
         const DEFAULT_CENTER = [17.0654, -96.7256];
         const initialCenter = hasStoredCoords ? [busData.latitude, busData.longitude] : DEFAULT_CENTER;
         const map = L.map('map', { zoomControl: false }).setView(initialCenter, hasStoredCoords ? 14 : 12);
@@ -355,6 +413,8 @@
         let watchId = null;
         let lastPosition = null;
         let lastSendTime = null;
+        let lastAccuracy = null;
+        let wakeLock = null;
         const MIN_SEND_INTERVAL_MS = 5000;
 
         async function generateRoute() {
@@ -374,14 +434,10 @@
             }
 
             if (routePathCoords.length < 2) {
-                routePathCoords = stops
-                    .map(stop => [parseFloat(stop.latitude), parseFloat(stop.longitude)])
-                    .filter(([lat, lng]) => Number.isFinite(lat) && Number.isFinite(lng));
-            }
-
-            if (routePathCoords.length < 2) {
-                console.warn('La ruta no tiene un trazado válido; usando líneas rectas.');
-                fallbackStraightLine();
+                // No se inventa un recorrido uniendo paradas con líneas rectas:
+                // eso atraviesa casas y construcciones. Si falta el trazado, es
+                // mejor no dibujar la ruta hasta regenerarla sobre las calles.
+                console.warn('La ruta no tiene un trazado guardado sobre calles; no se dibuja el recorrido.');
                 return;
             }
 
@@ -399,24 +455,6 @@
             map.fitBounds(routePolyline.getBounds(), { padding: [50, 50] });
 
             console.log('Ruta dibujada desde el trazado guardado en la base de datos');
-        }
-
-        function fallbackStraightLine() {
-            if (!stops || stops.length < 2) return;
-
-            routePath = stops.map(stop => [parseFloat(stop.latitude), parseFloat(stop.longitude)]);
-            const color = route?.color || '#4b5a85';
-
-            routePolyline = L.polyline(routePath, {
-                color: color,
-                weight: 5,
-                opacity: 0.9,
-                lineCap: 'round',
-                dashArray: '10, 10'
-            }).addTo(map);
-
-            map.fitBounds(routePolyline.getBounds(), { padding: [50, 50] });
-            console.log('Ruta generada con líneas rectas (fallback)');
         }
 
         function drawStops() {
@@ -503,14 +541,22 @@
         }
 
         // Envía la posición al servidor (el backend la retransmite en tiempo real).
-        function sendLocationToServer(lat, lng) {
+        // RNF-08: accuracy viene del navegador en metros; es opcional para
+        // clientes antiguos y se limita al rango aceptado por el backend.
+        function sendLocationToServer(lat, lng, accuracy = null) {
+            const payload = { latitude: lat, longitude: lng };
+
+            if (accuracy !== null && Number.isFinite(accuracy)) {
+                payload.accuracy = Math.min(65535, Math.max(0, Math.round(accuracy)));
+            }
+
             fetch('{{ route("driver.update-location") }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
-                body: JSON.stringify({ latitude: lat, longitude: lng })
+                body: JSON.stringify(payload)
             })
             .then(response => response.json())
             .then(() => {
@@ -585,6 +631,9 @@
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
                     const timestamp = Date.now();
+                    lastAccuracy = Number.isFinite(position.coords.accuracy)
+                        ? position.coords.accuracy
+                        : null;
 
                     let speed = 0;
                     if (lastPosition) {
@@ -622,7 +671,7 @@
                     // Enviar al servidor solo si se comparte ubicación y se respeta el intervalo mínimo.
                     if (isSharingEnabled() && shouldSendLocation(timestamp)) {
                         lastSendTime = timestamp;
-                        sendLocationToServer(lat, lng);
+                        sendLocationToServer(lat, lng, lastAccuracy);
                     }
 
                     checkProximityToStops(lat, lng);
@@ -704,11 +753,53 @@
             return localStorage.getItem(SHARE_KEY) !== 'off';
         }
 
+        function setWakeLockStatus(message) {
+            const status = document.getElementById('wake-lock-status');
+            if (!status) return;
+
+            status.textContent = message || '';
+            status.classList.toggle('hidden', !message);
+        }
+
+        // HU-014: la Wake Lock API mantiene la pantalla encendida donde existe.
+        // No habilita GPS en segundo plano: si la pestaña deja de ser visible,
+        // el navegador puede detener la geolocalización igualmente.
+        async function requestWakeLock() {
+            if (!('wakeLock' in navigator) || !isSharingEnabled() || document.visibilityState !== 'visible') {
+                return;
+            }
+
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+                wakeLock.addEventListener('release', function() {
+                    wakeLock = null;
+                });
+                setWakeLockStatus('Pantalla mantenida encendida por el navegador. Mantén esta pestaña visible.');
+            } catch (error) {
+                setWakeLockStatus('El navegador no pudo mantener la pantalla encendida. Mantén esta pestaña visible y la pantalla activa.');
+                console.warn('Wake Lock no disponible:', error);
+            }
+        }
+
+        async function releaseWakeLock() {
+            if (!wakeLock) return;
+
+            try {
+                await wakeLock.release();
+            } catch (error) {
+                console.warn('No se pudo liberar Wake Lock:', error);
+            } finally {
+                wakeLock = null;
+                setWakeLockStatus(null);
+            }
+        }
+
         function stopSharing() {
             if (watchId) {
                 navigator.geolocation.clearWatch(watchId);
                 watchId = null;
             }
+            releaseWakeLock();
             gpsIndicator.className = 'w-2 h-2 bg-slate-400 rounded-full';
             gpsText.textContent = 'GPS Inactivo';
         }
@@ -727,6 +818,7 @@
             // de permisos) actualiza este indicador.
             showWaitingLocation(true);
             updateLocation();
+            requestWakeLock();
         }
 
         shareToggle.addEventListener('change', function() {
@@ -734,6 +826,11 @@
             applySharingState();
         });
 
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible' && isSharingEnabled()) {
+                requestWakeLock();
+            }
+        });
 
         // Arranque: respeta la preferencia de compartir ubicación guardada.
         applySharingState();

@@ -6,6 +6,8 @@
     <meta name="robots" content="noindex, nofollow">
     <title>Ubicación compartida · Ubicaditos</title>
 
+    @include('partials.theme-init')
+
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
 
@@ -19,19 +21,21 @@
         html, body { height: 100%; }
         #share-map { background: #e8edf8; }
         #share-map .leaflet-tile-pane { filter: saturate(.3) brightness(1.08) contrast(.88); opacity: .8; }
+        .dark #share-map { background: #0f172a; }
+        .dark #share-map .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.85) contrast(.9); opacity: .7; }
         .leaflet-popup-content-wrapper { border-radius: 16px; }
     </style>
 </head>
-<body class="font-sans antialiased text-[#1e2a4a]">
-    <div class="relative min-h-screen overflow-hidden bg-white">
+<body class="bg-white font-sans text-[#1e2a4a] antialiased transition-colors duration-200 dark:bg-slate-950 dark:text-gray-100">
+    <div class="relative min-h-screen overflow-hidden bg-white transition-colors duration-200 dark:bg-slate-950">
         <div aria-hidden="true" class="pointer-events-none fixed inset-0">
-            <div class="absolute -top-32 -left-32 h-[520px] w-[620px] rounded-full bg-[#c3d7ec] opacity-90 blur-[110px]"></div>
-            <div class="absolute -top-24 -right-24 h-[460px] w-[560px] rounded-full bg-[#c5cbe6] opacity-90 blur-[110px]"></div>
-            <div class="absolute -bottom-40 left-1/4 h-[420px] w-[720px] rounded-full bg-[#cfd6ee] opacity-80 blur-[120px]"></div>
+            <div class="absolute -top-32 -left-32 h-[520px] w-[620px] rounded-full bg-[#c3d7ec] opacity-90 blur-[110px] dark:bg-slate-800/70"></div>
+            <div class="absolute -top-24 -right-24 h-[460px] w-[560px] rounded-full bg-[#c5cbe6] opacity-90 blur-[110px] dark:bg-slate-800/60"></div>
+            <div class="absolute -bottom-40 left-1/4 h-[420px] w-[720px] rounded-full bg-[#cfd6ee] opacity-80 blur-[120px] dark:bg-slate-900/70"></div>
         </div>
 
         <main class="relative mx-auto flex min-h-screen max-w-3xl flex-col gap-4 px-4 py-6 sm:px-6">
-            <header class="rounded-3xl border border-white/70 bg-white/80 p-5 shadow-xl shadow-[#4a5a8a]/10 backdrop-blur-xl">
+            <header class="rounded-3xl border border-white/70 bg-white/80 p-5 shadow-xl shadow-[#4a5a8a]/10 backdrop-blur-xl dark:border-white/10 dark:bg-gray-800/80">
                 <div class="flex items-center gap-3">
                     <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#7b88b8] to-[#4a5a8a] text-white shadow-md shadow-[#4a5a8a]/30">
                         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -39,43 +43,46 @@
                         </svg>
                     </span>
                     <div class="min-w-0">
-                        <h1 class="text-lg font-bold leading-tight">Ubicación compartida</h1>
-                        <p class="mt-0.5 text-xs text-[#5b6788]">Este enlace muestra en vivo la posición de un pasajero de Ubicaditos.</p>
+                        <h1 class="text-lg font-bold leading-tight dark:text-gray-100">Ubicación compartida</h1>
+                        <p class="mt-0.5 text-xs text-[#5b6788] dark:text-gray-400">Este enlace muestra en vivo la posición de un pasajero de Ubicaditos.</p>
                     </div>
-                    <span id="share-status" class="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 ring-1 ring-emerald-100">
-                        <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500"></span>
-                        En vivo
-                    </span>
+                    <div class="ml-auto flex shrink-0 items-center gap-2">
+                        <x-theme-toggle />
+                        <span id="share-status" class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 ring-1 ring-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-200 dark:ring-emerald-800">
+                            <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500"></span>
+                            En vivo
+                        </span>
+                    </div>
                 </div>
             </header>
 
             <div class="relative overflow-hidden rounded-3xl border border-white/70 shadow-xl shadow-[#4a5a8a]/10">
                 <div id="share-map" class="h-[52vh] min-h-[320px] w-full"></div>
 
-                <div id="share-expired" class="absolute inset-0 z-[500] hidden items-center justify-center bg-white/70 backdrop-blur-md">
-                    <div class="mx-4 rounded-2xl border border-white/70 bg-white/90 px-6 py-5 text-center shadow-xl">
-                        <p class="text-sm font-bold text-[#273252]">Este enlace ya no está activo</p>
-                        <p class="mt-1 text-xs text-[#5b6788]">La persona dejó de compartir su ubicación o el enlace caducó.</p>
+                <div id="share-expired" class="absolute inset-0 z-[500] hidden items-center justify-center bg-white/70 backdrop-blur-md dark:bg-slate-900/70">
+                    <div class="mx-4 rounded-2xl border border-white/70 bg-white/90 px-6 py-5 text-center shadow-xl dark:border-white/10 dark:bg-gray-800/90">
+                        <p class="text-sm font-bold text-[#273252] dark:text-gray-100">Este enlace ya no está activo</p>
+                        <p class="mt-1 text-xs text-[#5b6788] dark:text-gray-400">La persona dejó de compartir su ubicación o el enlace caducó.</p>
                     </div>
                 </div>
             </div>
 
-            <section class="grid gap-3 rounded-3xl border border-white/70 bg-white/80 p-5 shadow-xl shadow-[#4a5a8a]/10 backdrop-blur-xl sm:grid-cols-3">
+            <section class="grid gap-3 rounded-3xl border border-white/70 bg-white/80 p-5 shadow-xl shadow-[#4a5a8a]/10 backdrop-blur-xl dark:border-white/10 dark:bg-gray-800/80 sm:grid-cols-3">
                 <div>
-                    <p class="text-[10px] font-semibold uppercase tracking-[.14em] text-[#8a94b3]">Última actualización</p>
-                    <p id="share-updated" class="mt-1 text-sm font-semibold text-[#1e2a4a]">—</p>
+                    <p class="text-[10px] font-semibold uppercase tracking-[.14em] text-[#8a94b3] dark:text-gray-500">Última actualización</p>
+                    <p id="share-updated" class="mt-1 text-sm font-semibold text-[#1e2a4a] dark:text-gray-100">—</p>
                 </div>
                 <div>
-                    <p class="text-[10px] font-semibold uppercase tracking-[.14em] text-[#8a94b3]">Precisión</p>
-                    <p id="share-accuracy" class="mt-1 text-sm font-semibold text-[#1e2a4a]">—</p>
+                    <p class="text-[10px] font-semibold uppercase tracking-[.14em] text-[#8a94b3] dark:text-gray-500">Precisión</p>
+                    <p id="share-accuracy" class="mt-1 text-sm font-semibold text-[#1e2a4a] dark:text-gray-100">—</p>
                 </div>
                 <div>
-                    <p class="text-[10px] font-semibold uppercase tracking-[.14em] text-[#8a94b3]">El enlace caduca</p>
-                    <p id="share-expires" class="mt-1 text-sm font-semibold text-[#1e2a4a]">—</p>
+                    <p class="text-[10px] font-semibold uppercase tracking-[.14em] text-[#8a94b3] dark:text-gray-500">El enlace caduca</p>
+                    <p id="share-expires" class="mt-1 text-sm font-semibold text-[#1e2a4a] dark:text-gray-100">—</p>
                 </div>
             </section>
 
-            <p class="pb-2 text-center text-[11px] text-[#8a94b3]">
+            <p class="pb-2 text-center text-[11px] text-[#8a94b3] dark:text-gray-500">
                 Ubicaditos no guarda el historial de este recorrido. La posición se actualiza cada 5 segundos mientras el enlace esté activo.
             </p>
         </main>
@@ -156,7 +163,7 @@
             document.getElementById('share-expired').classList.remove('hidden');
             document.getElementById('share-expired').classList.add('flex');
             const status = document.getElementById('share-status');
-            status.className = 'ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-600 ring-1 ring-rose-100';
+            status.className = 'inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-600 ring-1 ring-rose-100 dark:bg-rose-900/30 dark:text-rose-200 dark:ring-rose-800';
             status.innerHTML = '<span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>Finalizado';
             clearInterval(pollTimer);
         }

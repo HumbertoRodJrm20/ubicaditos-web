@@ -13,7 +13,7 @@
     $card = 'group relative flex min-h-[150px] flex-col justify-between overflow-hidden rounded-3xl p-5 text-white shadow-xl shadow-[#4a5a8a]/25 transition hover:-translate-y-0.5 hover:shadow-2xl focus:outline-none focus:ring-4 focus:ring-[#6b7bad]/40';
     $iconTile = 'flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 backdrop-blur';
     $arrow = 'flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-[#1e2a4a] shadow-md transition group-hover:translate-x-0.5';
-    $glass = 'rounded-3xl border border-white/70 bg-white/80 p-5 shadow-xl shadow-[#4a5a8a]/10 backdrop-blur-xl';
+    $glass = 'rounded-3xl border border-white/70 bg-white/80 p-5 shadow-xl shadow-[#4a5a8a]/10 backdrop-blur-xl dark:border-white/10 dark:bg-gray-800/80';
     $btn = 'flex h-11 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-b from-[#7b88b8] to-[#4a5a8a] text-sm font-semibold text-white shadow-lg shadow-[#4a5a8a]/30 transition hover:brightness-110 focus:outline-none focus:ring-4 focus:ring-[#6b7bad]/30 active:scale-[.99]';
 @endphp
 <x-passenger-layout title="Inicio · Ubicaditos">
@@ -21,11 +21,11 @@
     {{-- Saludo --}}
     <header>
         <h1 class="text-3xl font-bold tracking-tight sm:text-4xl">Hola{{ $firstName ? ', ' . $firstName : '' }}</h1>
-        <p class="mt-1 text-xs text-[#5b6788]">¿A dónde vamos hoy? Elige una opción para comenzar.</p>
+        <p class="mt-1 text-xs text-[#5b6788] dark:text-gray-400">¿A dónde vamos hoy? Elige una opción para comenzar.</p>
     </header>
 
     @if (session('success'))
-        <div class="mt-5 flex items-center gap-2 rounded-xl bg-emerald-50 px-3.5 py-3 text-xs font-medium text-emerald-700 ring-1 ring-emerald-100" role="status">
+        <div class="mt-5 flex items-center gap-2 rounded-xl bg-emerald-50 px-3.5 py-3 text-xs font-medium text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-200 dark:ring-emerald-800" role="status">
             <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
             <span>{{ session('success') }}</span>
         </div>
@@ -103,6 +103,20 @@
         </a>
     </div>
 
+    <div class="mt-4 flex flex-wrap items-center gap-3">
+        <a href="{{ route('passenger.emergency.create') }}"
+            class="inline-flex h-10 items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-4 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 focus:outline-none focus:ring-4 focus:ring-rose-200/60 dark:border-rose-800 dark:bg-rose-900/30 dark:text-rose-200 dark:hover:bg-rose-900/50">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+            </svg>
+            Reportar emergencia
+        </a>
+        <a href="{{ route('incidents.public') }}"
+            class="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-xs font-semibold text-[#3d4a6b] transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#6b7bad]/20 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
+            Ver incidencias públicas
+        </a>
+    </div>
+
     <div class="mt-4 grid gap-4 lg:grid-cols-3 lg:items-start">
 
         {{-- Paradas favoritas --}}
@@ -110,9 +124,9 @@
             <div class="flex items-start justify-between gap-3">
                 <div>
                     <h2 class="text-base font-bold">Paradas favoritas</h2>
-                    <p class="mt-0.5 text-[11px] text-[#5b6788]">Acceso rápido a las paradas que más usas</p>
+                    <p class="mt-0.5 text-[11px] text-[#5b6788] dark:text-gray-400">Acceso rápido a las paradas que más usas</p>
                 </div>
-                <span class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#eef2fa] px-2.5 py-1 text-[11px] font-medium text-[#3d4a6b]">
+                <span class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#eef2fa] px-2.5 py-1 text-[11px] font-medium text-[#3d4a6b] dark:bg-gray-700 dark:text-gray-300">
                     <span class="h-1 w-1 rounded-full bg-[#6b7bad]"></span>{{ $count }} {{ $count == 1 ? 'guardada' : 'guardadas' }}
                 </span>
             </div>
@@ -136,7 +150,7 @@
                             }
                         @endphp
 
-                        <li class="flex items-center gap-3 rounded-2xl bg-white px-3 py-2.5 shadow-sm ring-1 ring-slate-100">
+                        <li class="flex items-center gap-3 rounded-2xl bg-white px-3 py-2.5 shadow-sm ring-1 ring-slate-100 dark:bg-gray-700/60 dark:ring-white/10">
                             <a href="{{ route('passenger.dashboard', ['stop_id' => $stop->id]) }}"
                                 class="flex min-w-0 flex-1 items-center gap-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#6b7bad]/25">
                                 <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-md shadow-[#4a5a8a]/20"
@@ -144,8 +158,8 @@
                                     <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21Z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
                                 </div>
                                 <div class="min-w-0">
-                                    <p class="truncate text-[13px] font-bold text-[#1e2a4a]">{{ $title }}</p>
-                                    <p class="truncate text-[11px] text-[#6b7699]">{{ $subtitle }}</p>
+                                    <p class="truncate text-[13px] font-bold text-[#1e2a4a] dark:text-gray-100">{{ $title }}</p>
+                                    <p class="truncate text-[11px] text-[#6b7699] dark:text-gray-400">{{ $subtitle }}</p>
                                 </div>
                             </a>
 
@@ -154,7 +168,7 @@
                                 @method('DELETE')
                                 <button type="submit" title="Eliminar de favoritos" aria-label="Eliminar de favoritos"
                                     onclick="return confirm('¿Eliminar esta parada de favoritos?')"
-                                    class="flex h-8 w-8 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-500 transition hover:bg-rose-50 focus:outline-none focus:ring-4 focus:ring-rose-100">
+                                    class="flex h-8 w-8 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-500 transition hover:bg-rose-50 focus:outline-none focus:ring-4 focus:ring-rose-100 dark:border-rose-800 dark:bg-gray-700 dark:text-rose-300 dark:hover:bg-rose-900/30">
                                     <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" /></svg>
                                 </button>
                             </form>
@@ -162,12 +176,12 @@
                     @endforeach
                 </ul>
             @else
-                <div class="mt-4 rounded-2xl bg-white/70 px-4 py-10 text-center ring-1 ring-slate-100">
+                <div class="mt-4 rounded-2xl bg-white/70 px-4 py-10 text-center ring-1 ring-slate-100 dark:bg-gray-700/40 dark:ring-white/10">
                     <div class="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#7b88b8] to-[#4a5a8a] text-white shadow-md shadow-[#4a5a8a]/30">
                         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 5.6a5.2 5.2 0 0 0-7.4 0L12 7l-1.4-1.4a5.2 5.2 0 0 0-7.4 7.4L12 21.8l8.8-8.8a5.2 5.2 0 0 0 0-7.4Z" /></svg>
                     </div>
                     <p class="mt-3 text-sm font-semibold">No tienes paradas favoritas todavía</p>
-                    <p class="mt-1 text-[11px] text-[#5b6788]">Agrega tus paradas frecuentes desde el mapa haciendo clic en una parada</p>
+                    <p class="mt-1 text-[11px] text-[#5b6788] dark:text-gray-400">Agrega tus paradas frecuentes desde el mapa haciendo clic en una parada</p>
                     <a href="{{ route('passenger.dashboard') }}"
                         class="mt-4 inline-flex h-9 items-center rounded-full bg-gradient-to-b from-[#7b88b8] to-[#4a5a8a] px-5 text-xs font-semibold text-white shadow-md shadow-[#4a5a8a]/30 transition hover:brightness-110">
                         Ir al mapa
@@ -179,16 +193,16 @@
         {{-- Tu próximo autobús --}}
         <aside class="{{ $glass }}">
             <div class="flex items-center gap-2">
-                <svg class="h-4 w-4 text-[#5b6788]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+                <svg class="h-4 w-4 text-[#5b6788] dark:text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
                 <h2 class="text-sm font-semibold">Tu próximo autobús</h2>
             </div>
 
             @if ($next)
-                <p class="mt-4 text-5xl font-bold tracking-tight text-[#4a5a8a]">{{ $next['minutes'] }} min</p>
-                <p class="mt-3 text-[11px] text-[#5b6788]">Unidad {{ $next['unit'] }} · {{ $next['route'] }} hacia {{ $next['destination'] }}</p>
+                <p class="mt-4 text-5xl font-bold tracking-tight text-[#4a5a8a] dark:text-blue-300">{{ $next['minutes'] }} min</p>
+                <p class="mt-3 text-[11px] text-[#5b6788] dark:text-gray-400">Unidad {{ $next['unit'] }} · {{ $next['route'] }} hacia {{ $next['destination'] }}</p>
             @else
-                <p class="mt-4 text-5xl font-bold tracking-tight text-[#c3cbe0]">—</p>
-                <p class="mt-3 text-[11px] text-[#5b6788]">Aún no hay un autobús próximo para mostrar.</p>
+                <p class="mt-4 text-5xl font-bold tracking-tight text-[#c3cbe0] dark:text-gray-600">—</p>
+                <p class="mt-3 text-[11px] text-[#5b6788] dark:text-gray-400">Aún no hay un autobús próximo para mostrar.</p>
             @endif
 
             <a href="{{ route('passenger.dashboard') }}" class="{{ $btn }} mt-5">
@@ -203,9 +217,9 @@
         <div class="flex items-start justify-between gap-3">
             <div>
                 <h2 class="text-base font-bold">Rutas favoritas</h2>
-                <p class="mt-0.5 text-[11px] text-[#5b6788]">Tus recorridos guardados para consultarlos más rápido</p>
+                <p class="mt-0.5 text-[11px] text-[#5b6788] dark:text-gray-400">Tus recorridos guardados para consultarlos más rápido</p>
             </div>
-            <span class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#eef2fa] px-2.5 py-1 text-[11px] font-medium text-[#3d4a6b]">
+            <span class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#eef2fa] px-2.5 py-1 text-[11px] font-medium text-[#3d4a6b] dark:bg-gray-700 dark:text-gray-300">
                 <span class="h-1 w-1 rounded-full bg-[#6b7bad]"></span>
                 {{ $routeCount }} {{ $routeCount === 1 ? 'guardada' : 'guardadas' }}
             </span>
@@ -216,46 +230,71 @@
                 @foreach ($favoriteRoutes as $route)
                     @php $color = $route->color ?: '#6b7bad'; @endphp
 
-                    <li class="flex items-center gap-3 rounded-2xl bg-white px-3 py-2.5 shadow-sm ring-1 ring-slate-100">
-                        <a href="{{ route('passenger.dashboard', ['route_id' => $route->id]) }}"
-                            class="flex min-w-0 flex-1 items-center gap-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#6b7bad]/25">
-                            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-md shadow-[#4a5a8a]/20"
-                                style="background-color: {{ $color }}; background-image: linear-gradient(135deg, rgba(255,255,255,.28), rgba(0,0,0,.14));">
-                                <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="6" cy="18" r="2.2" /><circle cx="18" cy="6" r="2.2" />
-                                    <path d="M8.2 18H14a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h5.8" />
-                                </svg>
-                            </div>
-                            <div class="min-w-0">
-                                <p class="truncate text-[13px] font-bold text-[#1e2a4a]">{{ $route->name }}</p>
-                                <p class="truncate text-[11px] text-[#6b7699]">
-                                    {{ $route->code ? 'Código ' . $route->code : 'Ruta de Ubicaditos' }}
-                                    @if ((int) $route->likes_count > 0)
-                                        · {{ (int) $route->likes_count }} {{ $route->likes_count == 1 ? 'me gusta' : 'me gusta' }}
-                                    @endif
-                                </p>
-                            </div>
-                        </a>
+                    <li class="rounded-2xl bg-white px-3 py-2.5 shadow-sm ring-1 ring-slate-100 dark:bg-gray-700/60 dark:ring-white/10">
+                        <div class="flex items-center gap-3">
+                            <a href="{{ route('passenger.dashboard', ['route_id' => $route->id]) }}"
+                                class="flex min-w-0 flex-1 items-center gap-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#6b7bad]/25">
+                                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-md shadow-[#4a5a8a]/20"
+                                    style="background-color: {{ $color }}; background-image: linear-gradient(135deg, rgba(255,255,255,.28), rgba(0,0,0,.14));">
+                                    <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="6" cy="18" r="2.2" /><circle cx="18" cy="6" r="2.2" />
+                                        <path d="M8.2 18H14a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h5.8" />
+                                    </svg>
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="truncate text-[13px] font-bold text-[#1e2a4a] dark:text-gray-100">
+                                        {{ $route->pivot->label ?: $route->name }}
+                                    </p>
+                                    <p class="truncate text-[11px] text-[#6b7699] dark:text-gray-400">
+                                        {{ $route->code ? 'Código ' . $route->code : 'Ruta de Ubicaditos' }}
+                                        @if ((int) $route->likes_count > 0)
+                                            · {{ (int) $route->likes_count }} {{ $route->likes_count == 1 ? 'me gusta' : 'me gusta' }}
+                                        @endif
+                                    </p>
+                                </div>
+                            </a>
 
-                        <form method="POST" action="{{ route('passenger.favorite-routes.remove', $route) }}" class="shrink-0">
+                            <form method="POST" action="{{ route('passenger.favorite-routes.remove', $route) }}" class="shrink-0">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" title="Quitar de rutas favoritas" aria-label="Quitar de rutas favoritas"
+                                    onclick="return confirm('¿Quitar esta ruta de favoritos?')"
+                                    class="flex h-8 w-8 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-500 transition hover:bg-rose-50 focus:outline-none focus:ring-4 focus:ring-rose-100 dark:border-rose-800 dark:bg-gray-700 dark:text-rose-300 dark:hover:bg-rose-900/30">
+                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" /></svg>
+                                </button>
+                            </form>
+                        </div>
+
+                        <form method="POST" action="{{ route('passenger.favorite-routes.update', $route) }}"
+                            class="mt-2 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2 dark:border-white/10">
                             @csrf
-                            @method('DELETE')
-                            <button type="submit" title="Quitar de rutas favoritas" aria-label="Quitar de rutas favoritas"
-                                onclick="return confirm('¿Quitar esta ruta de favoritos?')"
-                                class="flex h-8 w-8 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-500 transition hover:bg-rose-50 focus:outline-none focus:ring-4 focus:ring-rose-100">
-                                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" /></svg>
+                            @method('PATCH')
+                            <label class="flex items-center gap-1 text-[10px] font-semibold text-[#6b7699] dark:text-gray-400">
+                                Orden
+                                <input type="number" name="position" min="1" max="{{ $routeCount }}"
+                                    value="{{ $route->pivot->position }}"
+                                    aria-label="Nueva posición de {{ $route->name }}"
+                                    class="h-8 w-14 rounded-full border border-slate-200 bg-white px-2 text-center text-xs text-[#1e2a4a] outline-none focus:border-[#6b7bad] focus:ring-2 focus:ring-[#6b7bad]/20 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                            </label>
+                            <input type="text" name="label" maxlength="{{ \App\Models\FavoriteRoute::MAX_LABEL_LENGTH }}"
+                                value="{{ $route->pivot->label }}" placeholder="Etiqueta (opcional)"
+                                aria-label="Etiqueta de {{ $route->name }}"
+                                class="h-8 min-w-0 flex-1 rounded-full border border-slate-200 bg-white px-3 text-xs text-[#1e2a4a] outline-none placeholder:text-[#a0a8bd] focus:border-[#6b7bad] focus:ring-2 focus:ring-[#6b7bad]/20 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                            <button type="submit" title="Guardar preferencias" aria-label="Guardar preferencias de {{ $route->name }}"
+                                class="h-8 rounded-full bg-[#eef2fa] px-3 text-[11px] font-semibold text-[#3d4a6b] transition hover:bg-[#e2e8f5] focus:outline-none focus:ring-2 focus:ring-[#6b7bad]/30 dark:bg-gray-600 dark:text-gray-100 dark:hover:bg-gray-500">
+                                Guardar
                             </button>
                         </form>
                     </li>
                 @endforeach
             </ul>
         @else
-            <div class="mt-4 rounded-2xl bg-white/70 px-4 py-10 text-center ring-1 ring-slate-100">
+            <div class="mt-4 rounded-2xl bg-white/70 px-4 py-10 text-center ring-1 ring-slate-100 dark:bg-gray-700/40 dark:ring-white/10">
                 <div class="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#7b88b8] to-[#4a5a8a] text-white shadow-md shadow-[#4a5a8a]/30">
                     <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="2.2" /><circle cx="18" cy="6" r="2.2" /><path d="M8.2 18H14a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h5.8" /></svg>
                 </div>
                 <p class="mt-3 text-sm font-semibold">Aún no tienes rutas favoritas</p>
-                <p class="mt-1 text-[11px] text-[#5b6788]">Guarda una ruta desde la lista de rutas tocando el corazón.</p>
+                <p class="mt-1 text-[11px] text-[#5b6788] dark:text-gray-400">Guarda una ruta desde la lista de rutas tocando el corazón.</p>
                 <a href="{{ route('passenger.routes') }}"
                     class="mt-4 inline-flex h-9 items-center rounded-full bg-gradient-to-b from-[#7b88b8] to-[#4a5a8a] px-5 text-xs font-semibold text-white shadow-md shadow-[#4a5a8a]/30 transition hover:brightness-110">
                     Explorar rutas

@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Bus;
 use App\Models\Route;
-use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
@@ -13,7 +12,7 @@ class DashboardController extends Controller
         $user = auth()->user();
 
         // Redirigir según el rol del usuario
-        return match($user->role) {
+        return match ($user->role) {
             'admin' => redirect()->route('admin.dashboard'),
             'driver' => redirect()->route('driver.dashboard'),
             'passenger' => redirect()->route('passenger.dashboard'), // Ahora dashboard es el mapa
@@ -25,6 +24,7 @@ class DashboardController extends Controller
     public function getActiveBuses()
     {
         $buses = Bus::with(['driver', 'routes'])
+            ->withCount(['locationShares as sharing_passengers_count' => fn ($query) => $query->active()])
             ->where('status', 'active')
             ->whereNotNull('current_latitude')
             ->whereNotNull('current_longitude')
@@ -42,6 +42,10 @@ class DashboardController extends Controller
                     'route' => $bus->routes->first()?->name,
                     'route_color' => $bus->routes->first()?->color,
                     'last_update' => $bus->last_location_update?->toISOString(),
+                    'fresh' => $bus->isLocationFresh(),
+                    'fresh_until' => $bus->fresh_until,
+                    'accuracy' => $bus->accuracy,
+                    'sharing_passengers_count' => (int) $bus->sharing_passengers_count,
                 ];
             });
 
@@ -50,6 +54,8 @@ class DashboardController extends Controller
 
     public function getBusLocation(Bus $bus)
     {
+        $bus->loadCount(['locationShares as sharing_passengers_count' => fn ($query) => $query->active()]);
+
         return response()->json([
             'id' => $bus->id,
             'latitude' => (float) $bus->current_latitude,
@@ -57,6 +63,10 @@ class DashboardController extends Controller
             'status' => $bus->status,
             'current_passengers' => $bus->current_passengers,
             'last_update' => $bus->last_location_update,
+            'fresh' => $bus->isLocationFresh(),
+            'fresh_until' => $bus->fresh_until,
+            'accuracy' => $bus->accuracy,
+            'sharing_passengers_count' => (int) $bus->sharing_passengers_count,
         ]);
     }
 
@@ -65,6 +75,7 @@ class DashboardController extends Controller
         $buses = $route->buses()
             ->where('status', 'active')
             ->with('driver')
+            ->withCount(['locationShares as sharing_passengers_count' => fn ($query) => $query->active()])
             ->get();
 
         return response()->json($buses);

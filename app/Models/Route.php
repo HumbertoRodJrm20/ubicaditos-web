@@ -38,6 +38,7 @@ class Route extends Model
         return $this->belongsToMany(Stop::class, 'route_stop')
             ->withPivot('order', 'estimated_time_from_previous', 'is_frequent')
             ->orderByPivot('order')
+            ->orderByPivot('id')
             ->withTimestamps();
     }
 
@@ -54,6 +55,7 @@ class Route extends Model
     public function favoritedByUsers()
     {
         return $this->belongsToMany(User::class, 'favorite_routes')
+            ->withPivot(['position', 'label'])
             ->withTimestamps();
     }
 
@@ -77,7 +79,7 @@ class Route extends Model
 
     public function getOrderedStops(bool $includeFrequent = true)
     {
-        $query = $this->stops()->orderBy('route_stop.order');
+        $query = $this->stops()->orderBy('route_stop.order')->orderBy('route_stop.id');
 
         if (! $includeFrequent) {
             $query->wherePivot('is_frequent', false);

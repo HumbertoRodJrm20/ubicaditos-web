@@ -1,5 +1,6 @@
 @php
     $user = Auth::user();
+    $isDriver = $user->role === 'driver';
 
     $firstName = $user->first_name ?? '';
     $lastName = $user->last_name ?? '';
@@ -34,7 +35,7 @@
 
             <span class="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 dark:bg-gray-700 text-[11px] font-medium text-[#4b5a85] dark:text-gray-200">
                 <span class="w-1.5 h-1.5 rounded-full bg-[#4b5a85]"></span>
-                Pasajero
+                {{ $isDriver ? 'Conductor' : ($user->role === 'admin' ? 'Administrador' : 'Pasajero') }}
             </span>
 
             <div class="w-full border-t border-slate-200/70 dark:border-white/10 my-5"></div>
@@ -241,13 +242,61 @@
 
             <section class="rounded-3xl bg-gradient-to-r from-rose-50/90 to-white/60 dark:from-rose-900/20 dark:to-gray-800/60 backdrop-blur-xl border border-rose-100 dark:border-rose-900/40 shadow-lg p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h2 class="text-[14px] font-semibold text-rose-700 dark:text-rose-300">Eliminar cuenta</h2>
-                    <p class="text-[11px] text-slate-500 dark:text-gray-400">Esta acción es permanente y borrará tus favoritos y calificaciones.</p>
+                    <h2 class="text-[14px] font-semibold text-rose-700 dark:text-rose-300">{{ $isDriver ? 'Desactivar cuenta de conductor' : 'Eliminar cuenta' }}</h2>
+                    <p class="text-[11px] text-slate-500 dark:text-gray-400">
+                        {{ $isDriver ? 'Tu historial se conservará y tu sesión se cerrará. No puedes desactivarte mientras tengas un viaje activo.' : 'Esta acción es permanente y borrará tus favoritos y calificaciones.' }}
+                    </p>
                 </div>
                 <button type="button" id="open-delete" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-rose-400 hover:bg-rose-500 text-white text-[13px] font-semibold shadow-lg shadow-rose-300/40 transition">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                    Eliminar cuenta
+                    {{ $isDriver ? 'Desactivar cuenta' : 'Eliminar cuenta' }}
                 </button>
+            </section>
+
+            <section class="{{ $cardClass }} p-6">
+                <h2 class="text-[15px] font-semibold text-[#2f3a5f] dark:text-gray-100">Preferencias</h2>
+                <p class="text-[11px] text-slate-500 dark:text-gray-400 mb-4">Idioma de la interfaz y avisos dentro de la aplicación.</p>
+
+                <form method="POST" action="{{ route('profile.update') }}">
+                    @csrf
+                    @method('PATCH')
+
+                    <div>
+                        <label for="locale" class="{{ $labelClass }}">Idioma de la interfaz</label>
+                        <select id="locale" name="locale" class="{{ $inputClass }}">
+                            <option value="es" @selected(old('locale', $user->locale ?? 'es') === 'es')>Español</option>
+                            <option value="en" @selected(old('locale', $user->locale ?? 'es') === 'en')>English</option>
+                        </select>
+                        @error('locale')<p class="mt-1 text-xs text-rose-500">{{ $message }}</p>@enderror
+                    </div>
+
+                    <fieldset class="mt-4">
+                        <legend class="{{ $labelClass }}">Avisos dentro de la aplicación</legend>
+                        @foreach (['emergency' => 'Emergencias', 'incident' => 'Incidencias', 'location_share' => 'Ubicación compartida'] as $key => $label)
+                            <label class="mt-2 flex items-center gap-2 text-[12px] text-slate-600 dark:text-gray-300">
+                                <input type="checkbox" name="notification_preferences[{{ $key }}]" value="1" @checked(old("notification_preferences.$key", $user->notificationPreference($key)))>
+                                {{ $label }}
+                            </label>
+                        @endforeach
+                    </fieldset>
+
+                    <div class="mt-5">
+                        <button type="submit" class="{{ $primaryBtn }}">Guardar preferencias</button>
+                    </div>
+                </form>
+            </section>
+
+            <section id="confirm-logout" class="rounded-3xl border border-slate-200/80 bg-white/70 p-5 dark:border-white/10 dark:bg-gray-800/60" x-data="{ confirmLogout: false }">
+                <h2 class="text-[14px] font-semibold text-[#2f3a5f] dark:text-gray-100">¿Cerrar sesión?</h2>
+                <p class="text-[11px] text-slate-500 dark:text-gray-400">Si tienes un viaje activo, se finalizará y se liberará el autobús.</p>
+                <button type="button" @click="confirmLogout = true" class="mt-3 px-4 py-2 rounded-full border border-slate-300 text-[13px] font-medium text-[#4b5a85] dark:border-gray-600 dark:text-gray-200">Cerrar sesión</button>
+                <div x-show="confirmLogout" class="mt-3 space-y-3" style="display: none;">
+                    <p class="text-[12px] text-slate-600 dark:text-gray-300">¿Confirmas que deseas salir?</p>
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button type="submit" class="px-5 py-2.5 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-[13px] font-semibold">Sí, cerrar sesión</button>
+                    </form>
+                </div>
             </section>
         </div>
     </div>
@@ -257,8 +306,12 @@
             @csrf
             @method('DELETE')
 
-            <h2 class="text-[16px] font-semibold text-[#2f3a5f] dark:text-gray-100">¿Seguro que quieres eliminar tu cuenta?</h2>
-            <p class="mt-1 text-[12px] text-slate-500 dark:text-gray-400">Se borrarán tus favoritos y calificaciones de forma permanente. Escribe tu contraseña para confirmar.</p>
+            <h2 class="text-[16px] font-semibold text-[#2f3a5f] dark:text-gray-100">
+                {{ $isDriver ? '¿Seguro que quieres desactivar tu cuenta de conductor?' : '¿Seguro que quieres eliminar tu cuenta?' }}
+            </h2>
+            <p class="mt-1 text-[12px] text-slate-500 dark:text-gray-400">
+                {{ $isDriver ? 'Se conservarán tus viajes y calificaciones. Escribe tu contraseña para confirmar.' : 'Se borrarán tus favoritos y calificaciones de forma permanente. Escribe tu contraseña para confirmar.' }}
+            </p>
 
             <div class="mt-4">
                 <label for="delete_password" class="{{ $labelClass }}">Contraseña</label>
@@ -268,7 +321,9 @@
 
             <div class="mt-5 flex justify-end gap-2">
                 <button type="button" id="close-delete" class="px-5 py-2.5 rounded-full border border-slate-300 dark:border-gray-600 text-[13px] font-medium text-[#4b5a85] dark:text-gray-200">Cancelar</button>
-                <button type="submit" class="px-5 py-2.5 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-[13px] font-semibold">Eliminar cuenta</button>
+                <button type="submit" class="px-5 py-2.5 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-[13px] font-semibold">
+                    {{ $isDriver ? 'Desactivar cuenta' : 'Eliminar cuenta' }}
+                </button>
             </div>
         </form>
     </dialog>

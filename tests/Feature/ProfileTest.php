@@ -2,6 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\Bus;
+use App\Models\Route;
+use App\Models\Trip;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -156,6 +159,95 @@ class ProfileTest extends TestCase
 
         $this->assertGuest();
         $this->assertNull($user->fresh());
+    }
+
+    public function test_driver_profile_deletion_deactivates_and_preserves_trip_history(): void
+    {
+        $driver = User::factory()->create(['role' => 'driver']);
+        $bus = Bus::create([
+            'license_plate' => 'PRF123',
+            'model' => 'Yutong',
+            'capacity' => 40,
+            'status' => 'active',
+            'is_active' => true,
+            'driver_id' => $driver->id,
+        ]);
+        $route = Route::create([
+            'name' => 'Ruta perfil',
+            'code' => 'RP-1',
+            'color' => '#2563EB',
+            'is_active' => true,
+        ]);
+        $trip = Trip::create([
+            'bus_id' => $bus->id,
+            'route_id' => $route->id,
+            'driver_id' => $driver->id,
+            'started_at' => now()->subHour(),
+            'completed_at' => now(),
+            'status' => 'completed',
+        ]);
+
+        $this->actingAs($driver)
+            ->delete('/profile', ['password' => 'password'])
+            ->assertRedirect('/');
+
+        $this->assertGuest();
+        $this->assertDatabaseHas('users', ['id' => $driver->id, 'is_active' => false]);
+        $this->assertDatabaseHas('trips', ['id' => $trip->id]);
+        $this->assertDatabaseHas('buses', [
+            'id' => $bus->id,
+            'driver_id' => null,
+            'is_active' => false,
+            'status' => 'inactive',
+        ]);
+    }
+
+    public function test_driver_profile_deactivation_is_blocked_during_an_active_trip(): void
+    {
+        $driver = User::factory()->create(['role' => 'driver']);
+        $bus = Bus::create([
+            'license_plate' => 'ACT456',
+            'model' => 'Yutong',
+            'capacity' => 40,
+            'status' => 'active',
+            'is_active' => true,
+            'driver_id' => $driver->id,
+        ]);
+        $route = Route::create([
+            'name' => 'Ruta activa perfil',
+            'code' => 'RAP-1',
+            'color' => '#2563EB',
+            'is_active' => true,
+        ]);
+        $trip = Trip::create([
+            'bus_id' => $bus->id,
+            'route_id' => $route->id,
+            'driver_id' => $driver->id,
+            'started_at' => now(),
+            'status' => 'in_progress',
+        ]);
+
+        $this->actingAs($driver)
+            ->from('/profile')
+            ->delete('/profile', ['password' => 'password'])
+            ->assertRedirect(route('profile.edit'))
+            ->assertSessionHasErrorsIn('userDeletion', 'password');
+
+        $this->assertAuthenticatedAs($driver);
+        $this->assertDatabaseHas('users', ['id' => $driver->id, 'is_active' => true]);
+        $this->assertDatabaseHas('trips', ['id' => $trip->id, 'status' => 'in_progress']);
+        $this->assertDatabaseHas('buses', ['id' => $bus->id, 'driver_id' => $driver->id]);
+    }
+
+    public function test_driver_profile_delete_prompt_explains_history_is_preserved(): void
+    {
+        $driver = User::factory()->create(['role' => 'driver']);
+
+        $this->actingAs($driver)
+            ->get('/profile')
+            ->assertOk()
+            ->assertSee('Tu historial se conservará')
+            ->assertSee('Desactivar cuenta');
     }
 
     public function test_correct_password_must_be_provided_to_delete_account(): void

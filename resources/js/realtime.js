@@ -10,7 +10,11 @@ import Pusher from 'pusher-js';
  *      polling del endpoint JSON /api/buses/active cada `pollInterval` ms.
  *
  * Ambas fuentes emiten el mismo payload normalizado a los suscriptores:
- *   { id, latitude, longitude, status, current_passengers, available_seats, source, received_at }
+ *   { id, latitude, longitude, status, current_passengers, available_seats,
+ *     fresh, fresh_until, accuracy, sharing_passengers_count, source, received_at }
+ *
+ * `fresh` y `fresh_until` vienen calculados por el servidor (5 minutos); el
+ * cliente sólo compara `fresh_until` para no duplicar la regla de frescura.
  *
  * Uso desde cualquier vista:
  *
@@ -81,6 +85,12 @@ import Pusher from 'pusher-js';
                 available_seats: payload.available_seats ?? null,
                 route_id: payload.route_id ?? null,
                 last_update: payload.last_update ?? null,
+                fresh: payload.fresh ?? false,
+                fresh_until: payload.fresh_until ?? null,
+                accuracy: payload.accuracy ?? null,
+                sharing_passengers_count: Number(payload.sharing_passengers_count ?? 0),
+                stale: payload.fresh === false
+                    || (payload.fresh_until != null && Date.now() > new Date(payload.fresh_until).getTime()),
                 source: payload.source ?? 'unknown',
                 received_at: new Date().toISOString(),
             };

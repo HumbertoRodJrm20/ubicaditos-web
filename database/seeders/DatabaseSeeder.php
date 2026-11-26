@@ -2,10 +2,15 @@
 
 namespace Database\Seeders;
 
-use App\Models\{User, Bus, Route, Stop, EmergencyReport, Trip, Rating};
+use App\Models\Bus;
+use App\Models\Rating;
+use App\Models\Route;
+use App\Models\Stop;
+use App\Models\Trip;
+use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Carbon\Carbon;
 
 class DatabaseSeeder extends Seeder
 {
@@ -36,10 +41,10 @@ class DatabaseSeeder extends Seeder
             $drivers[] = User::create([
                 'first_name' => $firstName,
                 'last_name' => $lastName,
-                'email' => 'chofer' . $i . '@ubicaditos.com',
+                'email' => 'chofer'.$i.'@ubicaditos.com',
                 'password' => Hash::make('password'),
                 'role' => 'driver',
-                'phone' => '951' . rand(1000000, 9999999),
+                'phone' => '951'.rand(1000000, 9999999),
                 'is_active' => true,
             ]);
         }
@@ -55,10 +60,10 @@ class DatabaseSeeder extends Seeder
             $passengers[] = User::create([
                 'first_name' => $firstName,
                 'last_name' => $lastName,
-                'email' => 'pasajero' . $i . '@ubicaditos.com',
+                'email' => 'pasajero'.$i.'@ubicaditos.com',
                 'password' => Hash::make('password'),
                 'role' => 'passenger',
-                'phone' => '951' . rand(1000000, 9999999),
+                'phone' => '951'.rand(1000000, 9999999),
                 'is_active' => true,
                 'current_latitude' => 17.0732 + (rand(-100, 100) / 10000),
                 'current_longitude' => -96.7266 + (rand(-100, 100) / 10000),
@@ -122,165 +127,128 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Auditorio Guelaguetza', 'address' => 'Auditorio Guelaguetza', 'latitude' => 17.0723, 'longitude' => -96.7389],
         ];
 
-        $stopModels = [];
         foreach ($stops as $stop) {
-            $stopModels[] = Stop::create(array_merge($stop, ['is_active' => true]));
+            Stop::create(array_merge($stop, ['is_active' => true]));
         }
 
-        // Create Routes (18 rutas diferentes con más paradas)
+        // Create Routes (18 rutas diferentes).
+        //
+        // La secuencia de paradas ya no se toma de estos arreglos: se declara
+        // en RouteCorridorSeeder sobre corredores continuos. Aquí sólo se
+        // conservan los datos descriptivos de cada ruta.
         $routes = [
             [
                 'name' => 'Ruta 1 - Centro - Tule',
                 'code' => 'OAX-101',
                 'color' => '#3B82F6', // Azul
                 'estimated_duration' => 95,
-                'stops' => [0, 1, 24, 3, 15, 7, 14, 16, 5, 25, 26, 27, 28, 29, 30, 31, 32], // 17 paradas
-                'times' => [0, 3, 5, 8, 12, 18, 23, 28, 35, 40, 45, 50, 55, 60, 65, 70, 75], // Tiempos acumulados en minutos
             ],
             [
                 'name' => 'Ruta 2 - Centro - Xoxocotlán',
                 'code' => 'OAX-102',
                 'color' => '#EF4444', // Rojo
                 'estimated_duration' => 75,
-                'stops' => [0, 2, 11, 10, 4, 13, 9, 23, 33, 34, 35, 36, 37, 38, 39, 40], // 16 paradas
-                'times' => [0, 4, 8, 12, 18, 25, 32, 40, 45, 50, 55, 60, 65, 70, 75, 80],
             ],
             [
                 'name' => 'Ruta 3 - San Felipe Express',
                 'code' => 'OAX-103',
                 'color' => '#10B981', // Verde
                 'estimated_duration' => 80,
-                'stops' => [0, 1, 24, 6, 20, 12, 8, 41, 42, 43, 44, 45, 46, 47, 25], // 15 paradas
-                'times' => [0, 3, 6, 12, 20, 28, 38, 43, 48, 53, 58, 63, 68, 73, 78],
             ],
             [
                 'name' => 'Ruta 4 - Universidad',
                 'code' => 'OAX-104',
                 'color' => '#F59E0B', // Amarillo
                 'estimated_duration' => 70,
-                'stops' => [0, 2, 11, 15, 10, 13, 7, 26, 27, 28, 29, 30, 31, 32, 33], // 15 paradas
-                'times' => [0, 4, 7, 12, 18, 25, 32, 37, 42, 47, 52, 57, 62, 67, 72],
             ],
             [
                 'name' => 'Ruta 5 - Ixcotel',
                 'code' => 'OAX-105',
                 'color' => '#8B5CF6', // Morado
                 'estimated_duration' => 85,
-                'stops' => [0, 1, 3, 15, 7, 14, 16, 34, 35, 36, 37, 38, 39, 40, 41], // 15 paradas
-                'times' => [0, 3, 6, 12, 20, 28, 40, 45, 50, 55, 60, 65, 70, 75, 80],
             ],
             [
                 'name' => 'Ruta 6 - Circular Norte',
                 'code' => 'OAX-106',
                 'color' => '#EC4899', // Rosa
                 'estimated_duration' => 100,
-                'stops' => [0, 1, 24, 6, 20, 8, 12, 42, 43, 44, 45, 46, 47, 25, 26, 27], // 16 paradas
-                'times' => [0, 3, 6, 12, 20, 30, 38, 46, 52, 58, 64, 70, 76, 82, 88, 94],
             ],
             [
                 'name' => 'Ruta 7 - Sur Periférico',
                 'code' => 'OAX-107',
                 'color' => '#06B6D4', // Cian
                 'estimated_duration' => 90,
-                'stops' => [0, 2, 11, 4, 10, 9, 13, 17, 28, 29, 30, 31, 32, 33, 34, 35], // 16 paradas
-                'times' => [0, 4, 8, 15, 22, 30, 38, 48, 53, 58, 63, 68, 73, 78, 83, 88],
             ],
             [
                 'name' => 'Ruta 8 - Express Tule',
                 'code' => 'OAX-108',
                 'color' => '#84CC16', // Verde Lima
                 'estimated_duration' => 80,
-                'stops' => [0, 3, 7, 14, 16, 5, 36, 37, 38, 39, 40, 41, 42, 43], // 14 paradas
-                'times' => [0, 5, 12, 20, 28, 40, 45, 50, 55, 60, 65, 70, 75, 80],
             ],
             [
                 'name' => 'Ruta 9 - Reforma - Tlalixtac',
                 'code' => 'OAX-109',
                 'color' => '#F472B6', // Rosa claro
                 'estimated_duration' => 90,
-                'stops' => [0, 1, 15, 7, 14, 16, 5, 21, 44, 45, 46, 47, 25, 26, 27, 28], // 16 paradas
-                'times' => [0, 3, 8, 15, 22, 30, 40, 52, 57, 62, 67, 72, 77, 82, 87, 92],
             ],
             [
                 'name' => 'Ruta 10 - Centro - Aeropuerto',
                 'code' => 'OAX-110',
                 'color' => '#22D3EE', // Cyan claro
                 'estimated_duration' => 80,
-                'stops' => [0, 2, 10, 9, 23, 17, 29, 30, 31, 32, 33, 34, 35, 36], // 14 paradas
-                'times' => [0, 4, 10, 18, 28, 42, 47, 52, 57, 62, 67, 72, 77, 82],
             ],
             [
                 'name' => 'Ruta 11 - Etla Express',
                 'code' => 'OAX-111',
                 'color' => '#A78BFA', // Púrpura claro
                 'estimated_duration' => 110,
-                'stops' => [0, 1, 6, 12, 20, 19, 37, 38, 39, 40, 41, 42, 43, 44], // 14 paradas
-                'times' => [0, 3, 10, 18, 30, 50, 58, 64, 70, 76, 82, 88, 94, 100],
             ],
             [
                 'name' => 'Ruta 12 - Tlacolula Directo',
                 'code' => 'OAX-112',
                 'color' => '#FB923C', // Naranja
                 'estimated_duration' => 120,
-                'stops' => [0, 3, 7, 5, 16, 21, 18, 45, 46, 47, 25, 26, 27, 28, 29], // 15 paradas
-                'times' => [0, 5, 12, 22, 35, 48, 70, 76, 82, 88, 94, 100, 106, 112, 118],
             ],
             [
                 'name' => 'Ruta 13 - Zaachila',
                 'code' => 'OAX-113',
                 'color' => '#34D399', // Verde esmeralda
                 'estimated_duration' => 95,
-                'stops' => [0, 2, 11, 9, 10, 23, 22, 30, 31, 32, 33, 34, 35, 36, 37], // 15 paradas
-                'times' => [0, 4, 8, 15, 25, 38, 55, 60, 65, 70, 75, 80, 85, 90, 95],
             ],
             [
                 'name' => 'Ruta 14 - Jalatlaco - Atzompa',
                 'code' => 'OAX-114',
                 'color' => '#FCD34D', // Amarillo claro
                 'estimated_duration' => 85,
-                'stops' => [0, 1, 24, 6, 12, 20, 38, 39, 40, 41, 42, 43, 44, 45], // 14 paradas
-                'times' => [0, 3, 6, 12, 20, 35, 41, 47, 53, 59, 65, 71, 77, 83],
             ],
             [
                 'name' => 'Ruta 15 - San Agustín',
                 'code' => 'OAX-115',
                 'color' => '#C084FC', // Lavanda
                 'estimated_duration' => 105,
-                'stops' => [0, 3, 7, 14, 16, 5, 21, 46, 47, 25, 26, 27, 28, 29, 30], // 15 paradas
-                'times' => [0, 5, 12, 20, 30, 42, 60, 66, 72, 78, 84, 90, 96, 102, 108],
             ],
             [
                 'name' => 'Ruta 16 - Periférico Completo',
                 'code' => 'OAX-116',
                 'color' => '#FB7185', // Rosa fuerte
                 'estimated_duration' => 115,
-                'stops' => [0, 2, 4, 9, 23, 17, 13, 10, 11, 31, 32, 33, 34, 35, 36, 37, 38], // 17 paradas
-                'times' => [0, 4, 10, 18, 28, 40, 52, 62, 72, 77, 82, 87, 92, 97, 102, 107, 112],
             ],
             [
                 'name' => 'Ruta 17 - Norte - Sur',
                 'code' => 'OAX-117',
                 'color' => '#4ADE80', // Verde brillante
                 'estimated_duration' => 110,
-                'stops' => [8, 12, 6, 0, 2, 9, 10, 22, 39, 40, 41, 42, 43, 44, 45, 46], // 16 paradas
-                'times' => [0, 8, 15, 25, 30, 40, 50, 68, 73, 78, 83, 88, 93, 98, 103, 108],
             ],
             [
                 'name' => 'Ruta 18 - Express Diagonal',
                 'code' => 'OAX-118',
                 'color' => '#60A5FA', // Azul brillante
                 'estimated_duration' => 90,
-                'stops' => [20, 12, 6, 0, 11, 10, 13, 47, 25, 26, 27, 28, 29, 30, 31], // 15 paradas
-                'times' => [0, 10, 18, 28, 35, 42, 52, 58, 64, 70, 76, 82, 88, 94, 100],
             ],
         ];
 
         $routeModels = [];
         foreach ($routes as $routeData) {
-            $stopIndices = $routeData['stops'];
-            $estimatedTimes = $routeData['times'] ?? [];
-            unset($routeData['stops'], $routeData['times']);
-
             // El trazado NO se inventa aquí. Las líneas rectas con ruido
             // aleatorio cruzaban edificios. Se deja vacío para que se genere
             // con calles reales:
@@ -291,24 +259,15 @@ class DatabaseSeeder extends Seeder
                 'is_active' => true,
             ]));
 
-            // Attach stops to route with order and realistic times
-            foreach ($stopIndices as $order => $stopIndex) {
-                // Calcular tiempo desde la parada anterior
-                $timeFromPrevious = 0;
-                if ($order > 0 && !empty($estimatedTimes)) {
-                    $timeFromPrevious = $estimatedTimes[$order] - $estimatedTimes[$order - 1];
-                } elseif ($order > 0) {
-                    $timeFromPrevious = rand(5, 12); // Fallback a tiempos aleatorios realistas
-                }
-
-                $route->stops()->attach($stopModels[$stopIndex]->id, [
-                    'order' => $order,
-                    'estimated_time_from_previous' => $timeFromPrevious,
-                ]);
-            }
-
             $routeModels[] = $route;
         }
+
+        // Las paradas adicionales son secundarias; los corredores curados se
+        // aplican después para que sólo ellos definan el trazado y la lista
+        // principal del conductor.
+        $this->call(AdditionalRouteStopsSeeder::class);
+        $this->call(FrequentRouteStopsSeeder::class);
+        $this->call(RouteCorridorSeeder::class);
 
         // Create 54 Buses (3 por cada ruta)
         $busModels = ['Mercedes-Benz Sprinter', 'Ford Transit', 'Volkswagen Crafter', 'Iveco Daily', 'Peugeot Boxer', 'Mercedes-Benz O500', 'Volvo 9700', 'Scania K360', 'Hyundai Universe', 'Man Lion\'s City'];
@@ -347,7 +306,9 @@ class DatabaseSeeder extends Seeder
         $tripModels = [];
 
         foreach ($buses as $bus) {
-            if (!$bus->routes->first() || !$bus->driver) continue;
+            if (! $bus->routes->first() || ! $bus->driver) {
+                continue;
+            }
 
             $route = $bus->routes->first();
 
@@ -420,7 +381,6 @@ class DatabaseSeeder extends Seeder
 
                 Rating::create([
                     'passenger_id' => $passenger->id,
-                    'driver_id' => $trip->driver_id,
                     'trip_id' => $trip->id,
                     'rating' => $rating,
                     'comment' => $rating >= 3 ? $ratingComments[array_rand($ratingComments)] : 'Puede mejorar',
@@ -430,18 +390,13 @@ class DatabaseSeeder extends Seeder
 
         $this->command->info('✅ Base de datos poblada con datos ampliados de Oaxaca');
         $this->command->info('📊 Estadísticas:');
-        $this->command->info('   - Rutas creadas: ' . Route::count());
-        // Paradas intermedias sobre el trazado real de cada ruta.
-        $this->call(AdditionalRouteStopsSeeder::class);
-        // Densificación: una parada aproximadamente cada 500 m por ruta.
-        $this->call(FrequentRouteStopsSeeder::class);
-
-        $this->command->info('   - Paradas creadas: ' . Stop::count());
-        $this->command->info('   - Autobuses creados: ' . Bus::count());
-        $this->command->info('   - Conductores: ' . count($drivers));
-        $this->command->info('   - Pasajeros: ' . count($passengers));
-        $this->command->info('   - Viajes registrados: ' . Trip::count());
-        $this->command->info('   - Calificaciones: ' . Rating::count());
+        $this->command->info('   - Rutas creadas: '.Route::count());
+        $this->command->info('   - Paradas creadas: '.Stop::count());
+        $this->command->info('   - Autobuses creados: '.Bus::count());
+        $this->command->info('   - Conductores: '.count($drivers));
+        $this->command->info('   - Pasajeros: '.count($passengers));
+        $this->command->info('   - Viajes registrados: '.Trip::count());
+        $this->command->info('   - Calificaciones: '.Rating::count());
         $this->command->info('');
         $this->command->info('📧 Credenciales:');
         $this->command->info('   Admin: admin@ubicaditos.com / password');
@@ -450,5 +405,6 @@ class DatabaseSeeder extends Seeder
         $this->command->info('');
         $this->command->warn('Las rutas se crearon sin trazado. Genera las calles reales con:');
         $this->command->line('   php artisan routes:generate-paths --force');
+        $this->command->line('   php artisan routes:prune-secondary-stops --max-distance=200');
     }
 }

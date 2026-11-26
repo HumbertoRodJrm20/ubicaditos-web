@@ -56,6 +56,7 @@ erDiagram
         decimal current_latitude
         decimal current_longitude
         timestamp last_location_update
+        int accuracy
         bigint driver_id FK
     }
     routes {
@@ -99,7 +100,6 @@ erDiagram
     ratings {
         bigint id PK
         bigint passenger_id FK
-        bigint driver_id FK
         bigint trip_id FK
         int rating
     }
@@ -112,6 +112,8 @@ erDiagram
         bigint id PK
         bigint user_id FK
         bigint route_id FK
+        int position
+        string label
     }
     likes {
         bigint id PK
@@ -122,6 +124,7 @@ erDiagram
     location_shares {
         bigint id PK
         bigint user_id FK
+        bigint bus_id FK
         string token UK
         decimal latitude
         decimal longitude
@@ -129,11 +132,22 @@ erDiagram
         timestamp expires_at
         timestamp revoked_at
     }
+    bus_stop_subscriptions {
+        bigint id PK
+        bigint user_id FK
+        bigint bus_id FK
+        bigint stop_id FK
+    }
     incidents {
         bigint id PK
         bigint user_id FK
+        bigint route_id FK
+        bigint bus_id FK
         string category
         text description
+        decimal latitude
+        decimal longitude
+        boolean is_public
         string status
         timestamp resolved_at
     }
@@ -149,7 +163,7 @@ erDiagram
         bigint sender_id FK
         bigint receiver_id FK
         bigint bus_id FK
-        boolean is_read
+        timestamp read_at
     }
 ```
 
@@ -164,16 +178,16 @@ erDiagram
 | `routes` | Rutas de transporte. | — |
 | `stops` | Paradas. | — |
 | `bus_route` | Asignación autobús ↔ ruta. | `bus_id`, `route_id` (**cascade**) |
-| `route_stop` | Paradas de cada ruta con orden y tiempo desde la anterior. | `route_id`, `stop_id` (**cascade**) |
+| `route_stop` | Paradas de cada ruta con orden y tiempo desde la anterior; índice único (`route_id`, `stop_id`). | `route_id`, `stop_id` (**cascade**) |
 | `trips` | Viajes. | `bus_id`, `route_id`, `driver_id → users` (**cascade**) |
-| `ratings` | Calificaciones. | `passenger_id`, `driver_id` (**cascade**); `trip_id` (**set null**) |
+| `ratings` | Calificaciones vinculadas al viaje; el conductor se deriva de `trips.driver_id`. | `passenger_id` (**cascade**); `trip_id` (**cascade**, obligatorio) |
 | `favorite_stops` | Paradas favoritas. Índice único (`user_id`, `stop_id`). | `user_id`, `stop_id` (**cascade**) |
-| `favorite_routes` | Rutas favoritas. Índice único (`user_id`, `route_id`). | `user_id`, `route_id` (**cascade**) |
+| `favorite_routes` | Rutas favoritas. Índice único (`user_id`, `route_id`), índice (`user_id`, `position`), `position` persistido y `label` opcional (máx. 40). | `user_id`, `route_id` (**cascade**) |
 | `likes` | Me gusta polimórfico (`route` o `stop`). Índice único (`user_id`, `likeable_type`, `likeable_id`). | `user_id` (**cascade**); la entidad destino se elimina por la relación polimórfica. |
 | `location_shares` | Enlaces temporales de ubicación. Token único, caducidad y revocación. | `user_id` (**cascade**) |
-| `incidents` | Reportes ciudadanos de incidencias. | `user_id` (**cascade**) |
+| `incidents` | Reportes ciudadanos con ruta/unidad, coordenadas y visibilidad pública opcionales; índice (`is_public`, `created_at`). | `user_id` (**cascade**); `route_id`, `bus_id` (**set null**) |
 | `emergency_reports` | Reportes de emergencia. | `reporter_id` (**cascade**); `bus_id` (**set null**) |
-| `messages` | Mensajes entre usuarios. | `sender_id`, `receiver_id`, `bus_id` (**cascade**) |
+| `messages` | Mensajes entre usuarios; `read_at` es la única fuente del estado de lectura (`is_read` se deriva en el modelo). | `sender_id`, `receiver_id`, `bus_id` (**cascade**) |
 
 ### Tablas de infraestructura de Laravel
 
@@ -199,6 +213,16 @@ erDiagram
 | `emergency_reports.status` | `pending`, `in_progress`, `resolved` |
 
 Las coordenadas se almacenan como `decimal(10, 7)`, lo que ofrece precisión de aproximadamente un centímetro.
+
+## Normalización 1NF/2NF/3NF
+
+| Forma normal | Estado en `staging` | Justificación |
+|--------------|---------------------|---------------|
+| 1NF | Cumplida con valores atómicos desde la perspectiva de la aplicación. | No hay columnas con listas separadas por comas ni grupos repetidos. `routes.path_coordinates`, `trips.path_taken` y `users.notification_preferences` se leen y escriben como documentos JSON completos; no se consultan ni actualizan sus elementos por separado, por lo que se tratan como un único valor del dominio. No se crearon tablas hijas para esos documentos. |
+| 2NF | Cumplida. | Todas las tablas de negocio tienen clave primaria simple (`id`). En los pivotes (`route_stop`, `bus_route`, `favorite_stops`, `favorite_routes`, `likes`, `bus_stop_subscriptions`) los atributos no clave dependen de la pareja/terna completa, no de una parte. `bus_route` ahora prohíbe parejas repetidas. |
+| 3NF | Cumplida tras las migraciones `000008`–`000010`. | Se eliminaron `messages.is_read` (derivable de `read_at`) y `ratings.driver_id` (derivable de `trip_id → trips.driver_id`). Se conservan `status` junto a `resolved_at`/`read_at` porque la marca de tiempo no se puede reconstruir desde el estado; y las ubicaciones actuales de `users`/`buses` frente a `location_shares`/`incidents` porque son entidades o instantáneas distintas, no copias. |
+
+La normalización no introduce datos nuevos: las migraciones primero validan y, si hace falta, rellenan el valor canónico antes de quitar la columna derivada. Cualquier inconsistencia detiene la migración con un mensaje explícito.
 
 ## Migraciones
 
@@ -227,6 +251,18 @@ Se ejecutan en orden cronológico según el prefijo del nombre del archivo:
 | `2026_11_08_000002_create_favorite_routes_table` | Crea `favorite_routes`. |
 | `2026_11_08_000003_create_location_shares_table` | Crea `location_shares`. |
 | `2026_11_08_000004_add_resolved_at_to_incidents_table` | Agrega `resolved_at` a `incidents`. |
+| `2026_11_25_000001_add_unique_route_stop_pair_index` | Agrega índice único a `(route_id, stop_id)` tras comprobar que no haya pares duplicados. |
+| `2026_11_25_000002_add_accuracy_to_buses_table` | Agrega `buses.accuracy` nullable para la precisión GPS (RNF-08). |
+| `2026_11_25_000003_add_bus_to_location_shares_table` | Agrega `location_shares.bus_id` nullable con FK a `buses` e índice para el conteo agregado (HU-012). |
+| `2026_11_25_000004_create_bus_stop_subscriptions_table` | Crea `bus_stop_subscriptions` con unicidad por `(user_id, bus_id, stop_id)` (HU-012). |
+| `2026_11_25_000005_add_context_to_incidents_table` | Agrega `incidents.route_id`/`bus_id` (FK nullable `nullOnDelete`), `latitude`, `longitude` e `is_public`, con índice `(is_public, created_at)` (HU-025). |
+| `2026_11_25_000006_add_preferences_to_favorite_routes_table` | Agrega `favorite_routes.position` y `label` con índice `(user_id, position)` y asigna posiciones a los favoritos históricos (HU-027). |
+| `2026_11_25_000007_add_onboarding_settings_to_users_table` | Agrega aprobación, licencia, preferencias y banderas de onboarding a `users`; backfill de conductores aprobados. |
+| `2026_11_25_000008_normalize_message_read_state` | Elimina `messages.is_read` (derivable de `read_at`) y rellena `read_at` para los mensajes ya leídos. |
+| `2026_11_25_000009_normalize_rating_driver` | Elimina `ratings.driver_id` (derivable de `trip_id → trips.driver_id`), hace `trip_id` obligatorio y cambia su borrado a `cascade`; falla si hay datos inconsistentes. |
+| `2026_11_25_000010_add_unique_bus_route_assignment` | Añade único `(bus_id, route_id)` en `bus_route`; falla si ya existen asignaciones duplicadas. |
+
+La migración de unicidad cuenta los duplicados y falla con la pareja conflictiva; no elimina ni reescribe datos. Las migraciones `000002`–`000007` fueron aprobadas previamente por el propietario. Las tres migraciones de normalización (`000008`–`000010`) fueron aprobadas el 2026-11-25 en la rama `staging`: sus preflight fallan ante datos inconsistentes sin borrarlos. Se probaron con `migrate`, `migrate:rollback --step=3` y `migrate` otra vez contra un archivo SQLite temporal, además de las migraciones en memoria de PHPUnit. El DDL usa índices, claves foráneas y columnas nullable estándar de Laravel, compatibles con SQLite y PostgreSQL; no se ejecutó contra una instancia PostgreSQL en esta sesión. El SQLite de desarrollo no se migró.
 
 Comandos útiles:
 

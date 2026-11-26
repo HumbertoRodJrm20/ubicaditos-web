@@ -26,12 +26,12 @@
             'Inicio'       => 'admin.dashboard',
             'Autobuses'    => 'admin.buses.index',
             'Rutas'        => 'admin.routes.index',
+            'Estudio'      => 'admin.routes.manage',
             'Conductores'  => 'admin.drivers',
             'Pasajeros'    => 'admin.passengers',
             'Emergencias'  => 'admin.emergencies',
             'Incidencias'  => 'admin.incidents.index',
             'Reportes'     => 'admin.reports',
-            'Estadísticas' => 'admin.statistics',
         ];
     } else {
         $items = [
@@ -78,16 +78,14 @@
     <div class="hidden lg:flex items-center gap-1">
         @foreach($links as $link)
             <a href="{{ $link['href'] }}"
-               class="px-4 py-1.5 rounded-full text-[13px] font-medium transition {{ $link['active'] ? 'bg-[#4b5a85] text-white shadow' : 'text-slate-500 dark:text-gray-300 hover:text-[#3f4c75]' }}">
+               class="px-4 py-1.5 rounded-full text-[13px] font-medium transition {{ $link['active'] ? 'bg-[#4b5a85] text-white shadow dark:bg-[#6b7bad]' : 'text-slate-500 dark:text-gray-300 hover:text-[#3f4c75] dark:hover:text-white' }}">
                 {{ $link['label'] }}
             </a>
         @endforeach
     </div>
 
     <div class="flex items-center gap-2 justify-self-end col-start-3">
-        <button type="button" data-toggle-dark class="w-8 h-8 rounded-full bg-white/80 dark:bg-gray-700 border border-slate-200/70 dark:border-gray-600 flex items-center justify-center text-slate-600 dark:text-gray-200" aria-label="Modo oscuro" title="Cambiar tema">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
-        </button>
+        <x-theme-toggle />
 
         <div class="relative">
             <button type="button" data-toggle="user-menu" class="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-white/80 dark:bg-gray-700 border border-slate-200/70 dark:border-gray-600">
@@ -138,14 +136,4 @@
         });
     });
 
-    document.addEventListener('click', function (e) {
-        if (!e.target.closest('[data-toggle-dark]')) return;
-
-        const isDark = document.documentElement.classList.toggle('dark');
-        localStorage.setItem('darkMode', isDark ? 'true' : 'false');
-    });
-
-    if (localStorage.getItem('darkMode') === 'true') {
-        document.documentElement.classList.add('dark');
-    }
 </script>

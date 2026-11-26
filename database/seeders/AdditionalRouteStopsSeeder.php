@@ -7,11 +7,15 @@ use App\Models\Stop;
 use Illuminate\Database\Seeder;
 
 /**
- * Agrega paradas intermedias a las rutas existentes.
+ * Agrega paradas secundarias a las rutas existentes.
  *
  * Los puntos fueron muestreados sobre el trazado real de cada ruta (OSRM) y
  * geocodificados con Nominatim. El archivo de datos también guarda la posición
  * final dentro del recorrido para que el seeder sea reproducible.
+ *
+ * Estas paradas no definen la geometría: la secuencia principal se declara en
+ * RouteCorridorSeeder. Aquí se marcan como de alta frecuencia para que OSRM y
+ * el mapa del conductor no las usen como waypoints.
  */
 class AdditionalRouteStopsSeeder extends Seeder
 {
@@ -19,7 +23,7 @@ class AdditionalRouteStopsSeeder extends Seeder
 
     protected string $label = 'Paradas adicionales';
 
-    protected bool $isFrequent = false;
+    protected bool $isFrequent = true;
 
     public function run(): void
     {
@@ -98,12 +102,8 @@ class AdditionalRouteStopsSeeder extends Seeder
                     ->exists();
 
                 if ($alreadyAttached) {
-                    if ($this->isFrequent) {
-                        $route->stops()->updateExistingPivot($stop->id, [
-                            'is_frequent' => true,
-                        ]);
-                    }
-
+                    // No se toca una parada que ya exista: podría ser una
+                    // parada principal definida por RouteCorridorSeeder.
                     continue;
                 }
 

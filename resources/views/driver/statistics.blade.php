@@ -1,8 +1,8 @@
 @php
-    $cardClass = 'rounded-[28px] border border-white/70 bg-white/80 p-4 shadow-xl shadow-[#4a5a8a]/10 backdrop-blur-xl';
-    $labelClass = 'text-[11px] text-[#5b6788]';
-    $valueClass = 'text-xl font-bold text-[#1e2a4a]';
-    $muted = 'text-[#5b6788]';
+    $cardClass = 'rounded-[28px] border border-white/70 bg-white/80 p-4 shadow-xl shadow-[#4a5a8a]/10 backdrop-blur-xl dark:border-white/10 dark:bg-gray-800/80';
+    $labelClass = 'text-[11px] text-[#5b6788] dark:text-gray-400';
+    $valueClass = 'text-xl font-bold text-[#1e2a4a] dark:text-gray-100';
+    $muted = 'text-[#5b6788] dark:text-gray-400';
 
     $kpiTiles = [
         ['label' => 'Viajes completados', 'value' => number_format($stats['completed_trips']), 'hint' => number_format($stats['total_trips']) . ' en total'],
@@ -22,8 +22,8 @@
 <x-passenger-layout title="Ubicaditos · Mis estadísticas">
     <div class="space-y-4">
         <div>
-            <h1 class="text-[27px] font-bold leading-tight text-[#1e2a4a]">Mis estadísticas</h1>
-            <p class="text-[11px] text-slate-500">Resumen de tu desempeño como conductor</p>
+            <h1 class="text-[27px] font-bold leading-tight text-[#1e2a4a] dark:text-gray-100">Mis estadísticas</h1>
+            <p class="text-[11px] text-slate-500 dark:text-gray-400">Resumen de tu desempeño como conductor</p>
         </div>
 
         {{-- KPIs --}}
@@ -32,7 +32,7 @@
                 <div class="{{ $cardClass }} !p-4">
                     <p class="{{ $labelClass }}">{{ $tile['label'] }}</p>
                     <p class="{{ $valueClass }} mt-1 leading-tight">{{ $tile['value'] }}</p>
-                    <p class="mt-0.5 text-[10px] text-[#8a94b3]">{{ $tile['hint'] }}</p>
+                    <p class="mt-0.5 text-[10px] text-[#8a94b3] dark:text-gray-500">{{ $tile['hint'] }}</p>
                 </div>
             @endforeach
         </div>
@@ -41,16 +41,16 @@
         <section class="{{ $cardClass }}">
             <div class="mb-4 flex items-center justify-between">
                 <div>
-                    <h2 class="text-[15px] font-bold text-[#1e2a4a]">Viajes de los últimos 7 días</h2>
+                    <h2 class="text-[15px] font-bold text-[#1e2a4a] dark:text-gray-100">Viajes de los últimos 7 días</h2>
                     <p class="text-[11px] {{ $muted }}">Viajes iniciados por fecha</p>
                 </div>
-                <span class="rounded-full bg-[#eef2fa] px-3 py-1 text-[10px] font-semibold text-[#5b6788]">
+                <span class="rounded-full bg-[#eef2fa] px-3 py-1 text-[10px] font-semibold text-[#5b6788] dark:bg-gray-700 dark:text-gray-300">
                     {{ number_format($stats['by_day']->sum()) }} viajes
                 </span>
             </div>
 
             @if ($stats['by_day']->isEmpty())
-                <p class="rounded-2xl bg-[#f7f9fd] px-4 py-8 text-center text-xs {{ $muted }}">
+                <p class="rounded-2xl bg-[#f7f9fd] px-4 py-8 text-center text-xs {{ $muted }} dark:bg-gray-700/40">
                     Aún no tienes viajes registrados en esta semana.
                 </p>
             @else
@@ -61,7 +61,7 @@
                             $dayLabel = \Carbon\Carbon::parse($date)->locale('es')->isoFormat('dd');
                         @endphp
                         <div class="flex min-w-0 flex-1 flex-col items-center gap-1.5" title="{{ $dayLabel }}: {{ $total }} viajes">
-                            <span class="text-[10px] font-semibold text-[#5b6788]">{{ $total }}</span>
+                            <span class="text-[10px] font-semibold text-[#5b6788] dark:text-gray-400">{{ $total }}</span>
                             <div class="w-full rounded-t-lg bg-gradient-to-b from-[#7b88b8] to-[#4a5a8a]"
                                  style="height: {{ $height }}%"></div>
                             <span class="text-[10px] capitalize {{ $muted }}">{{ $dayLabel }}</span>
@@ -74,10 +74,10 @@
         <div class="grid gap-4 lg:grid-cols-2">
             {{-- Rutas más frecuentes --}}
             <section class="{{ $cardClass }}">
-                <h2 class="mb-3 text-[15px] font-bold text-[#1e2a4a]">Rutas más frecuentes</h2>
+                <h2 class="mb-3 text-[15px] font-bold text-[#1e2a4a] dark:text-gray-100">Rutas más frecuentes</h2>
 
                 @if ($stats['by_route']->isEmpty())
-                    <p class="rounded-2xl bg-[#f7f9fd] px-4 py-8 text-center text-xs {{ $muted }}">
+                    <p class="rounded-2xl bg-[#f7f9fd] px-4 py-8 text-center text-xs {{ $muted }} dark:bg-gray-700/40">
                         Completa viajes para ver tus rutas principales.
                     </p>
                 @else
@@ -88,16 +88,16 @@
                                     ? (int) round(($entry->total / max(1, $stats['completed_trips'])) * 100)
                                     : 0;
                             @endphp
-                            <li class="rounded-2xl bg-[#f7f9fd] px-3 py-2.5">
+                            <li class="rounded-2xl bg-[#f7f9fd] px-3 py-2.5 dark:bg-gray-700/40">
                                 <div class="flex items-center justify-between gap-3 text-xs">
-                                    <span class="min-w-0 truncate font-semibold text-[#1e2a4a]">
+                                    <span class="min-w-0 truncate font-semibold text-[#1e2a4a] dark:text-gray-100">
                                         {{ $entry->route->name ?? 'Ruta eliminada' }}
                                     </span>
-                                    <span class="shrink-0 font-semibold text-[#5b6788]">
+                                    <span class="shrink-0 font-semibold text-[#5b6788] dark:text-gray-400">
                                         {{ $entry->total }} viajes · {{ $share }}%
                                     </span>
                                 </div>
-                                <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white">
+                                <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white dark:bg-gray-600">
                                     <div class="h-full rounded-full"
                                          style="width: {{ $share }}%; background-color: {{ $entry->route->color ?? '#6b7bad' }}"></div>
                                 </div>
@@ -110,25 +110,25 @@
             {{-- Calificaciones recientes --}}
             <section class="{{ $cardClass }}">
                 <div class="mb-3 flex items-center justify-between">
-                    <h2 class="text-[15px] font-bold text-[#1e2a4a]">Calificaciones recientes</h2>
-                    <span class="rounded-full bg-[#eef2fa] px-3 py-1 text-[10px] font-semibold text-[#5b6788]">
+                    <h2 class="text-[15px] font-bold text-[#1e2a4a] dark:text-gray-100">Calificaciones recientes</h2>
+                    <span class="rounded-full bg-[#eef2fa] px-3 py-1 text-[10px] font-semibold text-[#5b6788] dark:bg-gray-700 dark:text-gray-300">
                         {{ number_format($stats['avg_rating'], 1) }} ★ promedio
                     </span>
                 </div>
 
                 @if ($recentRatings->isEmpty())
-                    <p class="rounded-2xl bg-[#f7f9fd] px-4 py-8 text-center text-xs {{ $muted }}">
+                    <p class="rounded-2xl bg-[#f7f9fd] px-4 py-8 text-center text-xs {{ $muted }} dark:bg-gray-700/40">
                         Todavía no recibes calificaciones de pasajeros.
                     </p>
                 @else
                     <ul class="space-y-2">
                         @foreach ($recentRatings as $rating)
-                            <li class="flex items-center gap-3 rounded-2xl bg-[#f7f9fd] px-3 py-2.5">
+                            <li class="flex items-center gap-3 rounded-2xl bg-[#f7f9fd] px-3 py-2.5 dark:bg-gray-700/40">
                                 <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#7b88b8] to-[#4a5a8a] text-[11px] font-bold text-white">
                                     {{ collect(explode(' ', trim($rating->passenger->name ?? '—')))->filter()->take(2)->map(fn ($part) => mb_substr($part, 0, 1))->implode('') }}
                                 </div>
                                 <div class="min-w-0 flex-1">
-                                    <p class="truncate text-xs font-semibold text-[#1e2a4a]">{{ $rating->passenger->name ?? 'Pasajero' }}</p>
+                                    <p class="truncate text-xs font-semibold text-[#1e2a4a] dark:text-gray-100">{{ $rating->passenger->name ?? 'Pasajero' }}</p>
                                     <p class="text-[10px] {{ $muted }}">{{ $rating->created_at->diffForHumans() }}</p>
                                 </div>
                                 <div class="shrink-0 text-right">
@@ -146,7 +146,7 @@
 
         <div class="flex flex-wrap gap-2">
             <a href="{{ route('driver.dashboard') }}"
-                class="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-full border border-white/70 bg-white/85 px-5 text-xs font-semibold text-[#3d4a6b] shadow-sm transition hover:bg-white">
+                class="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-full border border-white/70 bg-white/85 px-5 text-xs font-semibold text-[#3d4a6b] shadow-sm transition hover:bg-white dark:border-white/10 dark:bg-gray-800/80 dark:text-gray-200 dark:hover:bg-gray-700">
                 Volver al panel
             </a>
             <a href="{{ route('driver.map') }}"

@@ -35,4 +35,18 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | OSRM
+    |--------------------------------------------------------------------------
+    |
+    | El servidor público es suficiente para desarrollo y volumen bajo. En
+    | producción se recomienda apuntar a una instancia propia o comercial.
+    |
+    */
+    'osrm' => [
+        'url' => env('OSRM_URL', 'https://router.project-osrm.org'),
+        'timeout' => (int) env('OSRM_TIMEOUT', 30),
+    ],
+
 ];

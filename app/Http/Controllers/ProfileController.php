@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\ProfileUpdateRequest;
+use App\Http\Requests\SettingsUpdateRequest;
+use App\Services\DriverDeactivationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -31,7 +32,7 @@ class ProfileController extends Controller
     /**
      * Update the user's profile information.
      */
-    public function update(ProfileUpdateRequest $request): RedirectResponse
+    public function update(SettingsUpdateRequest $request): RedirectResponse
     {
         $request->user()->fill($request->validated());
 
@@ -47,17 +48,28 @@ class ProfileController extends Controller
     /**
      * Delete the user's account.
      */
-    public function destroy(Request $request): RedirectResponse
+    public function destroy(Request $request, DriverDeactivationService $driverDeactivation): RedirectResponse
     {
         $request->validateWithBag('userDeletion', [
             'password' => ['required', 'current_password'],
         ]);
 
         $user = $request->user();
+        $isDriver = $user->role === 'driver';
+
+        if ($isDriver) {
+            if (! $driverDeactivation->deactivate($user)) {
+                return Redirect::route('profile.edit')->withErrors([
+                    'password' => 'No puedes desactivar tu cuenta mientras tengas un viaje activo.',
+                ], 'userDeletion');
+            }
+        }
 
         Auth::logout();
 
-        $user->delete();
+        if (! $isDriver) {
+            $user->delete();
+        }
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

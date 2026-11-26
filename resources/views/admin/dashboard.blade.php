@@ -1,6 +1,6 @@
 @php
     $card = 'bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-white/80 dark:border-white/10 shadow-[0_20px_50px_-20px_rgba(60,70,110,0.35)] rounded-[34px]';
-    $tile = 'flex items-center gap-3 rounded-[22px] bg-white/85 dark:bg-gray-700/60 px-3 py-[10px] hover:bg-white transition';
+    $tile = 'flex items-center gap-3 rounded-[22px] bg-white/85 dark:bg-gray-700/60 px-3 py-[10px] hover:bg-white dark:hover:bg-gray-700 transition';
     $tileIcon = 'w-11 h-11 rounded-[14px] text-white flex items-center justify-center shrink-0 shadow-md';
     $statRow = 'flex items-center justify-between rounded-[18px] bg-white/85 dark:bg-gray-700/60 px-3 py-3';
     $userPlus = '<svg class="w-11 h-11" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>';
@@ -13,7 +13,7 @@
     $clockSvg = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
 @endphp
 
-<x-passenger-layout title="Ubicaditos · Inicio">
+<x-passenger-layout title="Ubicaditos · Inicio" surface="admin">
     <x-slot name="head">
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
               integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
@@ -23,6 +23,8 @@
     <style>
         #admin-map { background: #e8edf8; }
         #admin-map .leaflet-tile-pane { filter: saturate(.3) brightness(1.08) contrast(.88); opacity: .8; }
+        .dark #admin-map { background: #0f172a; }
+        .dark #admin-map .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.85) contrast(.9); opacity: .7; }
         .leaflet-popup-content-wrapper { border-radius: 16px; box-shadow: 0 12px 30px rgba(60, 70, 110, .25); }
     </style>
 
@@ -121,6 +123,54 @@
                     <div class="text-[12px] text-slate-500 dark:text-gray-400">Total de viajes registrados hoy</div>
                 </div>
                 <span class="text-[#8fcfcf] mr-2 [&>svg]:w-9 [&>svg]:h-9">{!! $clockSvg !!}</span>
+            </div>
+
+            <div class="{{ $statRow }}">
+                <div>
+                    <div class="text-[12px] text-slate-500 dark:text-gray-400">Calificación promedio</div>
+                    <div class="text-[17px] font-bold text-[#1e2a4a] dark:text-gray-100 leading-tight">
+                        {{ $stats['average_rating'] !== null ? number_format($stats['average_rating'], 1, '.', ',') : '—' }}
+                    </div>
+                    <div class="text-[12px] text-slate-500 dark:text-gray-400">
+                        {{ $stats['ratings_count'] }} {{ $stats['ratings_count'] === 1 ? 'calificación' : 'calificaciones' }}
+                    </div>
+                </div>
+                <span class="text-[#f0b45e] mr-2 [&>svg]:w-9 [&>svg]:h-9">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9L12 3.5Z"></path>
+                    </svg>
+                </span>
+            </div>
+        </div>
+
+        <div class="{{ $card }} p-6 mt-5">
+            <h3 class="text-[16px] font-semibold text-[#2f3a5f] dark:text-gray-100 mb-4">Estado de la flota y reportes</h3>
+            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <a href="{{ route('admin.buses.index', ['status' => 'maintenance']) }}" class="rounded-[22px] bg-white/85 dark:bg-gray-700/60 px-4 py-3 transition hover:bg-white dark:hover:bg-gray-700">
+                    <p class="text-[11px] font-semibold uppercase tracking-[.1em] text-slate-400 dark:text-gray-500">Mantenimiento</p>
+                    <p class="mt-1 text-[22px] font-bold leading-tight text-amber-600 dark:text-amber-300">{{ $stats['maintenance_buses'] }}</p>
+                    <p class="text-[11px] text-slate-500 dark:text-gray-400">Unidades en taller</p>
+                </a>
+                <a href="{{ route('admin.buses.index', ['status' => 'emergency']) }}" class="rounded-[22px] bg-white/85 dark:bg-gray-700/60 px-4 py-3 transition hover:bg-white dark:hover:bg-gray-700">
+                    <p class="text-[11px] font-semibold uppercase tracking-[.1em] text-slate-400 dark:text-gray-500">Emergencias</p>
+                    <p class="mt-1 text-[22px] font-bold leading-tight text-rose-600 dark:text-rose-300">{{ $stats['emergency_buses'] }}</p>
+                    <p class="text-[11px] text-slate-500 dark:text-gray-400">Unidades fuera de servicio</p>
+                </a>
+                <a href="{{ route('admin.buses.index', ['status' => 'inactive']) }}" class="rounded-[22px] bg-white/85 dark:bg-gray-700/60 px-4 py-3 transition hover:bg-white dark:hover:bg-gray-700">
+                    <p class="text-[11px] font-semibold uppercase tracking-[.1em] text-slate-400 dark:text-gray-500">Inactivas</p>
+                    <p class="mt-1 text-[22px] font-bold leading-tight text-slate-600 dark:text-gray-200">{{ $stats['inactive_buses'] }}</p>
+                    <p class="text-[11px] text-slate-500 dark:text-gray-400">Sin operación</p>
+                </a>
+                <a href="{{ route('admin.incidents.index', ['status' => 'pending']) }}" class="rounded-[22px] bg-white/85 dark:bg-gray-700/60 px-4 py-3 transition hover:bg-white dark:hover:bg-gray-700">
+                    <p class="text-[11px] font-semibold uppercase tracking-[.1em] text-slate-400 dark:text-gray-500">Incidencias</p>
+                    <p class="mt-1 text-[22px] font-bold leading-tight text-amber-600 dark:text-amber-300">{{ $stats['pending_incidents'] }}</p>
+                    <p class="text-[11px] text-slate-500 dark:text-gray-400">Pendientes de atención</p>
+                </a>
+                <a href="{{ route('admin.emergencies') }}" class="rounded-[22px] bg-white/85 dark:bg-gray-700/60 px-4 py-3 transition hover:bg-white dark:hover:bg-gray-700">
+                    <p class="text-[11px] font-semibold uppercase tracking-[.1em] text-slate-400 dark:text-gray-500">Emergencias reportadas</p>
+                    <p class="mt-1 text-[22px] font-bold leading-tight text-rose-600 dark:text-rose-300">{{ $stats['pending_emergencies'] }}</p>
+                    <p class="text-[11px] text-slate-500 dark:text-gray-400">Pendientes de resolver</p>
+                </a>
             </div>
         </div>
 

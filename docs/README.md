@@ -62,7 +62,10 @@ Abre `http://localhost:8000` e inicia sesión con alguna de las cuentas de prueb
 | 15 | [Auditoría técnica de mapas (histórica)](15-auditoria-mapas.md) | Informe de diagnóstico de octubre de 2026 sobre los mapas de pasajero y conductor. Se conserva como antecedente; las correcciones aplicadas están en las secciones 13 y 14. |
 | 16 | [Iteración 4 — Likes, favoritos, ubicación compartida y reportes](16-iteracion-4.md) | Me gusta polimórficos, rutas favoritas, enlaces temporales de ubicación, gestión administrativa de reportes ciudadanos, métricas del perfil y restilizado glass. |
 | 17 | [Iteración 5 y 6 — Reportes, rutas, perfil y sesión](17-iteracion-5-6.md) | Flujo completo de reportes ciudadanos, listado de rutas con recorrido completo, configuración del perfil y cierre de sesión seguro. |
-| 18 | [Registro técnico de desarrollo (_devlog)](_devlog.md) | Bitácora técnica de lo realizado en cada iteración. |
+| 18 | [Iteración 7 — Modo oscuro y administración](18-iteracion-7.md) | Tema oscuro persistente, conmutador compartido, dashboard con contadores de flota y reportes, y listado de autobuses con resumen y filtros. |
+| 19 | [Registro técnico de desarrollo (_devlog)](_devlog.md) | Bitácora técnica de lo realizado en cada iteración. |
+| 20 | [Despliegue de producción en IONOS](20-despliegue-ionos.md) | Docker Compose, PostgreSQL, Reverb, TLS, backups y límites de OSRM. |
+| 21 | [Despliegue de staging en Railway](21-despliegue-railway.md) | PostgreSQL por `DATABASE_URL`, Dockerfile multi-etapa, puerto inyectado y migraciones al arrancar. |
 
 ## Resumen funcional
 
@@ -70,4 +73,4 @@ Abre `http://localhost:8000` e inicia sesión con alguna de las cuentas de prueb
 | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Pasajero**      | Mapa en tiempo real con rutas, paradas y autobuses; rutas más cercanas a su ubicación; tiempos estimados de llegada; me gusta en rutas y paradas; paradas y rutas favoritas; listado completo de rutas con todas sus paradas; enlace temporal para compartir su ubicación; reportes de incidencias con tipo y comentarios; perfil editable con teléfono y cierre de sesión seguro; calificación de conductores. |
 | **Conductor**     | Panel con su autobús asignado y viajes recientes; mapa de su ruta con GPS; inicio y fin de viaje (validando turno y cercanía a una parada); actualización de pasajeros a bordo; reporte de emergencias y acceso a reportes de incidencias. |
-| **Administrador** | Dashboard con estadísticas y mapa en vivo; CRUD de autobuses, rutas y usuarios; asignación de autobuses a conductores; gestión de pasajeros; gestión de reportes ciudadanos con filtros y estados; estadísticas y reportes con gráficas; exportación a PDF y CSV. |
+| **Administrador** | Dashboard con estadísticas, contadores de flota y reportes, y mapa en vivo; CRUD de autobuses, rutas y usuarios; asignación de autobuses a conductores; gestión de pasajeros; listado de autobuses con resumen y filtros por estado; gestión de reportes ciudadanos con filtros y estados; vista única de reportes y estadísticas con gráficas; exportación a PDF y CSV. Toda la interfaz incluye modo oscuro persistente. |

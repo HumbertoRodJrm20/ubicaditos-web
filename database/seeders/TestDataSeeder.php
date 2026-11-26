@@ -2,10 +2,16 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use App\Models\{User, Bus, Route, Stop, Trip, Rating, EmergencyReport};
-use Illuminate\Support\Facades\Hash;
+use App\Models\Bus;
+use App\Models\EmergencyReport;
+use App\Models\Rating;
+use App\Models\Route;
+use App\Models\Stop;
+use App\Models\Trip;
+use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class TestDataSeeder extends Seeder
 {
@@ -17,6 +23,7 @@ class TestDataSeeder extends Seeder
 
         if ($routes->isEmpty() || $stops->isEmpty()) {
             $this->command->error('Por favor ejecuta primero los seeders de rutas y paradas');
+
             return;
         }
 
@@ -25,10 +32,10 @@ class TestDataSeeder extends Seeder
         $drivers = [];
         for ($i = 1; $i <= 100; $i++) {
             $drivers[] = User::create([
-                'name' => 'Conductor ' . $i,
-                'email' => 'driver' . $i . '@ubicaditos.test',
+                'name' => 'Conductor '.$i,
+                'email' => 'driver'.$i.'@ubicaditos.test',
                 'password' => Hash::make('password'),
-                'phone' => '951' . rand(1000000, 9999999),
+                'phone' => '951'.rand(1000000, 9999999),
                 'role' => 'driver',
             ]);
         }
@@ -38,10 +45,10 @@ class TestDataSeeder extends Seeder
         $passengers = [];
         for ($i = 1; $i <= 150; $i++) {
             $passengers[] = User::create([
-                'name' => 'Pasajero ' . $i,
-                'email' => 'passenger' . $i . '@ubicaditos.test',
+                'name' => 'Pasajero '.$i,
+                'email' => 'passenger'.$i.'@ubicaditos.test',
                 'password' => Hash::make('password'),
-                'phone' => '951' . rand(1000000, 9999999),
+                'phone' => '951'.rand(1000000, 9999999),
                 'role' => 'passenger',
             ]);
         }
@@ -53,7 +60,7 @@ class TestDataSeeder extends Seeder
 
         for ($i = 1; $i <= 50; $i++) {
             $bus = Bus::create([
-                'license_plate' => 'OAX-' . rand(100, 999) . '-' . chr(rand(65, 90)),
+                'license_plate' => 'OAX-'.rand(100, 999).'-'.chr(rand(65, 90)),
                 'model' => $models[array_rand($models)],
                 'capacity' => rand(40, 60),
                 'current_passengers' => 0,
@@ -66,7 +73,7 @@ class TestDataSeeder extends Seeder
             $bus->routes()->attach($randomRoute->id);
 
             // Assign to a random driver (70% chance)
-            if (rand(0, 100) > 30 && !empty($drivers)) {
+            if (rand(0, 100) > 30 && ! empty($drivers)) {
                 $randomDriver = $drivers[array_rand($drivers)];
                 $bus->driver_id = $randomDriver->id;
                 $bus->save();
@@ -86,7 +93,9 @@ class TestDataSeeder extends Seeder
             $date = Carbon::now()->subDays($day);
 
             // Skip if it's a future date
-            if ($date->isFuture()) continue;
+            if ($date->isFuture()) {
+                continue;
+            }
 
             // More trips on weekdays
             $tripsPerDay = $date->isWeekday() ? rand(15, 30) : rand(8, 15);
@@ -146,7 +155,6 @@ class TestDataSeeder extends Seeder
                 Rating::create([
                     'trip_id' => $trip->id,
                     'passenger_id' => $passenger->id,
-                    'driver_id' => $trip->driver_id,
                     'rating' => rand(3, 5), // Mostly positive ratings
                     'comment' => $this->getRandomComment(),
                 ]);
@@ -196,10 +204,10 @@ class TestDataSeeder extends Seeder
         $this->command->info("Creados {$emergencyCount} reportes de emergencia");
 
         $this->command->info('✅ Seeder completado exitosamente!');
-        $this->command->info("Total de registros creados:");
-        $this->command->info("  - 100 conductores");
-        $this->command->info("  - 150 pasajeros");
-        $this->command->info("  - 50 autobuses");
+        $this->command->info('Total de registros creados:');
+        $this->command->info('  - 100 conductores');
+        $this->command->info('  - 150 pasajeros');
+        $this->command->info('  - 50 autobuses');
         $this->command->info("  - {$tripCount} viajes completados + 10 en progreso");
         $this->command->info("  - {$ratingCount} calificaciones");
         $this->command->info("  - {$favoriteCount} paradas favoritas");

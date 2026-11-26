@@ -28,7 +28,8 @@
                         <circle cx="11" cy="11" r="7" stroke-width="2"></circle>
                         <path stroke-linecap="round" stroke-width="2" d="M20 20l-3.5-3.5"></path>
                     </svg>
-                    <input type="text" placeholder="Buscar parada o ruta"
+                    <input id="map-search-input" type="text" placeholder="Busca una calle, colonia, lugar o ruta"
+                           autocomplete="off"
                            class="w-full pl-10 pr-12 py-3 rounded-full bg-white/80 dark:bg-gray-800/70 backdrop-blur-xl border border-white/70 dark:border-white/10 shadow-lg text-sm text-slate-700 dark:text-gray-100 placeholder-slate-400 focus:ring-2 focus:ring-[#6b7aa8]/40 focus:border-transparent">
 
                     <button type="button" data-toggle="filters-panel" class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-100/80" aria-label="Filtros">
@@ -37,11 +38,17 @@
                         </svg>
                     </button>
 
+                    {{-- Resultados de búsqueda por calle, colonia, lugar o ruta --}}
+                    <div id="search-results" class="hidden absolute left-0 right-0 top-[calc(100%+8px)] z-20 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-white/70 dark:border-white/10 shadow-xl rounded-2xl p-2">
+                        <div id="search-results-status" class="hidden px-3 py-2 text-xs text-slate-500 dark:text-gray-400"></div>
+                        <div id="search-results-body" class="max-h-[52vh] space-y-1.5 overflow-y-auto panel-scroll"></div>
+                    </div>
+
                     <div id="filters-panel" data-popover class="hidden absolute left-0 right-0 top-[calc(100%+8px)] z-10 bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl border border-white/70 dark:border-white/10 shadow-xl rounded-2xl p-4 space-y-3">
                         <div>
                             <label for="route-filter" class="block text-xs font-medium text-slate-500 dark:text-gray-400 mb-1">Filtrar por ruta</label>
                             <select id="route-filter" class="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl text-sm text-slate-700 dark:text-gray-100 focus:ring-2 focus:ring-[#6b7aa8]/40 focus:border-transparent">
-                                <option value="">Todas las rutas</option>
+                                <option value="">Sin ruta seleccionada</option>
                                 @foreach($routes as $route)
                                     <option value="{{ $route->id }}" {{ request('route_id') == $route->id ? 'selected' : '' }}>{{ $route->name }}</option>
                                 @endforeach
@@ -96,7 +103,7 @@
                     </div>
                     <div id="nearest-routes-body">
                         <div id="nearest-routes-list" class="space-y-2 overflow-y-auto panel-scroll lg:max-h-[46vh]">
-                            <p class="text-xs text-slate-500 dark:text-gray-400">Activa «Mostrar solo rutas cercanas» en los filtros para ver las rutas más cercanas a ti.</p>
+                            <p class="text-xs text-slate-500 dark:text-gray-400">Obteniendo tu ubicación para recomendarte rutas cercanas…</p>
                         </div>
                     </div>
                 </div>
@@ -135,6 +142,14 @@
                         <div id="arrival-times" class="space-y-2 max-h-[40vh] overflow-y-auto panel-scroll">
                             <p class="text-xs text-slate-500 dark:text-gray-400 italic">Haz clic en una parada para ver los tiempos de llegada</p>
                         </div>
+
+                        {{-- HU-009/HU-30: aviso de incertidumbre compartido con la respuesta del servidor. --}}
+                        <p id="eta-uncertainty-notice"
+                           data-eta-endpoint="{{ route('api.stops.eta', ['stop' => 1]) }}"
+                           data-notify-endpoint="{{ route('passenger.notifications.subscribe') }}"
+                           class="hidden mt-2 rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2 text-[11px] text-amber-700 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-300">
+                            Los tiempos son aproximados: la ubicación del autobús puede estar desactualizada o no hay servicio activo hacia esta parada.
+                        </p>
 
                         <button type="button" class="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-full border border-slate-300 dark:border-gray-600 bg-white/60 dark:bg-gray-700/60 text-[13px] font-medium text-[#4b5a85] dark:text-gray-200">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -293,13 +308,14 @@
                     e.accuracy
                 );
 
+                autoUpdateNearestRoutes();
+
                 map.flyTo(e.latlng, 16);
         });
 
         map.on('locationerror', function(e) {
             console.warn('⚠ No se pudo obtener tu ubicación:', e.message);
-
-            alert(`Unable to retrieve location: ${e.message}`);
+            setGpsUnavailable('No se pudo obtener tu ubicación: ' + e.message);
         });
 
         // ===== Paneles flotantes colapsables (data-collapse-target) =====
@@ -342,7 +358,7 @@
         // consultado (ruta, parada o autobús llegado por URL ?route_id/?stop_id/?bus_id).
         let centerLocked = false;
 
-        const NEAREST_EMPTY = '<p class="text-xs text-slate-500 dark:text-gray-400">Activa «Mostrar solo rutas cercanas» en los filtros para ver las rutas más cercanas a ti.</p>';
+        const NEAREST_EMPTY = '<p class="text-xs text-slate-500 dark:text-gray-400">No pudimos obtener tu ubicación. Busca por calle, colonia o lugar para encontrar rutas.</p>';
 
         const BUS_SVG = (size = 18) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="14" rx="3"></rect><path d="M4 11h16M8 21v-4M16 21v-4"></path><circle cx="8.5" cy="14" r=".6"></circle><circle cx="15.5" cy="14" r=".6"></circle></svg>`;
 
@@ -456,14 +472,8 @@
         console.log('Rutas cargadas:', routes.length);
 
         let userLocationWatchId = null;
-        let simulatedLocationInterval = null;
         let latestUserCoordinates = null;
-
-        const SIMULATED_LOCATION = {
-            lat: 17.076323,
-            lng: -96.744676,
-            accuracy: 20
-        };
+        let lastNearestLocation = null;
 
         function updateUserLocationMarker(userLat, userLng, accuracy) {
             latestUserCoordinates = {
@@ -501,54 +511,33 @@
             }).addTo(map);
         }
 
-        function useSimulatedLocation() {
-            console.log('🎯 Usando ubicación GPS simulada:', SIMULATED_LOCATION);
-
+        function setGpsUnavailable(message) {
             const gpsIndicator = document.getElementById('gps-indicator');
             const gpsStatusText = document.getElementById('gps-status-text');
             const gpsDetails = document.getElementById('gps-details');
 
             if (gpsIndicator) {
-                gpsIndicator.className = 'w-2 h-2 bg-blue-500 rounded-full mr-2 animate-pulse';
+                gpsIndicator.className = 'w-2 h-2 bg-gray-400 rounded-full mr-2';
             }
             if (gpsStatusText) {
-                gpsStatusText.textContent = 'GPS Simulado';
+                gpsStatusText.textContent = 'Ubicación no disponible';
             }
             if (gpsDetails) {
-                gpsDetails.classList.remove('hidden');
+                gpsDetails.classList.add('hidden');
             }
 
-            function updateSimulatedLocation() {
-                const lastUpdate = document.getElementById('last-update-passenger');
-                const accuracyElement = document.getElementById('location-accuracy');
-
-                if (lastUpdate) {
-                    lastUpdate.textContent = new Date().toLocaleTimeString();
-                }
-                if (accuracyElement) {
-                    accuracyElement.textContent = SIMULATED_LOCATION.accuracy;
-                }
-
-                updateUserLocationMarker(SIMULATED_LOCATION.lat, SIMULATED_LOCATION.lng, SIMULATED_LOCATION.accuracy);
-            }
-
-            updateSimulatedLocation();
-
-            if (!centerLocked) {
-                map.flyTo([SIMULATED_LOCATION.lat, SIMULATED_LOCATION.lng], 15);
-            }
-
-            simulatedLocationInterval = setInterval(updateSimulatedLocation, 2000);
-
-            console.log('✅ Ubicación GPS simulada activa');
+            // Sin GPS el mapa sigue funcionando: las rutas se pueden buscar
+            // por calle, colonia o lugar.
+            const nearestList = document.getElementById('nearest-routes-list');
+            if (nearestList) nearestList.innerHTML = NEAREST_EMPTY;
+            console.warn(message);
         }
 
         function getUserLocation() {
-            return new Promise((resolve, reject) => {
+            return new Promise((resolve) => {
                 if (!navigator.geolocation) {
-                    console.warn('⚠ Navegador no soporta geolocalización. Usando ubicación simulada.');
-                    useSimulatedLocation();
-                    resolve({ lat: SIMULATED_LOCATION.lat, lng: SIMULATED_LOCATION.lng });
+                    setGpsUnavailable('El navegador no soporta geolocalización.');
+                    resolve(null);
                     return;
                 }
 
@@ -602,6 +591,30 @@
                             const tempResolve = resolve;
                             resolve = null;
                             tempResolve({ lat: userLat, lng: userLng });
+
+                            // Las recomendaciones se calculan cuando ya existe
+                            // una ubicación real, sin dibujar rutas encima.
+                            autoUpdateNearestRoutes();
+
+                            lastNearestLocation = { lat: userLat, lng: userLng };
+                        } else {
+                            // Si el pasajero se desplaza, las recomendaciones se
+                            // recalculan (sin dibujar rutas automáticamente).
+                            if (!lastNearestLocation) {
+                                lastNearestLocation = { lat: userLat, lng: userLng };
+                            }
+
+                            const movedKm = calculateDistance(
+                                lastNearestLocation.lat,
+                                lastNearestLocation.lng,
+                                userLat,
+                                userLng
+                            );
+
+                            if (movedKm >= 0.3) {
+                                lastNearestLocation = { lat: userLat, lng: userLng };
+                                autoUpdateNearestRoutes();
+                            }
                         }
                     },
                     function(error) {
@@ -610,9 +623,11 @@
                             message: error.message
                         });
 
-                        console.log('🔄 Cambiando a ubicación GPS simulada...');
-                        useSimulatedLocation();
-                        resolve({ lat: SIMULATED_LOCATION.lat, lng: SIMULATED_LOCATION.lng });
+                        setGpsUnavailable('No se pudo obtener la ubicación: ' + error.message);
+
+                        const tempResolve = resolve;
+                        resolve = null;
+                        tempResolve?.(null);
                     },
                     {
                         enableHighAccuracy: true,
@@ -628,10 +643,6 @@
                 navigator.geolocation.clearWatch(userLocationWatchId);
                 console.log('✓ Rastreo de ubicación detenido');
             }
-            if (simulatedLocationInterval) {
-                clearInterval(simulatedLocationInterval);
-                console.log('✓ Ubicación simulada detenida');
-            }
         });
 
         function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -643,93 +654,6 @@
                       Math.sin(dLon/2) * Math.sin(dLon/2);
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
             return R * c;
-        }
-
-        function calculateDistanceAlongRoute(routePath, fromIndex, toPosition) {
-            let distance = 0;
-            let minDistToStop = Infinity;
-            let closestIndex = fromIndex;
-
-            for (let i = 0; i < routePath.length; i++) {
-                const dist = calculateDistance(
-                    routePath[i][0],
-                    routePath[i][1],
-                    toPosition.lat,
-                    toPosition.lng
-                );
-                if (dist < minDistToStop) {
-                    minDistToStop = dist;
-                    closestIndex = i;
-                }
-            }
-
-            const currentIdx = Math.floor(fromIndex);
-            if (closestIndex < currentIdx) {
-                for (let i = currentIdx; i < routePath.length - 1; i++) {
-                    distance += calculateDistance(
-                        routePath[i][0],
-                        routePath[i][1],
-                        routePath[i + 1][0],
-                        routePath[i + 1][1]
-                    );
-                }
-                for (let i = 0; i < closestIndex; i++) {
-                    distance += calculateDistance(
-                        routePath[i][0],
-                        routePath[i][1],
-                        routePath[i + 1][0],
-                        routePath[i + 1][1]
-                    );
-                }
-            } else {
-                for (let i = currentIdx; i < closestIndex; i++) {
-                    distance += calculateDistance(
-                        routePath[i][0],
-                        routePath[i][1],
-                        routePath[i + 1][0],
-                        routePath[i + 1][1]
-                    );
-                }
-            }
-
-            return distance;
-        }
-
-        function calculateArrivalTime(stop) {
-            const arrivalTimes = [];
-
-            activeBuses.forEach(bus => {
-                const busRoute = bus.route;
-                const stopInRoute = busRoute.stops && busRoute.stops.find(s => s.id === stop.id);
-
-                if (!stopInRoute) {
-                    return;
-                }
-
-                const distance = calculateDistance(
-                    bus.currentPosition.lat,
-                    bus.currentPosition.lng,
-                    stop.latitude,
-                    stop.longitude
-                );
-
-                const avgSpeed = bus.avgSpeedKmh || 20;
-
-                const timeInMinutes = (distance / avgSpeed) * 60;
-
-                const totalTime = timeInMinutes;
-
-                arrivalTimes.push({
-                    bus: bus,
-                    distance: distance,
-                    time: Math.ceil(totalTime),
-                    route: busRoute
-                });
-            });
-
-            arrivalTimes.sort((a, b) => a.time - b.time);
-
-            return arrivalTimes;
         }
 
         function buildBusRow(color, title, subtitle, timeText) {
@@ -747,40 +671,125 @@
             `;
         }
 
-        function showArrivalTimes(stop) {
-            const arrivalTimes = calculateArrivalTime(stop);
+        function csrfToken() {
+            return document.querySelector('meta[name="csrf-token"]')?.content || '';
+        }
+
+        function showEtaNotice(message) {
+            const notice = document.getElementById('eta-uncertainty-notice');
+            if (!notice) return;
+
+            notice.textContent = message || '';
+            notice.classList.toggle('hidden', !message);
+        }
+
+        async function notifyMe(busId, stopId, button) {
+            const endpoint = document.getElementById('eta-uncertainty-notice')?.dataset.notifyEndpoint;
+            if (!endpoint) return;
+
+            button.disabled = true;
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken(),
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ bus_id: Number(busId), stop_id: Number(stopId) }),
+                });
+
+                if (!response.ok) throw new Error('No se pudo guardar el aviso');
+
+                button.textContent = 'Aviso activo';
+            } catch (error) {
+                button.textContent = 'Reintentar aviso';
+                console.warn('Aviso bus/parada:', error);
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        window.UbicaditosNotifyMe = notifyMe;
+
+        async function showArrivalTimes(stop) {
             const arrivalTimesDiv = document.getElementById('arrival-times');
+            const notice = document.getElementById('eta-uncertainty-notice');
 
             document.getElementById('arrival-title').textContent = stop.name;
             document.getElementById('arrival-subtitle').textContent = stop.address || 'Parada';
+            showEtaNotice(null);
 
-            if (arrivalTimes.length === 0) {
+            try {
+                const endpoint = notice?.dataset.etaEndpoint || `/api/stops/${stop.id}/eta`;
+                const url = endpoint.includes('/1/eta')
+                    ? endpoint.replace('/1/eta', `/${stop.id}/eta`)
+                    : endpoint;
+
+                const response = await fetch(url, {
+                    headers: { Accept: 'application/json' },
+                    credentials: 'same-origin',
+                });
+
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const data = await response.json();
+                showEtaNotice(data.notice);
+
+                if (!Array.isArray(data.buses) || data.buses.length === 0) {
+                    arrivalTimesDiv.innerHTML = `
+                        <p class="text-xs text-slate-500 dark:text-gray-400 italic">
+                            No hay autobuses activos en ruta hacia esta parada. Los tiempos son aproximados.
+                        </p>
+                    `;
+                    return;
+                }
+
+                arrivalTimesDiv.innerHTML = data.buses.map(bus => {
+                    const distance = Number(bus.distance_km || 0).toFixed(1);
+                    const timeText = bus.eta_minutes == null
+                        ? '—'
+                        : `≈ ${bus.eta_minutes} min`;
+                    const subtitle = `${bus.route_name || 'Ruta'} · ${distance} km${bus.fresh ? '' : ' · ubicación antigua'}`;
+
+                    return `
+                        <div>
+                            ${buildBusRow(bus.route_color || '#4b5a85', bus.license_plate, subtitle, timeText)}
+                            <button type="button"
+                                    onclick="UbicaditosNotifyMe(${Number(bus.id)}, ${Number(stop.id)}, this)"
+                                    class="mt-1 ml-12 rounded-full border border-slate-200 px-2.5 py-1 text-[10px] font-semibold text-[#4b5a85] hover:bg-slate-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+                                Avísame
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+
+                data.buses.forEach(bus => {
+                    const localBus = activeBuses.find(candidate => candidate.id === bus.id);
+                    if (!localBus) return;
+
+                    localBus.eta_minutes = bus.eta_minutes;
+                    localBus.eta_uncertain = bus.uncertain;
+                    localBus.eta_license_plate = bus.license_plate;
+                });
+
+                drawBuses();
+            } catch (error) {
+                showEtaNotice('No pudimos consultar los tiempos aproximados de llegada. Intenta de nuevo.');
                 arrivalTimesDiv.innerHTML = `
                     <p class="text-xs text-slate-500 dark:text-gray-400 italic">
-                        No hay autobuses en ruta hacia esta parada
+                        Tiempos de llegada no disponibles en este momento.
                     </p>
                 `;
-                return;
+                console.warn('ETA:', error);
             }
-
-            let html = '';
-
-            arrivalTimes.forEach(arrival => {
-                const timeText = arrival.time < 1 ? '< 1 min' : `${arrival.time} min`;
-
-                html += buildBusRow(
-                    arrival.route.color || '#4b5a85',
-                    arrival.bus.license_plate,
-                    `A ${arrival.distance.toFixed(1)} km · ${arrival.route.name}`,
-                    timeText
-                );
-            });
-
-            arrivalTimesDiv.innerHTML = html;
         }
 
         function showRouteInfo(route) {
             const arrivalTimesDiv = document.getElementById('arrival-times');
+            showEtaNotice(null);
 
             document.getElementById('arrival-title').textContent = route.name;
             document.getElementById('arrival-subtitle').textContent = route.code || 'Ruta';
@@ -788,6 +797,7 @@
             const routeBuses = activeBuses.filter(bus => bus.route.id === route.id);
 
             if (routeBuses.length === 0) {
+                showEtaNotice('No hay autobuses activos en esta ruta; los tiempos de llegada no están disponibles.');
                 arrivalTimesDiv.innerHTML = `
                     <p class="text-xs text-slate-500 dark:text-gray-400 italic">
                         No hay autobuses activos en esta ruta
@@ -829,12 +839,18 @@
                     const stopTimeMinutes = (stopsUntilDestination * 0.5);
                     const totalTime = Math.ceil(timeInMinutes + stopTimeMinutes);
 
-                    const timeText = totalTime < 1 ? '< 1 min' : `${totalTime} min`;
+                    if (!bus.fresh) {
+                        showEtaNotice('Tiempos aproximados: la ubicación de uno o más autobuses tiene más de cinco minutos; no mostramos una hora precisa.');
+                    }
+
+                    const timeText = bus.fresh
+                        ? (totalTime < 1 ? '≈ < 1 min' : `≈ ${totalTime} min`)
+                        : '—';
 
                     html += buildBusRow(
                         route.color || '#4b5a85',
                         `${bus.license_plate} · ${bus.model}`,
-                        `Próxima parada: ${nextStop.name}`,
+                        `Próxima parada: ${nextStop.name}${bus.fresh ? '' : ' · ubicación antigua'}`,
                         timeText
                     );
                 } else {
@@ -890,69 +906,6 @@
             return polyline;
         }
 
-        async function loadVisibleRoutes() {
-            const manager = getRouteManager();
-            if (!manager) {
-                console.warn('No se pudo inicializar la capa de rutas.');
-                return;
-            }
-
-            const routeIds = new Set();
-            buses.forEach(bus => {
-                if (bus.routes && bus.routes[0]) {
-                    routeIds.add(bus.routes[0].id);
-                }
-            });
-
-            // Si no hay autobuses activos, se muestra la red completa.
-            const visibleIds = routeIds.size > 0
-                ? routeIds
-                : new Set(routes.map(route => route.id));
-
-            // Limita las paradas a la red realmente visible. Si están todas
-            // las rutas no hace falta filtrar.
-            activeStopRouteIds = routeIds.size > 0 && routeIds.size < routes.length
-                ? new Set([...visibleIds].map(Number))
-                : null;
-
-            // La red ya viene deduplicada por tramos: cada segmento se dibuja
-            // una sola vez aunque lo compartan varias rutas.
-            manager.showNetwork(visibleIds);
-            refreshStopVisibility();
-
-            routes.forEach(route => {
-                routePaths[route.id] = manager.getPath(route.id);
-                routesLoaded[route.id] = true;
-            });
-
-            const stats = manager.stats();
-            console.log(
-                `🧭 Red de rutas: ${stats.totalSegments} tramos únicos ` +
-                `(${stats.sharedSegments} compartidos, ${stats.deduplicatedSegments} dibujos evitados)`
-            );
-        }
-
-        function calculateRouteDistance(routePath) {
-            let totalDistance = 0;
-            for (let i = 0; i < routePath.length - 1; i++) {
-                const lat1 = routePath[i][0];
-                const lng1 = routePath[i][1];
-                const lat2 = routePath[i + 1][0];
-                const lng2 = routePath[i + 1][1];
-                totalDistance += calculateDistance(lat1, lng1, lat2, lng2);
-            }
-            return totalDistance;
-        }
-
-        const STALENESS_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutos
-
-        function isLocationStale(lastUpdate) {
-            if (!lastUpdate) {
-                return true;
-            }
-            return Date.now() - new Date(lastUpdate).getTime() > STALENESS_THRESHOLD_MS;
-        }
-
         function initializeBuses() {
             // Solo se muestran autobuses que tengan coordenadas reales almacenadas.
             // No se inventan posiciones ni se desplaza ningún autobús artificialmente.
@@ -978,6 +931,12 @@
                         lng: Number(bus.current_longitude)
                     },
                     last_update: bus.last_location_update ?? null,
+                    fresh: bus.fresh ?? false,
+                    fresh_until: bus.fresh_until ?? null,
+                    accuracy: bus.accuracy ?? null,
+                    sharing_passengers_count: Number(bus.sharing_passengers_count ?? 0),
+                    eta_minutes: null,
+                    eta_uncertain: true,
                     avgSpeedKmh: 20
                 };
             }).filter(bus => bus !== null);
@@ -1206,6 +1165,9 @@
                             <div><strong>Ruta:</strong> ${bus.route.name}</div>
                             <div><strong>Capacidad:</strong> ${bus.capacity} pasajeros</div>
                             <div><strong>Ocupación:</strong> ${bus.current_passengers ?? 0}/${bus.capacity}</div>
+                            <div><strong>ETA:</strong> ${bus.eta_minutes == null ? '— (aproximado)' : `≈ ${bus.eta_minutes} min`}</div>
+                            <div class="text-[11px] text-gray-500">${bus.fresh ? 'Ubicación reciente' : 'Ubicación antigua'}${bus.accuracy != null ? ` · ±${bus.accuracy} m` : ''}</div>
+                            <div class="text-[11px] text-gray-500">${bus.sharing_passengers_count} pasajero(s) compartiendo ubicación</div>
                         </div>
                     `);
                 } else {
@@ -1247,6 +1209,13 @@
 
                 bus.currentPosition = { lat: payload.latitude, lng: payload.longitude };
                 bus.last_update = payload.last_update ?? bus.last_update;
+                bus.fresh = payload.fresh ?? bus.fresh;
+                bus.fresh_until = payload.fresh_until ?? bus.fresh_until;
+                bus.accuracy = payload.accuracy ?? bus.accuracy;
+                bus.sharing_passengers_count = payload.sharing_passengers_count ?? bus.sharing_passengers_count;
+                bus.eta_minutes = null;
+                bus.eta_uncertain = true;
+                showEtaNotice('Los tiempos son aproximados: la ubicación del autobús cambió y aún no se recalculó la llegada.');
 
                 if (payload.current_passengers != null) {
                     bus.current_passengers = payload.current_passengers;
@@ -1271,166 +1240,249 @@
             window.addEventListener('beforeunload', () => realtime.stop());
         }
 
-        // ===== Búsqueda en el mapa (paradas y autobuses) =====
+        // ===== Búsqueda de rutas por calle, colonia, lugar o nombre =====
         function setMarkerVisible(marker, visible) {
             if (!marker) return;
             if (visible && !map.hasLayer(marker)) marker.addTo(map);
             if (!visible && map.hasLayer(marker)) map.removeLayer(marker);
         }
 
-        function wireMapSearch() {
-            const searchInput = document.querySelector('input[placeholder="Buscar parada o ruta"]');
-            if (!searchInput) return;
-
-            searchInput.addEventListener('input', () => {
-                const query = searchInput.value.trim().toLowerCase();
-
-                let busesShown = 0;
-                activeBuses.forEach(bus => {
-                    const matches = !query
-                        || bus.license_plate.toLowerCase().includes(query)
-                        || bus.route.name.toLowerCase().includes(query);
-                    setMarkerVisible(busMarkers[bus.id], matches);
-                    if (matches) busesShown++;
-                });
-
-                if (query) {
-                    // Al buscar, se muestran las coincidencias aunque estén
-                    // ocultas por el nivel de zoom actual.
-                    stops.forEach(stop => {
-                        const matches = stopsVisible
-                            && (stop.name.toLowerCase().includes(query)
-                                || (stop.address || '').toLowerCase().includes(query));
-                        setMarkerVisible(stopMarkers[stop.id], matches);
-                    });
-                } else {
-                    // Al limpiar la búsqueda se recupera la visibilidad
-                    // progresiva normal.
-                    refreshStopVisibility();
-                }
-
-                const counter = document.getElementById('fleet-counter');
-                if (counter) {
-                    counter.textContent = query
-                        ? `${busesShown} autobuses coinciden`
-                        : (counter.dataset.base || counter.textContent);
-                }
-            });
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
         }
 
-        window.showNearestRoutes = async function() {
-            console.log('🔍 Buscando rutas más cercanas...');
-
-            if (!userLocationMarker) {
-                alert('⚠ Primero necesitamos obtener tu ubicación. Por favor, permite el acceso a tu ubicación en el navegador.');
-                try {
-                    await getUserLocation();
-                } catch (error) {
-                    console.error('Error al obtener ubicación:', error);
-                    return;
-                }
+        function formatDistance(distanceKm) {
+            if (distanceKm == null || !Number.isFinite(Number(distanceKm))) {
+                return null;
             }
+            const km = Number(distanceKm);
+            return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
+        }
 
-            const userPos = userLocationMarker.getLatLng();
-            const userLat = userPos.lat;
-            const userLng = userPos.lng;
+        const ROUTE_SEARCH_URL = '{{ route('passenger.search') }}';
+        const searchInput = document.getElementById('map-search-input');
+        const searchResults = document.getElementById('search-results');
+        const searchResultsBody = document.getElementById('search-results-body');
+        const searchResultsStatus = document.getElementById('search-results-status');
+        const nearestRoutesList = document.getElementById('nearest-routes-list');
+        let searchTimer = null;
+        let searchController = null;
+        let currentSearchResults = [];
 
-            console.log('📍 Ubicación del usuario:', userLat, userLng);
+        function hideSearchResults() {
+            searchResults?.classList.add('hidden');
+        }
 
-            const routeDistances = [];
+        function showSearchStatus(message) {
+            if (!searchResultsStatus) return;
+            searchResultsStatus.textContent = message;
+            searchResultsStatus.classList.toggle('hidden', !message);
+        }
 
-            routes.forEach(route => {
-                if (!route.stops || route.stops.length === 0) return;
+        function renderSearchResults(payload) {
+            currentSearchResults = Array.isArray(payload?.results) ? payload.results : [];
 
-                let minDistance = Infinity;
-                let closestStop = null;
+            if (!searchResultsBody) return;
 
-                route.stops.forEach(stop => {
-                    const distance = calculateDistance(
-                        userLat,
-                        userLng,
-                        stop.latitude,
-                        stop.longitude
-                    );
-
-                    if (distance < minDistance) {
-                        minDistance = distance;
-                        closestStop = stop;
-                    }
-                });
-
-                routeDistances.push({
-                    route: route,
-                    distance: minDistance,
-                    closestStop: closestStop
-                });
-            });
-
-            routeDistances.sort((a, b) => a.distance - b.distance);
-
-            const nearestRoutes = routeDistances.filter(r => r.distance <= 5).slice(0, 3);
-
-            if (nearestRoutes.length === 0) {
-                alert('No se encontraron rutas cercanas (dentro de 5km).');
+            if (currentSearchResults.length === 0) {
+                const place = payload?.geocoded?.label;
+                searchResultsBody.innerHTML = `
+                    <p class="px-3 py-4 text-xs text-slate-500 dark:text-gray-400">
+                        ${place
+                            ? `No encontramos rutas que pasen cerca de “${escapeHtml(place)}”.`
+                            : 'No encontramos rutas para esa búsqueda. Prueba con una calle, colonia, mercado, universidad o el nombre de una ruta.'}
+                    </p>
+                `;
+                searchResults?.classList.remove('hidden');
                 return;
             }
 
-            let message = '📍 Rutas más cercanas a tu ubicación:\n\n';
-            nearestRoutes.forEach((item, index) => {
-                const distanceKm = item.distance.toFixed(2);
-                const distanceM = Math.round(item.distance * 1000);
-                const distanceText = item.distance < 1 ? `${distanceM}m` : `${distanceKm}km`;
+            searchResultsBody.innerHTML = currentSearchResults.map(result => {
+                const color = result.color || '#4b5a85';
+                const distance = formatDistance(result.distance_km);
 
-                message += `${index + 1}. ${item.route.name} (${item.route.code})\n`;
-                message += `   📏 Distancia: ${distanceText}\n`;
-                message += `   🚏 Parada más cercana: ${item.closestStop.name}\n\n`;
-            });
+                return `
+                    <button type="button" data-route-id="${Number(result.id)}" data-stop-id="${result.stop ? Number(result.stop.id) : ''}"
+                            class="w-full rounded-2xl border border-transparent px-3 py-2.5 text-left transition hover:border-slate-200 hover:bg-slate-100/70 dark:hover:border-gray-600 dark:hover:bg-gray-700/70">
+                        <div class="flex items-start gap-3">
+                            <span class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white" style="background-color: ${escapeHtml(color)}">
+                                ${BUS_SVG(17)}
+                            </span>
+                            <span class="min-w-0 flex-1">
+                                <span class="flex items-center gap-2">
+                                    <span class="truncate text-[13px] font-semibold text-slate-800 dark:text-gray-100">${escapeHtml(result.name)}</span>
+                                    <span class="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500 dark:bg-gray-700 dark:text-gray-300">${escapeHtml(result.code || '')}</span>
+                                </span>
+                                <span class="mt-0.5 block text-[11px] text-slate-500 dark:text-gray-400">${escapeHtml(result.reason || '')}</span>
+                                ${result.stop ? `
+                                    <span class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500 dark:text-gray-400">
+                                        <span class="font-medium text-[#4b5a85] dark:text-[#b6c4e6]">Aborda en: ${escapeHtml(result.stop.name)}</span>
+                                        ${distance ? `<span class="rounded-full bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200">a ${distance} de ti</span>` : ''}
+                                    </span>
+                                ` : ''}
+                            </span>
+                            <span class="shrink-0 self-center rounded-full bg-[#4b5a85] px-3 py-1.5 text-[10px] font-semibold text-white">Ver recorrido</span>
+                        </div>
+                    </button>
+                `;
+            }).join('');
 
-            message += '¿Deseas filtrar el mapa para mostrar solo estas rutas?';
+            searchResults?.classList.remove('hidden');
+        }
 
-            if (confirm(message)) {
-                const nearestRouteIds = nearestRoutes.map(r => r.route.id);
-                const manager = getRouteManager();
+        async function runRouteSearch(query) {
+            if (searchController) {
+                searchController.abort();
+            }
 
-                if (manager) {
-                    if (currentFilteredRoute) {
-                        await applyRouteFilter(currentFilteredRoute, { focus: false, loading: false });
-                    } else {
-                        manager.showNetwork(nearestRouteIds);
-                        activeStopRouteIds = new Set(nearestRouteIds.map(Number));
-                        refreshStopVisibility();
-                    }
+            searchController = new AbortController();
+
+            showSearchStatus('Buscando rutas…');
+            searchResultsBody.innerHTML = '';
+            searchResults?.classList.remove('hidden');
+
+            const params = new URLSearchParams({ q: query });
+
+            if (latestUserCoordinates) {
+                params.set('lat', latestUserCoordinates.latitude);
+                params.set('lng', latestUserCoordinates.longitude);
+            }
+
+            try {
+                const response = await fetch(`${ROUTE_SEARCH_URL}?${params.toString()}`, {
+                    headers: { 'Accept': 'application/json' },
+                    signal: searchController.signal,
+                });
+
+                if (!response.ok) {
+                    throw new Error('La búsqueda no está disponible.');
                 }
 
-                activeBuses.forEach(bus => {
-                    const shouldShow = nearestRouteIds.includes(bus.route.id);
-                    if (shouldShow) {
-                        if (busMarkers[bus.id]) {
-                            busMarkers[bus.id].addTo(map);
-                        }
-                    } else {
-                        if (busMarkers[bus.id]) {
-                            map.removeLayer(busMarkers[bus.id]);
-                        }
-                    }
-                });
+                const payload = await response.json();
+                showSearchStatus('');
 
-                nearestRoutes.forEach(item => {
-                    const stopMarker = stopMarkers[item.closestStop.id];
-                    if (stopMarker) {
-                        // La parada puede estar oculta por el nivel de zoom;
-                        // se muestra antes de abrir su popup.
-                        stopMarker.addTo(map);
-                        stopMarker.openPopup();
-                        setTimeout(() => {
-                            map.setView([item.closestStop.latitude, item.closestStop.longitude], 15);
-                        }, 500);
-                    }
-                });
+                // Si mientras llegaba la respuesta el usuario cambió el texto,
+                // se descarta el resultado anterior.
+                if (searchInput && searchInput.value.trim() === query) {
+                    renderSearchResults(payload);
+                }
+            } catch (error) {
+                if (error.name === 'AbortError') return;
 
-                console.log('✅ Mostrando rutas más cercanas:', nearestRouteIds);
+                console.warn('Búsqueda de rutas:', error);
+                showSearchStatus('');
+                searchResultsBody.innerHTML = `
+                    <p class="px-3 py-4 text-xs text-slate-500 dark:text-gray-400">
+                        No se pudo completar la búsqueda. Intenta de nuevo.
+                    </p>
+                `;
+                searchResults?.classList.remove('hidden');
             }
-        };
+        }
+
+        function scheduleRouteSearch() {
+            if (!searchInput) return;
+
+            const query = searchInput.value.trim();
+            clearTimeout(searchTimer);
+
+            if (query.length < 2) {
+                hideSearchResults();
+                showSearchStatus('');
+                if (searchController) searchController.abort();
+                return;
+            }
+
+            searchTimer = setTimeout(() => runRouteSearch(query), 450);
+        }
+
+        async function selectRouteFromSearch(routeId, stopId = null) {
+            const route = routes.find(item => Number(item.id) === Number(routeId));
+            if (!route) return;
+
+            hideSearchResults();
+            searchInput?.blur();
+
+            const routeFilter = document.getElementById('route-filter');
+            if (routeFilter) routeFilter.value = String(route.id);
+
+            await applyRouteFilter(Number(route.id), { focus: false, loading: true });
+            showRouteInfo(route);
+
+            const recommendedStop = stopId
+                ? stops.find(stop => Number(stop.id) === Number(stopId))
+                : (userLocationMarker
+                    ? route.stops.reduce((closest, stop) => {
+                        if (stop.is_active === false) return closest;
+                        const userPos = userLocationMarker.getLatLng();
+                        const distance = calculateDistance(userPos.lat, userPos.lng, stop.latitude, stop.longitude);
+                        return !closest || distance < closest.distance ? { stop, distance } : closest;
+                    }, null)?.stop
+                    : route.stops.find(stop => stop.is_active !== false));
+
+            if (recommendedStop) {
+                const marker = stopMarkers[recommendedStop.id];
+                if (marker) {
+                    marker.addTo(map);
+                    setTimeout(() => marker.openPopup(), 650);
+                }
+            }
+        }
+
+        searchInput?.addEventListener('input', scheduleRouteSearch);
+        searchInput?.addEventListener('focus', function() {
+            document.getElementById('filters-panel')?.classList.add('hidden');
+
+            if (currentSearchResults.length > 0 && searchInput.value.trim().length >= 2) {
+                searchResults?.classList.remove('hidden');
+            }
+        });
+
+        searchInput?.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                hideSearchResults();
+                searchInput.blur();
+                return;
+            }
+
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                searchResultsBody?.querySelector('[data-route-id]')?.click();
+            }
+        });
+
+        document.querySelector('[data-toggle="filters-panel"]')?.addEventListener('click', hideSearchResults);
+
+        searchResultsBody?.addEventListener('click', function(event) {
+            const card = event.target.closest('[data-route-id]');
+            if (!card) return;
+
+            selectRouteFromSearch(
+                Number(card.dataset.routeId),
+                card.dataset.stopId ? Number(card.dataset.stopId) : null
+            );
+        });
+
+        document.addEventListener('click', function(event) {
+            if (!searchResults || !searchInput) return;
+            if (searchResults.contains(event.target) || event.target === searchInput) return;
+            hideSearchResults();
+        });
+
+        nearestRoutesList?.addEventListener('click', function(event) {
+            const card = event.target.closest('[data-nearest-route-id]');
+            if (!card) return;
+
+            selectRouteFromSearch(
+                Number(card.dataset.nearestRouteId),
+                card.dataset.nearestStopId ? Number(card.dataset.nearestStopId) : null
+            );
+        });
 
         window.addToFavorites = function(stopId, stopName) {
             const stop = stops.find(s => Number(s.id) === Number(stopId));
@@ -1755,14 +1807,13 @@
         let currentNearestRoutes = [];
 
         function calculateNearestRoutes() {
-            if (!userLocationMarker) {
+            if (!latestUserCoordinates) {
                 console.warn('⚠ Ubicación del usuario no disponible');
                 return [];
             }
 
-            const userPos = userLocationMarker.getLatLng();
-            const userLat = userPos.lat;
-            const userLng = userPos.lng;
+            const userLat = latestUserCoordinates.latitude;
+            const userLng = latestUserCoordinates.longitude;
 
             const routeDistances = [];
 
@@ -1773,11 +1824,14 @@
                 let closestStop = null;
 
                 route.stops.forEach(stop => {
+                    if (stop.is_active === false) return;
+                    if (stop.latitude == null || stop.longitude == null) return;
+
                     const distance = calculateDistance(
                         userLat,
                         userLng,
-                        stop.latitude,
-                        stop.longitude
+                        Number(stop.latitude),
+                        Number(stop.longitude)
                     );
 
                     if (distance < minDistance) {
@@ -1786,64 +1840,81 @@
                     }
                 });
 
-                routeDistances.push({
-                    route: route,
-                    distance: minDistance,
-                    closestStop: closestStop
-                });
+                if (closestStop) {
+                    routeDistances.push({
+                        route: route,
+                        distance: minDistance,
+                        closestStop: closestStop
+                    });
+                }
             });
 
             routeDistances.sort((a, b) => a.distance - b.distance);
-            return routeDistances.filter(r => r.distance <= 5).slice(0, 3);
+            return routeDistances.filter(r => r.distance <= 5).slice(0, 5);
         }
 
         function showNearestRoutesInContainer(nearestRoutes) {
             const listDiv = document.getElementById('nearest-routes-list');
+            if (!listDiv) return;
 
-            if (nearestRoutes.length === 0) {
-                listDiv.innerHTML = '<p class="text-xs text-slate-500 dark:text-gray-400">No se encontraron rutas cercanas (dentro de 5km).</p>';
+            if (!latestUserCoordinates) {
+                listDiv.innerHTML = NEAREST_EMPTY;
                 return;
             }
 
-            let html = '';
-            nearestRoutes.forEach((item, index) => {
-                const distanceKm = item.distance.toFixed(2);
-                const distanceM = Math.round(item.distance * 1000);
-                const distanceText = item.distance < 1 ? `${distanceM} m` : `${distanceKm} km`;
+            if (nearestRoutes.length === 0) {
+                listDiv.innerHTML = '<p class="text-xs text-slate-500 dark:text-gray-400">No encontramos rutas a menos de 5 km. Busca por calle, colonia o lugar para ver más opciones.</p>';
+                return;
+            }
+
+            listDiv.innerHTML = nearestRoutes.map(item => {
+                const distanceText = formatDistance(item.distance) || '—';
                 const routeColor = item.route.color || '#4b5a85';
+                const stopName = item.closestStop?.name || 'Parada cercana';
 
-                html += `
-                    <div class="flex items-center gap-3 p-2.5 rounded-2xl bg-white/60 dark:bg-gray-700/60">
-                        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0" style="background-color: ${routeColor}">
-                            ${BUS_SVG(18)}
-                        </div>
-                        <div class="min-w-0 flex-1">
-                            <div class="text-[13px] font-semibold text-slate-800 dark:text-gray-100 truncate">${item.route.name}</div>
-                            <div class="text-[11px] text-slate-500 dark:text-gray-400 truncate">${item.route.code} · ${item.closestStop.name}</div>
-                        </div>
-                        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-gray-600 text-[11px] font-semibold text-slate-600 dark:text-gray-100 whitespace-nowrap">
-                            <span class="w-1.5 h-1.5 rounded-full" style="background-color: ${routeColor}"></span>
-                            ${distanceText}
-                        </div>
-                    </div>
+                return `
+                    <button type="button" data-nearest-route-id="${Number(item.route.id)}" data-nearest-stop-id="${item.closestStop ? Number(item.closestStop.id) : ''}"
+                            class="w-full rounded-2xl bg-white/60 p-2.5 text-left transition hover:bg-white dark:bg-gray-700/60 dark:hover:bg-gray-700">
+                        <span class="flex items-center gap-3">
+                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white" style="background-color: ${escapeHtml(routeColor)}">
+                                ${BUS_SVG(18)}
+                            </span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block truncate text-[13px] font-semibold text-slate-800 dark:text-gray-100">${escapeHtml(item.route.name)}</span>
+                                <span class="block truncate text-[11px] text-slate-500 dark:text-gray-400">${escapeHtml(item.route.code || '')} · Aborda en ${escapeHtml(stopName)}</span>
+                            </span>
+                            <span class="flex shrink-0 flex-col items-end gap-1">
+                                <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:bg-gray-600 dark:text-gray-100 whitespace-nowrap">${distanceText}</span>
+                                <span class="text-[10px] font-semibold text-[#4b5a85] dark:text-[#b6c4e6]">Ver recorrido</span>
+                            </span>
+                        </span>
+                    </button>
                 `;
-            });
+            }).join('');
+        }
 
-            listDiv.innerHTML = html;
+        let nearestRefreshTimer = null;
+
+        function autoUpdateNearestRoutes() {
+            clearTimeout(nearestRefreshTimer);
+            nearestRefreshTimer = setTimeout(() => {
+                const nearestRoutes = calculateNearestRoutes();
+                currentNearestRoutes = nearestRoutes;
+                showNearestRoutesInContainer(nearestRoutes);
+            }, 150);
         }
 
         async function filterNearestRoutes(show) {
             const manager = getRouteManager();
 
             if (!show) {
-                currentNearestRoutes = [];
-                document.getElementById('nearest-routes-list').innerHTML = NEAREST_EMPTY;
-
                 if (manager) {
                     if (currentFilteredRoute) {
                         await applyRouteFilter(currentFilteredRoute, { focus: false, loading: false });
                     } else {
-                        manager.showAllRoutes();
+                        // Sin selección no se dibuja ninguna ruta: el mapa queda limpio.
+                        manager.hideNetwork();
+                        manager.hideAllRouteLines();
                     }
                 }
 
@@ -1858,30 +1929,39 @@
                 return;
             }
 
-            const nearestRoutes = calculateNearestRoutes();
-            currentNearestRoutes = nearestRoutes;
-
-            if (nearestRoutes.length === 0) {
-                showNearestRoutesInContainer([]);
+            if (!latestUserCoordinates) {
+                const checkbox = document.getElementById('show-nearest-routes');
+                if (checkbox) checkbox.checked = false;
+                setGpsUnavailable('Se necesita la ubicación para mostrar rutas cercanas.');
                 hideMapLoading();
                 return;
             }
 
+            const nearestRoutes = calculateNearestRoutes();
+            currentNearestRoutes = nearestRoutes;
             showNearestRoutesInContainer(nearestRoutes);
-            showMapLoading('Buscando rutas cercanas…', 'Calculando distancias y trazados');
+
+            if (nearestRoutes.length === 0) {
+                hideMapLoading();
+                return;
+            }
+
+            showMapLoading('Mostrando rutas cercanas…', 'Calculando distancias y trazados');
 
             const nearestRouteIds = nearestRoutes.map(r => r.route.id);
 
+            // Al filtrar por cercanía se quita la selección individual para
+            // evitar mezclar un recorrido con la red recomendada.
+            currentFilteredRoute = null;
+            const routeFilter = document.getElementById('route-filter');
+            if (routeFilter) routeFilter.value = '';
+
             if (manager) {
-                if (currentFilteredRoute) {
-                    await applyRouteFilter(currentFilteredRoute, { focus: false, loading: false });
-                } else {
-                    // Sólo se muestran los tramos que pertenecen a esas rutas.
-                    manager.showNetwork(nearestRouteIds);
-                    activeStopRouteIds = new Set(nearestRouteIds.map(Number));
-                    refreshStopVisibility();
-                    console.log('🧭 Tramos visibles para rutas cercanas:', nearestRouteIds);
-                }
+                manager.hideAllRouteLines();
+                manager.showNetwork(nearestRouteIds);
+                activeStopRouteIds = new Set(nearestRouteIds.map(Number));
+                refreshStopVisibility();
+                console.log('🧭 Tramos visibles para rutas cercanas:', nearestRouteIds);
             }
 
             activeBuses.forEach(bus => {
@@ -1905,9 +1985,10 @@
             filterNearestRoutes(e.target.checked);
         });
 
-        // Aplica el filtro de ruta: dibuja su trazado guardado, la aísla de las
-        // demás rutas y encuadra el mapa en ella con fitBounds.
-        async function applyRouteFilter(routeId, { focus = true, loading = true } = {}) {
+        // Aplica el filtro de ruta: dibuja su trazado guardado y la aísla de las
+        // demás rutas, pero conserva el centro y el zoom que ya tenía el usuario.
+        // `focus` se reserva para enlaces profundos que sí deben encuadrar.
+        async function applyRouteFilter(routeId, { focus = false, loading = true } = {}) {
             currentFilteredRoute = routeId;
 
             if (routeId && loading) {
@@ -1928,8 +2009,21 @@
                     const nearestIds = nearestChecked && currentNearestRoutes.length
                         ? currentNearestRoutes.map(item => item.route.id)
                         : null;
-                    manager.showAllRoutes(nearestIds);
+
+                    if (nearestIds) {
+                        manager.showNetwork(nearestIds);
+                    } else {
+                        // Estado inicial: ninguna ruta dibujada hasta que el
+                        // pasajero busque o seleccione una.
+                        manager.hideNetwork();
+                        manager.hideAllRouteLines();
+                    }
                 }
+            }
+
+            const routeFilter = document.getElementById('route-filter');
+            if (routeFilter) {
+                routeFilter.value = routeId ? String(routeId) : '';
             }
 
             const urlParams = new URLSearchParams(window.location.search);
@@ -1956,10 +2050,15 @@
                 }
             });
 
-            // Encuadre completo de la ruta consultada (ancla el centro del mapa).
-            if (routeId && focus && manager) {
+            // Seleccionar una ruta no debe mover el mapa: se conserva el centro
+            // y el zoom que el usuario ya tenía. `focus` sólo se usa al abrir
+            // un enlace profundo con ?route_id.
+            if (routeId) {
                 centerLocked = true;
-                manager.fitRoute(routeId, { padding: [40, 40], maxZoom: 16 });
+
+                if (focus && manager) {
+                    manager.fitRoute(routeId, { padding: [40, 40], maxZoom: 16 });
+                }
             }
 
             if (routeId && loading) {
@@ -1977,7 +2076,8 @@
         }
 
         document.getElementById('route-filter').addEventListener('change', function(e) {
-            applyRouteFilter(parseInt(e.target.value) || null);
+            hideSearchResults();
+            applyRouteFilter(parseInt(e.target.value) || null, { focus: false });
         });
 
         console.log('🚀 Inicializando sistema de autobuses...');
@@ -2008,37 +2108,41 @@
                 target.route ? 'Trazando la ruta consultada…'
                     : target.bus ? 'Localizando el autobús…'
                     : target.stop ? 'Localizando la parada…'
-                    : 'Preparando rutas y autobuses'
+                    : 'Preparando el mapa y tu ubicación'
             );
 
             try {
                 const stopsPromise = Promise.resolve(drawStops());
-                const routesPromise = loadVisibleRoutes();
                 const locationPromise = getUserLocation().catch(err => {
-                    console.warn('⚠ Continuando sin ubicación del usuario:', err.message);
+                    console.warn('⚠ Continuando sin ubicación del usuario:', err?.message);
                     return null;
                 });
 
-                await Promise.all([stopsPromise, routesPromise, locationPromise]);
+                await Promise.all([stopsPromise, locationPromise]);
 
                 console.log('✅ Mapa base cargado');
 
                 initializeBuses();
                 drawBuses();
                 startRealtimeUpdates();
-                wireMapSearch();
+
+                // Las rutas NO se dibujan al entrar: sólo la ubicación, las
+                // paradas y los autobuses. Las recomendaciones se muestran
+                // como tarjetas hasta que el pasajero elige una.
+                autoUpdateNearestRoutes();
 
                 console.log('✅ Sistema listo y en funcionamiento!');
-                console.log('💡 Las rutas se cargan automáticamente al seleccionarlas en el filtro');
+                console.log('💡 Las rutas se dibujan sólo al buscar o seleccionar una');
 
                 // El contenedor puede cambiar de tamaño al terminar de cargar el layout.
                 map.invalidateSize();
 
-                // 1) Ruta consultada: aislarla de las demás y encuadrarla completa (fitBounds).
-                //    La capa de carga la controla init(), por eso { loading: false }.
+                // 1) Ruta consultada por enlace profundo: aislarla y encuadrarla
+                //    una sola vez. La capa de carga la controla init(), por eso
+                //    { loading: false }.
                 if (target.route) {
                     console.log('📍 Enfocando ruta seleccionada:', target.route);
-                    await applyRouteFilter(parseInt(target.route), { loading: false });
+                    await applyRouteFilter(parseInt(target.route), { focus: true, loading: false });
                 }
 
                 // 2) Parada consultada: volar hacia ella y abrir su popup.

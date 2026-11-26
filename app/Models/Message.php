@@ -11,14 +11,12 @@ class Message extends Model
         'receiver_id',
         'bus_id',
         'message',
-        'is_read',
         'read_at',
     ];
 
     protected function casts(): array
     {
         return [
-            'is_read' => 'boolean',
             'read_at' => 'datetime',
         ];
     }
@@ -39,12 +37,21 @@ class Message extends Model
         return $this->belongsTo(Bus::class);
     }
 
+    /**
+     * Estado de lectura derivado: no se persiste para evitar redundancia.
+     */
+    public function getIsReadAttribute(): bool
+    {
+        return $this->read_at !== null;
+    }
+
     // Helper methods
     public function markAsRead()
     {
-        $this->update([
-            'is_read' => true,
-            'read_at' => now(),
-        ]);
+        if ($this->read_at === null) {
+            $this->update(['read_at' => now()]);
+        }
+
+        return $this;
     }
 }

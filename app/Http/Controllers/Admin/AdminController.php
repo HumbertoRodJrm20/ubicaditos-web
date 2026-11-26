@@ -3,21 +3,41 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Bus, Route, Stop, User, Trip, EmergencyReport};
+use App\Models\Bus;
+use App\Models\EmergencyReport;
+use App\Models\Incident;
+use App\Models\Rating;
+use App\Models\Route;
+use App\Models\Stop;
+use App\Models\Trip;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class AdminController extends Controller
 {
     public function index()
     {
+        $ratings = Rating::toBase()
+            ->selectRaw('COUNT(*) as total, AVG(rating) as average')
+            ->first();
+
         $stats = [
             'total_buses' => Bus::count(),
             'active_buses' => Bus::where('status', 'active')->count(),
+            'maintenance_buses' => Bus::where('status', 'maintenance')->count(),
+            'emergency_buses' => Bus::where('status', 'emergency')->count(),
+            'inactive_buses' => Bus::where('status', 'inactive')->count(),
             'total_routes' => Route::count(),
             'total_stops' => Stop::count(),
             'total_drivers' => User::where('role', 'driver')->count(),
             'total_passengers' => User::where('role', 'passenger')->count(),
             'trips_today' => Trip::whereDate('started_at', today())->count(),
+            'pending_incidents' => Incident::where('status', Incident::STATUS_PENDING)->count(),
+            'pending_emergencies' => EmergencyReport::where('status', 'pending')->count(),
+            'average_rating' => (int) $ratings->total > 0
+                ? round((float) $ratings->average, 1)
+                : null,
+            'ratings_count' => (int) $ratings->total,
         ];
 
         $recentTrips = Trip::with(['bus', 'driver', 'route'])
@@ -30,7 +50,7 @@ class AdminController extends Controller
             ->get();
 
         // Agregar rutas y paradas para el mapa en tiempo real
-        $routes = Route::with(['stops', 'buses' => function($query) {
+        $routes = Route::with(['stops', 'buses' => function ($query) {
             $query->where('status', 'active');
         }])->where('is_active', true)->get();
 
@@ -43,38 +63,19 @@ class AdminController extends Controller
         return view('admin.dashboard', compact('stats', 'recentTrips', 'activeBuses', 'routes', 'stops', 'buses'));
     }
 
-    public function statistics()
-    {
-        $tripsByDay = Trip::selectRaw('DATE(started_at) as date, COUNT(*) as count')
-            ->where('started_at', '>=', now()->subDays(30))
-            ->groupBy('date')
-            ->get();
-
-        $busUsage = Bus::withCount(['trips' => function($query) {
-            $query->where('started_at', '>=', now()->subDays(30));
-        }])->get();
-
-        $topDrivers = User::where('role', 'driver')
-            ->withCount('trips')
-            ->orderBy('trips_count', 'desc')
-            ->limit(10)
-            ->get();
-
-        return view('admin.statistics', compact('tripsByDay', 'busUsage', 'topDrivers'));
-    }
-
     public function drivers(Request $request)
     {
         $search = $request->input('search');
         $perPage = $request->input('per_page', 15);
 
         $drivers = User::where('role', 'driver')
-            ->when($search, function($query, $search) {
-                $query->where(function($q) use ($search) {
+            ->where('is_active', true)
+            ->when($search, function ($query, $search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('first_name', 'like', "%{$search}%")
-                      ->orWhere('last_name', 'like', "%{$search}%")
-                      ->orWhere('maternal_last_name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhere('maternal_last_name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
                 });
             })
             ->with(['drivingBus', 'trips'])
@@ -91,6 +92,10 @@ class AdminController extends Controller
 
     public function assignBusToDriver(Request $request, User $driver)
     {
+        // RNF-02: el middleware garantiza que quien llama es admin, pero el
+        // destino de la asignación también debe ser una cuenta de conductor.
+        abort_unless($driver->isDriver(), 403, 'Solo se puede asignar un autobús a un conductor.');
+
         $request->validate([
             'bus_id' => 'required|exists:buses,id',
         ]);
@@ -134,12 +139,12 @@ class AdminController extends Controller
         $perPage = $request->input('per_page', 15);
 
         $passengers = User::where('role', 'passenger')
-            ->when($search, function($query, $search) {
-                $query->where(function($q) use ($search) {
+            ->when($search, function ($query, $search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('first_name', 'like', "%{$search}%")
-                      ->orWhere('last_name', 'like', "%{$search}%")
-                      ->orWhere('maternal_last_name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhere('maternal_last_name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
                 });
             })
             ->withCount(['ratingsGiven', 'favoriteStops'])
@@ -170,6 +175,7 @@ class AdminController extends Controller
         $emergencies = EmergencyReport::with(['reporter', 'bus'])
             ->when($status, fn ($query, $status) => $query->where('status', $status))
             ->when($type, fn ($query, $type) => $query->where('type', $type))
+            ->orderByRaw("CASE WHEN status = 'pending' THEN 0 WHEN status = 'in_progress' THEN 1 ELSE 2 END")
             ->latest()
             ->get();
 

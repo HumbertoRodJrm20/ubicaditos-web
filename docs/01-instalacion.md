@@ -180,7 +180,7 @@ VITE_REVERB_SCHEME=http
 
 En producción/staging el host debe ser el dominio con TLS y el scheme `wss`/`https` (puerto 443).
 
-> **Nota:** el reporte de "ocupación promedio por hora" en `ReportController@index` usa la función `strftime()`, exclusiva de SQLite. Al migrar a PostgreSQL debe sustituirse por `EXTRACT(HOUR FROM started_at)` en la consulta nativa. Ver [Pruebas y estado del proyecto](10-pruebas-y-estado.md).
+> **Nota:** la revisión del 2026-11-25 confirmó que `ReportController@index` ya no contiene `strftime()`. Las agrupaciones por día usan `DATE(started_at)`, soportada por SQLite y PostgreSQL; no se ejecutó contra una instancia PostgreSQL. Para staging en Railway ver [Despliegue de staging en Railway](21-despliegue-railway.md).
 
 ## Servicios externos
 

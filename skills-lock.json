@@ -1,0 +1,96 @@
+{
+  "version": 2,
+  "skills": {
+    "caveman": {
+      "source": "JuliusBrussee/caveman",
+      "commit": "47c61be2d10a354f0c5cbe2b90959d24c06b16c6",
+      "sourceType": "github",
+      "skillPath": "skills/caveman/SKILL.md",
+      "computedHash": "b51af74aacdadbc3c2d6bb79f05db58dc521854b87f7ffabd48faf286a81ed31"
+    },
+    "docker-agent-config": {
+      "source": "docker/skills",
+      "commit": "fbcef37a595f1e0cc992524e31360b25f936706f",
+      "sourceType": "github",
+      "skillPath": "skills/docker-agent-config/SKILL.md",
+      "computedHash": "ae799267d27f149e5f66060fa563237cebe3d8027a9f59b73afe4b3085cd0eec"
+    },
+    "docker-agent-deploy": {
+      "source": "docker/skills",
+      "commit": "fbcef37a595f1e0cc992524e31360b25f936706f",
+      "sourceType": "github",
+      "skillPath": "skills/docker-agent-deploy/SKILL.md",
+      "computedHash": "8e5a2d84e7ce3de4d2a9c0aa12f1c120403e485e8c59d88046b52b6fc0d3891e"
+    },
+    "docker-agent-run": {
+      "source": "docker/skills",
+      "commit": "fbcef37a595f1e0cc992524e31360b25f936706f",
+      "sourceType": "github",
+      "skillPath": "skills/docker-agent-run/SKILL.md",
+      "computedHash": "a94f9a761fdc571db94b9ab016928148775738dd37e7f1988124be878765327a"
+    },
+    "docker-build-strategies": {
+      "source": "docker/skills",
+      "commit": "fbcef37a595f1e0cc992524e31360b25f936706f",
+      "sourceType": "github",
+      "skillPath": "skills/docker-build-strategies/SKILL.md",
+      "computedHash": "a9cc5c3839d60ec8e7ca390292e1d4784bc69cf962413cb17364e7b5a46783e1"
+    },
+    "docker-compose-patterns": {
+      "source": "docker/skills",
+      "commit": "fbcef37a595f1e0cc992524e31360b25f936706f",
+      "sourceType": "github",
+      "skillPath": "skills/docker-compose-patterns/SKILL.md",
+      "computedHash": "fd752b44e789bbf42f8c0edd92df89c84871d46aee92785230e5260f866e8f99"
+    },
+    "docker-destructive-guardrails": {
+      "source": "docker/skills",
+      "commit": "fbcef37a595f1e0cc992524e31360b25f936706f",
+      "sourceType": "github",
+      "skillPath": "skills/docker-destructive-guardrails/SKILL.md",
+      "computedHash": "c67ecba771ac58d43f79b4b0c07068c5ff90cf85c64daf50c68ecf6640bd6d7d"
+    },
+    "docker-docs": {
+      "source": "docker/skills",
+      "commit": "fbcef37a595f1e0cc992524e31360b25f936706f",
+      "sourceType": "github",
+      "skillPath": "skills/docker-docs/SKILL.md",
+      "computedHash": "0f99705f1c1015a52bed6fb0ba7dc43b10f85618288291712e92fbd2f7178f2a"
+    },
+    "docker-project-foundations": {
+      "source": "docker/skills",
+      "commit": "fbcef37a595f1e0cc992524e31360b25f936706f",
+      "sourceType": "github",
+      "skillPath": "skills/docker-project-foundations/SKILL.md",
+      "computedHash": "58fdbbc9acb9264cff9225135998e1fd47f74c28519e2707ee964d408db53afb"
+    },
+    "docker-sandboxes-kits": {
+      "source": "docker/skills",
+      "commit": "fbcef37a595f1e0cc992524e31360b25f936706f",
+      "sourceType": "github",
+      "skillPath": "skills/docker-sandboxes-kits/SKILL.md",
+      "computedHash": "6a8b6123b2b50c99a9497b430567412c2d5ae6885ac76c169d9b26aa9aaa010a"
+    },
+    "docker-sandboxes-lifecycle": {
+      "source": "docker/skills",
+      "commit": "fbcef37a595f1e0cc992524e31360b25f936706f",
+      "sourceType": "github",
+      "skillPath": "skills/docker-sandboxes-lifecycle/SKILL.md",
+      "computedHash": "d466257a2b0cd120f6733a70243b163dd65e54a186c97a76daf33f5d26045bc6"
+    },
+    "docker-sandboxes-network-credentials": {
+      "source": "docker/skills",
+      "commit": "fbcef37a595f1e0cc992524e31360b25f936706f",
+      "sourceType": "github",
+      "skillPath": "skills/docker-sandboxes-network-credentials/SKILL.md",
+      "computedHash": "8326ad3f9387d68a84191ebb75717f2ce6ae3bc0b9ea1b98e435c2e73c511753"
+    },
+    "laravel-best-practices": {
+      "source": "laravel/boost",
+      "commit": "c1c27ed55bf32e0c82f71663516f89e23eefde3e",
+      "sourceType": "github",
+      "skillPath": ".ai/laravel/skill/laravel-best-practices/SKILL.md",
+      "computedHash": "a92d7c727eaa27cb5153af54203ff6dbf283bf4b6b31aad6f6a12517b471a306"
+    }
+  }
+}

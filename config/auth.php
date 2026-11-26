@@ -1,6 +1,20 @@
 <?php
 
+use App\Models\User;
+
 return [
+
+    /*
+    |--------------------------------------------------------------------------
+    | Email Verification
+    |--------------------------------------------------------------------------
+    |
+    | Permite desactivar el flujo de verificación de correo en ambientes donde
+    | las cuentas se crean con correos ficticios. Leer siempre mediante config().
+    |
+    */
+
+    'email_verification_enabled' => env('EMAIL_VERIFICATION_ENABLED', false),
 
     /*
     |--------------------------------------------------------------------------
@@ -62,7 +76,7 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', App\Models\User::class),
+            'model' => env('AUTH_MODEL', User::class),
         ],
 
         // 'users' => [

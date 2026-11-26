@@ -3,26 +3,26 @@
 
     $statusStyles = [
         \App\Models\Incident::STATUS_PENDING => [
-            'classes' => 'bg-amber-50 text-amber-700 ring-amber-200',
+            'classes' => 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:ring-amber-800',
             'dot' => 'bg-amber-500',
         ],
         \App\Models\Incident::STATUS_IN_REVIEW => [
-            'classes' => 'bg-sky-50 text-sky-700 ring-sky-200',
+            'classes' => 'bg-sky-50 text-sky-700 ring-sky-200 dark:bg-sky-900/30 dark:text-sky-200 dark:ring-sky-800',
             'dot' => 'bg-sky-500',
         ],
         \App\Models\Incident::STATUS_RESOLVED => [
-            'classes' => 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+            'classes' => 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:ring-emerald-800',
             'dot' => 'bg-emerald-500',
         ],
     ];
 
     $categoryStyles = [
-        'route' => 'bg-[#eef2fa] text-[#4a5a8a]',
-        'bus' => 'bg-sky-50 text-sky-600',
-        'service' => 'bg-violet-50 text-violet-600',
-        'driver' => 'bg-amber-50 text-amber-600',
-        'stop' => 'bg-emerald-50 text-emerald-600',
-        'other' => 'bg-slate-100 text-slate-500',
+        'route' => 'bg-[#eef2fa] text-[#4a5a8a] dark:bg-gray-700 dark:text-gray-200',
+        'bus' => 'bg-sky-50 text-sky-600 dark:bg-sky-900/30 dark:text-sky-200',
+        'service' => 'bg-violet-50 text-violet-600 dark:bg-violet-900/30 dark:text-violet-200',
+        'driver' => 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-200',
+        'stop' => 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-200',
+        'other' => 'bg-slate-100 text-slate-500 dark:bg-gray-700 dark:text-gray-300',
     ];
 
     $categoryPaths = [
@@ -35,9 +35,9 @@
     ];
 
     $tiles = [
-        ['label' => 'Pendientes', 'value' => $counts->get(\App\Models\Incident::STATUS_PENDING, 0), 'classes' => 'bg-amber-50 text-amber-700 ring-amber-100'],
-        ['label' => 'En revisión', 'value' => $counts->get(\App\Models\Incident::STATUS_IN_REVIEW, 0), 'classes' => 'bg-sky-50 text-sky-700 ring-sky-100'],
-        ['label' => 'Resueltos', 'value' => $counts->get(\App\Models\Incident::STATUS_RESOLVED, 0), 'classes' => 'bg-emerald-50 text-emerald-700 ring-emerald-100'],
+        ['label' => 'Pendientes', 'value' => $counts->get(\App\Models\Incident::STATUS_PENDING, 0), 'classes' => 'bg-amber-50 text-amber-700 ring-amber-100 dark:bg-amber-900/30 dark:text-amber-200 dark:ring-amber-800'],
+        ['label' => 'En revisión', 'value' => $counts->get(\App\Models\Incident::STATUS_IN_REVIEW, 0), 'classes' => 'bg-sky-50 text-sky-700 ring-sky-100 dark:bg-sky-900/30 dark:text-sky-200 dark:ring-sky-800'],
+        ['label' => 'Resueltos', 'value' => $counts->get(\App\Models\Incident::STATUS_RESOLVED, 0), 'classes' => 'bg-emerald-50 text-emerald-700 ring-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-200 dark:ring-emerald-800'],
     ];
 @endphp
 
@@ -47,9 +47,9 @@
         {{-- Encabezado --}}
         <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-                <p class="text-[11px] font-semibold uppercase tracking-[.18em] text-[#697aa8]">Centro de reportes</p>
-                <h1 class="mt-1 text-[28px] font-bold leading-tight tracking-tight sm:text-3xl">Mis reportes</h1>
-                <p class="mt-1 max-w-xl text-xs text-[#5b6788]">
+                <p class="text-[11px] font-semibold uppercase tracking-[.18em] text-[#697aa8] dark:text-blue-300">Centro de reportes</p>
+                <h1 class="mt-1 text-[28px] font-bold leading-tight tracking-tight dark:text-gray-100 sm:text-3xl">Mis reportes</h1>
+                <p class="mt-1 max-w-xl text-xs text-[#5b6788] dark:text-gray-400">
                     Consulta el estado de las incidencias que has enviado sobre el servicio de transporte.
                 </p>
             </div>
@@ -64,7 +64,7 @@
         </header>
 
         @if (session('success'))
-            <div class="mt-5 flex items-start gap-2 rounded-2xl bg-emerald-50 px-4 py-3 text-xs font-medium text-emerald-700 ring-1 ring-emerald-100" role="status">
+            <div class="mt-5 flex items-start gap-2 rounded-2xl bg-emerald-50 px-4 py-3 text-xs font-medium text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-200 dark:ring-emerald-800" role="status">
                 <svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="m5 12.5 4.5 4.5L19 7.5" />
                 </svg>
@@ -73,7 +73,7 @@
         @endif
 
         @if (session('error'))
-            <div class="mt-5 flex items-start gap-2 rounded-2xl bg-rose-50 px-4 py-3 text-xs font-medium text-rose-700 ring-1 ring-rose-100" role="alert">
+            <div class="mt-5 flex items-start gap-2 rounded-2xl bg-rose-50 px-4 py-3 text-xs font-medium text-rose-700 ring-1 ring-rose-100 dark:bg-rose-900/30 dark:text-rose-200 dark:ring-rose-800" role="alert">
                 <svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="9" /><path d="M12 8v4M12 16h.01" />
                 </svg>
@@ -84,13 +84,13 @@
         {{-- Contadores --}}
         <div class="mt-6 grid gap-3 sm:grid-cols-3">
             @foreach ($tiles as $tile)
-                <div class="flex items-center gap-3 rounded-2xl border border-white/70 bg-white/80 p-4 shadow-lg shadow-[#4a5a8a]/10 backdrop-blur-xl">
+                <div class="flex items-center gap-3 rounded-2xl border border-white/70 bg-white/80 p-4 shadow-lg shadow-[#4a5a8a]/10 backdrop-blur-xl dark:border-white/10 dark:bg-gray-800/80">
                     <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-base font-bold ring-1 {{ $tile['classes'] }}">
                         {{ $tile['value'] }}
                     </span>
                     <div class="min-w-0">
-                        <p class="truncate text-xs font-semibold text-[#1e2a4a]">{{ $tile['label'] }}</p>
-                        <p class="text-[11px] text-[#6b7699]">{{ $tile['value'] == 1 ? 'reporte' : 'reportes' }}</p>
+                        <p class="truncate text-xs font-semibold text-[#1e2a4a] dark:text-gray-100">{{ $tile['label'] }}</p>
+                        <p class="text-[11px] text-[#6b7699] dark:text-gray-400">{{ $tile['value'] == 1 ? 'reporte' : 'reportes' }}</p>
                     </div>
                 </div>
             @endforeach
@@ -98,15 +98,15 @@
 
         {{-- Listado --}}
         @if ($incidents->isEmpty())
-            <div class="mt-6 rounded-[28px] border border-white/70 bg-white/80 p-10 text-center shadow-xl shadow-[#4a5a8a]/10 backdrop-blur-xl">
+            <div class="mt-6 rounded-[28px] border border-white/70 bg-white/80 p-10 text-center shadow-xl shadow-[#4a5a8a]/10 backdrop-blur-xl dark:border-white/10 dark:bg-gray-800/80">
                 <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#7b88b8] to-[#4a5a8a] text-white shadow-md shadow-[#4a5a8a]/30">
                     <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
                         <path d="M8 9h8M8 13h5" />
                     </svg>
                 </div>
-                <h2 class="mt-4 text-lg font-bold">Todavía no has enviado reportes</h2>
-                <p class="mx-auto mt-1 max-w-md text-xs text-[#5b6788]">
+                <h2 class="mt-4 text-lg font-bold dark:text-gray-100">Todavía no has enviado reportes</h2>
+                <p class="mx-auto mt-1 max-w-md text-xs text-[#5b6788] dark:text-gray-400">
                     Si detectaste un problema en una ruta, autobús, parada o con el servicio, cuéntanoslo desde el formulario.
                 </p>
                 <a href="{{ route('incidents.create') }}"
@@ -126,7 +126,7 @@
                         $categoryPath = $categoryPaths[$incident->category] ?? $categoryPaths['other'];
                     @endphp
 
-                    <article class="rounded-3xl border border-white/70 bg-white/80 p-5 shadow-xl shadow-[#4a5a8a]/10 backdrop-blur-xl">
+                    <article class="rounded-3xl border border-white/70 bg-white/80 p-5 shadow-xl shadow-[#4a5a8a]/10 backdrop-blur-xl dark:border-white/10 dark:bg-gray-800/80">
                         <div class="flex items-start gap-3">
                             <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl {{ $categoryClass }}">
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -137,8 +137,8 @@
                             <div class="min-w-0 flex-1">
                                 <div class="flex flex-wrap items-start justify-between gap-2">
                                     <div class="min-w-0">
-                                        <h2 class="text-sm font-bold leading-tight text-[#1e2a4a]">{{ $incident->category_label }}</h2>
-                                        <p class="mt-0.5 text-[11px] text-[#8a94b3]">
+                                        <h2 class="text-sm font-bold leading-tight text-[#1e2a4a] dark:text-gray-100">{{ $incident->category_label }}</h2>
+                                        <p class="mt-0.5 text-[11px] text-[#8a94b3] dark:text-gray-400">
                                             {{ $incident->created_at->format('d/m/Y H:i') }}
                                             <span aria-hidden="true">·</span>
                                             Folio #{{ str_pad((string) $incident->id, 4, '0', STR_PAD_LEFT) }}
@@ -151,7 +151,22 @@
                                     </span>
                                 </div>
 
-                                <p class="mt-3 whitespace-pre-line text-sm leading-6 text-[#3d4a6b]">{{ $incident->description }}</p>
+                                <p class="mt-3 whitespace-pre-line text-sm leading-6 text-[#3d4a6b] dark:text-gray-300">{{ $incident->description }}</p>
+
+                                <div class="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-[#6b7699] dark:text-gray-400">
+                                    @if ($incident->is_public)
+                                        <span class="rounded-full bg-sky-50 px-2 py-0.5 font-semibold text-sky-700 ring-1 ring-sky-200 dark:bg-sky-900/30 dark:text-sky-200 dark:ring-sky-800">Público</span>
+                                    @endif
+                                    @if ($incident->route)
+                                        <span class="rounded-full bg-[#eef2fa] px-2 py-0.5 dark:bg-gray-700 dark:text-gray-200">{{ $incident->route->name }}</span>
+                                    @endif
+                                    @if ($incident->bus)
+                                        <span class="rounded-full bg-[#eef2fa] px-2 py-0.5 dark:bg-gray-700 dark:text-gray-200">{{ $incident->bus->license_plate }}</span>
+                                    @endif
+                                    @if ($incident->latitude && $incident->longitude)
+                                        <span class="font-mono">{{ $incident->latitude }}, {{ $incident->longitude }}</span>
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     </article>

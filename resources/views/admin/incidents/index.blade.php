@@ -108,7 +108,7 @@
                             Filtrar
                         </button>
                         @if ($status || $category || $search !== '')
-                            <a href="{{ route('admin.incidents.index') }}" class="inline-flex h-10 items-center justify-center rounded-full border border-slate-200 bg-white/85 px-4 text-xs font-semibold text-slate-600 transition hover:bg-white dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
+                            <a href="{{ route('admin.incidents.index') }}" class="inline-flex h-10 items-center justify-center rounded-full border border-slate-200 bg-white/85 px-4 text-xs font-semibold text-slate-600 transition hover:bg-white dark:hover:bg-gray-600 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
                                 Limpiar
                             </a>
                         @endif
@@ -133,6 +133,9 @@
                                         <span class="rounded-full bg-[#eef2fa] px-2.5 py-1 text-[11px] font-medium text-[#3d4a6b] dark:bg-gray-700 dark:text-gray-300">
                                             {{ $incident->category_label }}
                                         </span>
+                                        @if ($incident->is_public)
+                                            <span class="rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-semibold text-sky-700 ring-1 ring-sky-200 dark:bg-sky-900/30 dark:text-sky-200 dark:ring-sky-800">Público</span>
+                                        @endif
                                         <span class="text-[11px] {{ $muted }}">
                                             #{{ $incident->id }} · {{ $incident->created_at->format('d/m/Y H:i') }}
                                         </span>
@@ -140,7 +143,19 @@
 
                                     <p class="mt-3 whitespace-pre-line text-sm text-slate-700 dark:text-gray-200">{{ $incident->description }}</p>
 
-                                    <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] {{ $muted }}">
+                                    <div class="mt-3 flex flex-wrap items-center gap-2 text-[11px] {{ $muted }}">
+                                        @if ($incident->route)
+                                            <span class="rounded-full bg-[#eef2fa] px-2.5 py-1 font-medium text-[#3d4a6b] dark:bg-gray-700 dark:text-gray-200">{{ $incident->route->name }}</span>
+                                        @endif
+                                        @if ($incident->bus)
+                                            <span class="rounded-full bg-[#eef2fa] px-2.5 py-1 font-medium text-[#3d4a6b] dark:bg-gray-700 dark:text-gray-200">{{ $incident->bus->license_plate }}</span>
+                                        @endif
+                                        @if ($incident->latitude && $incident->longitude)
+                                            <span class="font-mono">{{ $incident->latitude }}, {{ $incident->longitude }}</span>
+                                        @endif
+                                    </div>
+
+                                    <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] {{ $muted }}">
                                         <span class="inline-flex items-center gap-1.5">
                                             <span class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-[#7b88b8] to-[#4a5a8a] text-[9px] font-bold text-white">
                                                 {{ mb_strtoupper(mb_substr($author?->first_name ?? 'U', 0, 1)) }}{{ mb_strtoupper(mb_substr($author?->last_name ?? '', 0, 1)) }}
@@ -192,18 +207,4 @@
             <p class="py-5 text-center text-xs text-slate-400 dark:text-gray-500">Ubicaditos · Gestión de reportes</p>
         </div>
     </div>
-
-    <style>
-        .incidents-admin {
-            background:
-                radial-gradient(circle at 8% 12%, rgba(151, 169, 211, .30), transparent 31%),
-                radial-gradient(circle at 96% 8%, rgba(178, 207, 232, .48), transparent 30%),
-                linear-gradient(135deg, #f5f7fb 0%, #edf1f8 52%, #f9fafc 100%);
-        }
-        @media (prefers-color-scheme: dark) {
-            .dark .incidents-admin {
-                background: linear-gradient(135deg, #0f172a 0%, #111827 52%, #0b1220 100%);
-            }
-        }
-    </style>
 </x-app-layout>

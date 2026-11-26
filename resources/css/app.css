@@ -2,6 +2,110 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===== Tema claro/oscuro (iteración 7) ===== */
+html {
+    color-scheme: light;
+    scroll-behavior: smooth;
+}
+
+html.dark {
+    color-scheme: dark;
+}
+
+body {
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Los mapas de Leaflet se oscurecen junto con la interfaz. */
+.dark #admin-map,
+.dark #map,
+.dark #passenger-map,
+.dark #driver-map,
+.dark #share-map {
+    background: #0f172a;
+}
+
+/* Fondo único para todas las vistas administrativas. Se aplica en el layout
+   (no en cada vista) para que no se perciban dos superficies distintas. */
+.admin-surface {
+    background:
+        radial-gradient(circle at 8% 12%, rgba(151, 169, 211, 0.30), transparent 31%),
+        radial-gradient(circle at 96% 8%, rgba(178, 207, 232, 0.48), transparent 30%),
+        linear-gradient(135deg, #f5f7fb 0%, #edf1f8 52%, #f9fafc 100%);
+}
+
+.dark .admin-surface {
+    background:
+        radial-gradient(circle at 8% 12%, rgba(71, 85, 105, 0.28), transparent 31%),
+        radial-gradient(circle at 96% 8%, rgba(30, 58, 95, 0.35), transparent 30%),
+        linear-gradient(135deg, #0f172a 0%, #111827 52%, #0b1220 100%);
+}
+
+.dark #admin-map .leaflet-tile-pane,
+.dark #map .leaflet-tile-pane,
+.dark #passenger-map .leaflet-tile-pane,
+.dark #driver-map .leaflet-tile-pane,
+.dark #share-map .leaflet-tile-pane,
+.dark #route-studio-map .leaflet-tile-pane {
+    filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9);
+    opacity: 0.7;
+}
+
+.dark .leaflet-control-zoom a,
+.dark .leaflet-control-attribution {
+    background: rgba(30, 41, 59, 0.9);
+    color: #e2e8f0;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .leaflet-control-attribution a {
+    color: #93c5fd;
+}
+
+.dark .ub-stop-popup-wrap .leaflet-popup-content-wrapper,
+.dark .ub-stop-popup-wrap .leaflet-popup-tip {
+    background: #1e293b;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .ub-stop-popup,
+.dark .ub-stop-popup__body {
+    background: #1e293b;
+    color: #e2e8f0;
+}
+
+.dark .ub-stop-popup__chip {
+    border-color: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    color: #cbd5e1;
+}
+
+.dark .ub-stop-popup__chip--neutral,
+.dark .ub-stop-popup__chip--more {
+    background: rgba(255, 255, 255, 0.04);
+    color: #cbd5e1;
+}
+
+.dark .ub-stop-popup__chip--favorite {
+    border-color: rgba(244, 63, 94, 0.4);
+    background: rgba(244, 63, 94, 0.14);
+    color: #fda4af;
+}
+
+.dark .ub-stop-popup__action--ghost {
+    border-color: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    color: #cbd5e1;
+}
+
+.dark .ub-stop-popup__action--ghost:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.dark .ub-stop-popup__hint {
+    color: #94a3b8;
+}
+
 /* ===== Popup de paradas (mapas) ===== */
 .ub-stop-popup-wrap .leaflet-popup-content-wrapper {
     padding: 0;
@@ -255,4 +359,82 @@
 .stop-marker:hover > div {
     transform: scale(1.18);
     box-shadow: 0 3px 10px rgba(40, 50, 90, 0.45);
+}
+
+/* ===== Estudio de rutas y paradas ===== */
+[x-cloak] {
+    display: none !important;
+}
+
+.dark #route-studio-map {
+    background: #0f172a;
+}
+
+.studio-panel {
+    min-width: 0;
+}
+
+#route-studio-map .leaflet-container {
+    font-family: Figtree, ui-sans-serif, system-ui, sans-serif;
+}
+
+.studio-stop-marker {
+    background: transparent;
+    border: 0;
+}
+
+.studio-stop-marker > span {
+    display: flex;
+    width: 26px;
+    height: 26px;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #fff;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, #7b8db8, #3f4c75);
+    box-shadow: 0 4px 12px -3px rgba(40, 50, 90, 0.6);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.studio-stop-marker:hover > span {
+    transform: scale(1.12);
+}
+
+.studio-stop-marker.is-in-route > span {
+    background: linear-gradient(135deg, #0ea5e9, #2563eb);
+}
+
+.studio-stop-marker.is-frequent > span {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.studio-stop-marker.is-selected > span {
+    border-color: #fde68a;
+    transform: scale(1.2);
+    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.25), 0 6px 14px -3px rgba(40, 50, 90, 0.65);
+}
+
+.studio-stop-marker.is-draft > span {
+    background: linear-gradient(135deg, #10b981, #047857);
+    font-size: 15px;
+}
+
+.studio-stop-popup {
+    padding: 2px 4px;
+    color: #2f3a5f;
+    font-size: 12px;
+}
+
+.studio-stop-popup strong {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 13px;
+}
+
+.dark .studio-stop-popup {
+    color: #e2e8f0;
 }

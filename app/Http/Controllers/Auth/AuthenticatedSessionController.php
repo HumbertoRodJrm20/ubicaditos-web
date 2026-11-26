@@ -7,6 +7,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
@@ -41,10 +42,31 @@ class AuthenticatedSessionController extends Controller
         $user = $request->user();
 
         if ($user !== null) {
-            $user->locationShares()
-                ->whereNull('revoked_at')
-                ->where('expires_at', '>', now())
-                ->update(['revoked_at' => now()]);
+            DB::transaction(function () use ($user): void {
+                if ($user->isDriver()) {
+                    $user->trips()
+                        ->where('status', 'in_progress')
+                        ->get()
+                        ->each(function ($trip): void {
+                            $trip->update([
+                                'status' => 'completed',
+                                'completed_at' => now(),
+                            ]);
+
+                            if ($trip->bus_id !== null) {
+                                $trip->bus()->update([
+                                    'driver_id' => null,
+                                    'status' => 'inactive',
+                                ]);
+                            }
+                        });
+                }
+
+                $user->locationShares()
+                    ->whereNull('revoked_at')
+                    ->where('expires_at', '>', now())
+                    ->update(['revoked_at' => now()]);
+            });
         }
 
         Auth::guard('web')->logout();

@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Incident\StoreIncidentRequest;
+use App\Models\Bus;
 use App\Models\Incident;
+use App\Models\Route;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class IncidentController extends Controller
 {
@@ -15,6 +17,7 @@ class IncidentController extends Controller
     {
         $incidents = $request->user()
             ->incidents()
+            ->with(['route', 'bus'])
             ->latest()
             ->get();
 
@@ -29,32 +32,27 @@ class IncidentController extends Controller
         return view('incidents.create', [
             'categories' => Incident::CATEGORIES,
             'maxDescriptionLength' => Incident::MAX_DESCRIPTION_LENGTH,
+            'routes' => Route::where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'name', 'code']),
+            'buses' => Bus::where('is_active', true)
+                ->orderBy('license_plate')
+                ->get(['id', 'license_plate', 'model']),
         ]);
     }
 
     /**
      * Registra la incidencia y la asocia al usuario autenticado.
      */
-    public function store(Request $request)
+    public function store(StoreIncidentRequest $request)
     {
-        $validated = $request->validate([
-            'category' => [
-                'required',
-                'string',
-                Rule::in(array_keys(Incident::CATEGORIES)),
-            ],
-            'description' => [
-                'required',
-                'string',
-                'max:' . Incident::MAX_DESCRIPTION_LENGTH,
-            ],
-        ], [
-            'category.required' => 'Selecciona el tipo de incidencia.',
-            'category.in' => 'El tipo de incidencia seleccionado no es válido.',
-            'description.required' => 'Describe la incidencia antes de enviar el reporte.',
-            'description.string' => 'La descripción debe ser texto.',
-            'description.max' => 'La descripción no puede superar los '
-                . Incident::MAX_DESCRIPTION_LENGTH . ' caracteres.',
+        $validated = $request->safe()->only([
+            'category',
+            'description',
+            'route_id',
+            'bus_id',
+            'latitude',
+            'longitude',
         ]);
 
         $request->user()->incidents()->create([
@@ -63,10 +61,32 @@ class IncidentController extends Controller
             // El estado inicial siempre lo define el servidor. El usuario no
             // puede enviarlo desde el formulario.
             'status' => Incident::STATUS_PENDING,
+            'route_id' => $validated['route_id'] ?? null,
+            'bus_id' => $validated['bus_id'] ?? null,
+            'latitude' => $validated['latitude'] ?? null,
+            'longitude' => $validated['longitude'] ?? null,
+            'is_public' => $request->boolean('is_public'),
         ]);
 
         return redirect()
             ->route('incidents.index')
             ->with('success', 'Tu reporte se registró correctamente. Quedó en estado pendiente.');
+    }
+
+    /**
+     * Listado público de incidencias marcadas como públicas.
+     * Nunca carga ni muestra la identidad del reportante.
+     */
+    public function publicIndex()
+    {
+        $incidents = Incident::where('is_public', true)
+            ->with([
+                'route:id,name,code',
+                'bus:id,license_plate,model',
+            ])
+            ->latest()
+            ->get();
+
+        return view('incidents.public', compact('incidents'));
     }
 }

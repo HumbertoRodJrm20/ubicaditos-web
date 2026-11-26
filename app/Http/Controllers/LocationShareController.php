@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\LocationShare;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class LocationShareController extends Controller
 {
@@ -20,6 +21,7 @@ class LocationShareController extends Controller
                 'active' => true,
                 'id' => $share->id,
                 'token' => $share->token,
+                'bus_id' => $share->bus_id,
                 'url' => $share->publicUrl(),
                 'latitude' => (float) $share->latitude,
                 'longitude' => (float) $share->longitude,
@@ -43,6 +45,7 @@ class LocationShareController extends Controller
         return response()->json([
             'active' => true,
             'token' => $share->token,
+            'bus_id' => $share->fresh()->bus_id,
             'latitude' => (float) $share->fresh()->latitude,
             'longitude' => (float) $share->fresh()->longitude,
             'accuracy' => $share->fresh()->accuracy,
@@ -121,7 +124,7 @@ class LocationShareController extends Controller
     }
 
     /**
-     * @return array{latitude: float, longitude: float, accuracy: int|null}
+     * @return array{latitude: float, longitude: float, accuracy: int|null, bus_id?: int|null}
      */
     private function validateCoordinates(Request $request): array
     {
@@ -129,6 +132,7 @@ class LocationShareController extends Controller
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
             'accuracy' => ['nullable', 'integer', 'min:0', 'max:65535'],
+            'bus_id' => ['nullable', 'integer', Rule::exists('buses', 'id')],
         ], [
             'latitude.required' => 'Necesitamos tu latitud para compartir la ubicación.',
             'latitude.numeric' => 'La latitud debe ser un número válido.',
@@ -137,6 +141,7 @@ class LocationShareController extends Controller
             'longitude.numeric' => 'La longitud debe ser un número válido.',
             'longitude.between' => 'La longitud está fuera de rango.',
             'accuracy.integer' => 'La precisión debe ser un número entero de metros.',
+            'bus_id.exists' => 'El autobús seleccionado no existe.',
         ]);
     }
 }

@@ -21,9 +21,7 @@ class BusLocationUpdated implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public function __construct(public Bus $bus)
-    {
-    }
+    public function __construct(public Bus $bus) {}
 
     public function broadcastOn(): array
     {
@@ -47,6 +45,10 @@ class BusLocationUpdated implements ShouldBroadcastNow
             'available_seats' => $this->bus->available_seats,
             'route_id' => $this->bus->routes->first()?->id,
             'last_update' => $this->bus->last_location_update?->toISOString(),
+            'fresh' => $this->bus->isLocationFresh(),
+            'fresh_until' => $this->bus->fresh_until,
+            'accuracy' => $this->bus->accuracy,
+            'sharing_passengers_count' => (int) $this->bus->sharing_passengers_count,
         ];
     }
 }

@@ -19,7 +19,9 @@ class DriverStatisticsTest extends TestCase
     use RefreshDatabase;
 
     private User $driver;
+
     private Bus $bus;
+
     private Route $route;
 
     protected function setUp(): void
@@ -76,7 +78,7 @@ class DriverStatisticsTest extends TestCase
 
     public function test_statistics_aggregate_trips_occupancy_and_ratings(): void
     {
-        Trip::create([
+        $completedTrip = Trip::create([
             'bus_id' => $this->bus->id,
             'route_id' => $this->route->id,
             'driver_id' => $this->driver->id,
@@ -106,12 +108,12 @@ class DriverStatisticsTest extends TestCase
 
         Rating::create([
             'passenger_id' => User::factory()->create(['role' => 'passenger'])->id,
-            'driver_id' => $this->driver->id,
+            'trip_id' => $completedTrip->id,
             'rating' => 5,
         ]);
         Rating::create([
             'passenger_id' => User::factory()->create(['role' => 'passenger'])->id,
-            'driver_id' => $this->driver->id,
+            'trip_id' => $completedTrip->id,
             'rating' => 3,
         ]);
 

@@ -7,6 +7,8 @@
 
         <title>{{ config('app.name', 'Ubicaditos') }}</title>
 
+        @include('partials.theme-init')
+
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
@@ -25,14 +27,14 @@
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="font-sans antialiased text-[#1e2a4a]">
-        <div class="min-h-screen bg-gradient-to-br from-[#eef2f9] via-[#e8edf7] to-[#f7f9fc] dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+    <body class="font-sans antialiased text-[#1e2a4a] transition-colors duration-200 dark:text-gray-100">
+        <div class="admin-surface min-h-screen transition-colors duration-200">
             @include('layouts.navigation')
 
             <!-- Page Heading -->
             @isset($header)
                 <header class="border-b border-white/60 bg-white/60 backdrop-blur-xl dark:border-white/10 dark:bg-slate-800/60">
-                    <div class="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+                    <div class="mx-auto max-w-7xl px-4 py-5 text-center sm:px-6 lg:px-8">
                         {{ $header }}
                     </div>
                 </header>
@@ -44,11 +46,5 @@
             </main>
         </div>
 
-        <script>
-            // Inicializar dark mode en carga de página
-            if (localStorage.getItem('darkMode') === 'true') {
-                document.documentElement.classList.add('dark');
-            }
-        </script>
     </body>
 </html>

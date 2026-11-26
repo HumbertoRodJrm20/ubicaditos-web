@@ -6,7 +6,6 @@
     </x-slot>
 
     @php
-        $muted = 'text-slate-500 dark:text-gray-400';
         $heading = 'text-[#273252] dark:text-gray-100';
         $panel = 'rounded-[24px] border border-white/80 bg-white/75 shadow-[0_14px_35px_-20px_rgba(40,50,90,0.35)] backdrop-blur-xl dark:border-white/10 dark:bg-gray-800/75';
         $input = 'block w-full rounded-full border border-slate-200/90 bg-white/90 px-3.5 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#8295c5] focus:ring-2 focus:ring-[#8295c5]/20 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100';
@@ -14,12 +13,6 @@
     @endphp
 
     <style>
-        .routes-form-page {
-            background:
-                radial-gradient(circle at 8% 12%, rgba(151, 169, 211, .30), transparent 31%),
-                radial-gradient(circle at 96% 8%, rgba(178, 207, 232, .48), transparent 30%),
-                linear-gradient(135deg, #f5f7fb 0%, #edf1f8 52%, #f9fafc 100%);
-        }
     </style>
 
     <div class="routes-form-page -m-4 min-h-[calc(100vh-5rem)] px-4 py-7 sm:-m-6 sm:px-6 lg:-m-8 lg:px-8">
@@ -132,35 +125,14 @@
                             </label>
                         </div>
 
-                        <!-- Stops -->
-                        <div>
-                            <label class="{{ $label }} mb-2">
-                                Paradas (Selecciona en orden)
-                            </label>
-                            <div id="stops-container" class="max-h-64 space-y-1 overflow-y-auto rounded-2xl border border-slate-200/90 bg-white/70 p-2 dark:border-gray-600 dark:bg-gray-700/40">
-                                @foreach($stops as $stop)
-                                    @php
-                                        $isSelected = in_array($stop->id, old('stops', $route->stops->pluck('id')->toArray()));
-                                    @endphp
-                                    <div class="flex min-h-9 items-center gap-2 rounded-xl px-2 py-1 transition hover:bg-slate-100/70 dark:hover:bg-gray-700/40">
-                                        <input type="checkbox" name="stops[]" value="{{ $stop->id }}" id="stop_{{ $stop->id }}"
-                                            {{ $isSelected ? 'checked' : '' }}
-                                            class="h-4 w-4 shrink-0 rounded border-slate-300 text-[#53658f] accent-[#53658f] focus:ring-[#8295c5] dark:border-gray-600 dark:bg-gray-700">
-                                        <label for="stop_{{ $stop->id }}" class="min-w-0 cursor-pointer text-sm text-slate-600 dark:text-gray-300">
-                                            {{ $stop->name }} - {{ $stop->address }}
-                                        </label>
-                                    </div>
-                                @endforeach
-                            </div>
-                            <p class="mt-1 text-xs {{ $muted }}">El orden de las paradas será determinado por el orden de selección</p>
-                            @error('stops')
-                                <p class="mt-1 text-xs font-medium text-rose-600 dark:text-rose-400">{{ $message }}</p>
-                            @enderror
+                        <div class="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 text-sm text-slate-600 dark:border-gray-700 dark:bg-gray-700/40 dark:text-gray-300">
+                            <p>Las paradas y su orden se administran en el Estudio de rutas; los cambios aquí no modifican las asignaciones existentes.</p>
+                            <a href="{{ route('admin.routes.manage', ['route' => $route->id]) }}" class="mt-2 inline-flex font-semibold text-[#53699e] underline decoration-[#8295c5]/50 underline-offset-2 dark:text-blue-300">Editar paradas en el Estudio de rutas</a>
                         </div>
 
                         <!-- Buttons -->
                         <div class="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 dark:border-gray-700 sm:flex-row sm:justify-end">
-                            <a href="{{ route('admin.routes.index') }}" class="inline-flex h-9 items-center justify-center rounded-full border border-slate-200 bg-white/85 px-4 text-xs font-semibold text-slate-600 transition hover:bg-white dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
+                            <a href="{{ route('admin.routes.index') }}" class="inline-flex h-9 items-center justify-center rounded-full border border-slate-200 bg-white/85 px-4 text-xs font-semibold text-slate-600 transition hover:bg-white dark:hover:bg-gray-600 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
                                 Cancelar
                             </a>
                             <button type="submit" class="inline-flex h-9 items-center justify-center rounded-full bg-gradient-to-b from-[#7b8db8] to-[#53658f] px-5 text-xs font-semibold text-white shadow-sm transition hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-[#8295c5] focus:ring-offset-2">

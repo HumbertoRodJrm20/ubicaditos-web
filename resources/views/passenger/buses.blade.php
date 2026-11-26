@@ -9,10 +9,10 @@
     ])->values();
 
     $statusStyles = [
-        'active' => ['label' => 'En servicio', 'classes' => 'bg-emerald-50 text-emerald-600 ring-emerald-100', 'dot' => 'bg-emerald-500'],
-        'emergency' => ['label' => 'Emergencia', 'classes' => 'bg-rose-50 text-rose-600 ring-rose-100', 'dot' => 'bg-rose-500'],
-        'maintenance' => ['label' => 'En mantenimiento', 'classes' => 'bg-amber-50 text-amber-600 ring-amber-100', 'dot' => 'bg-amber-500'],
-        'inactive' => ['label' => 'Inactivo', 'classes' => 'bg-slate-100 text-slate-500 ring-slate-200', 'dot' => 'bg-slate-400'],
+        'active' => ['label' => 'En servicio', 'classes' => 'bg-emerald-50 text-emerald-600 ring-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-200 dark:ring-emerald-800', 'dot' => 'bg-emerald-500'],
+        'emergency' => ['label' => 'Emergencia', 'classes' => 'bg-rose-50 text-rose-600 ring-rose-100 dark:bg-rose-900/30 dark:text-rose-200 dark:ring-rose-800', 'dot' => 'bg-rose-500'],
+        'maintenance' => ['label' => 'En mantenimiento', 'classes' => 'bg-amber-50 text-amber-600 ring-amber-100 dark:bg-amber-900/30 dark:text-amber-200 dark:ring-amber-800', 'dot' => 'bg-amber-500'],
+        'inactive' => ['label' => 'Inactivo', 'classes' => 'bg-slate-100 text-slate-500 ring-slate-200 dark:bg-gray-700 dark:text-gray-300 dark:ring-gray-600', 'dot' => 'bg-slate-400'],
     ];
 
     $statusOptions = [
@@ -42,13 +42,13 @@
 
     $chipBase = 'inline-flex h-8 items-center justify-center rounded-full px-3.5 text-xs font-semibold transition focus:outline-none focus:ring-4 focus:ring-[#6b7bad]/25';
     $chipOn = 'bg-gradient-to-b from-[#7b88b8] to-[#4a5a8a] text-white shadow-md shadow-[#4a5a8a]/25';
-    $chipOff = 'border border-white/70 bg-white/80 text-[#3d4a6b] hover:bg-white';
+    $chipOff = 'border border-white/70 bg-white/80 text-[#3d4a6b] hover:bg-white dark:border-white/10 dark:bg-gray-800/70 dark:text-gray-300 dark:hover:bg-gray-700';
 @endphp
 
 <x-passenger-layout title="Autobuses · Ubicaditos">
     <div class="space-y-6">
         @if (session('success'))
-            <div class="rounded-2xl border border-emerald-100 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-700 shadow-sm">
+            <div class="rounded-2xl border border-emerald-100 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-700 shadow-sm dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200">
                 {{ session('success') }}
             </div>
         @endif
@@ -56,10 +56,10 @@
         {{-- Encabezado y búsqueda --}}
         <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-                <h1 class="text-[28px] font-bold leading-tight tracking-tight text-[#1e2a4a] sm:text-3xl">
+                <h1 class="text-[28px] font-bold leading-tight tracking-tight text-[#1e2a4a] dark:text-gray-100 sm:text-3xl">
                     Autobuses en servicio
                 </h1>
-                <p class="mt-1 text-xs text-[#5b6788]">
+                <p class="mt-1 text-xs text-[#5b6788] dark:text-gray-400">
                     Consulta la unidad, su conductor y califica tu viaje
                 </p>
             </div>
@@ -86,7 +86,7 @@
                         oninput="filterBuses()"
                         aria-label="Buscar autobús"
                         placeholder="Buscar por placas o conductor"
-                        class="h-11 w-full rounded-full border border-white/70 bg-white/85 pl-11 pr-4 text-sm text-[#1e2a4a] shadow-lg shadow-[#4a5a8a]/10 backdrop-blur-xl placeholder:text-[#8a94b3] focus:border-[#6b7bad] focus:ring-4 focus:ring-[#6b7bad]/25"
+                        class="h-11 w-full rounded-full border border-white/70 bg-white/85 pl-11 pr-4 text-sm text-[#1e2a4a] shadow-lg shadow-[#4a5a8a]/10 backdrop-blur-xl placeholder:text-[#8a94b3] focus:border-[#6b7bad] focus:ring-4 focus:ring-[#6b7bad]/25 dark:border-white/10 dark:bg-gray-800/80 dark:text-gray-100 dark:placeholder:text-gray-400"
                     />
                 </div>
             </form>
@@ -104,11 +104,11 @@
                 @endforeach
             </div>
 
-            <label class="flex items-center gap-2 text-xs text-[#5b6788]">
+            <label class="flex items-center gap-2 text-xs text-[#5b6788] dark:text-gray-400">
                 <span class="whitespace-nowrap">Ordenar</span>
                 <select onchange="location = this.value"
                         aria-label="Ordenar autobuses"
-                        class="h-9 rounded-full border border-white/70 bg-white/85 px-3 text-xs text-[#1e2a4a] shadow-sm focus:border-[#6b7bad] focus:ring-4 focus:ring-[#6b7bad]/25">
+                        class="h-9 rounded-full border border-white/70 bg-white/85 px-3 text-xs text-[#1e2a4a] shadow-sm focus:border-[#6b7bad] focus:ring-4 focus:ring-[#6b7bad]/25 dark:border-white/10 dark:bg-gray-800/80 dark:text-gray-100">
                     <option value="{{ $filterUrl(['sort' => null]) }}" {{ $currentSort === 'plate' ? 'selected' : '' }}>
                         Por placa (A-Z)
                     </option>
@@ -136,7 +136,7 @@
         </div>
 
         @if ($buses->isEmpty())
-            <div class="mx-auto mt-8 max-w-md rounded-[28px] border border-white/70 bg-white/80 p-10 text-center shadow-xl shadow-[#4a5a8a]/10 backdrop-blur-xl">
+            <div class="mx-auto mt-8 max-w-md rounded-[28px] border border-white/70 bg-white/80 p-10 text-center shadow-xl shadow-[#4a5a8a]/10 backdrop-blur-xl dark:border-white/10 dark:bg-gray-800/80">
                 <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#7b88b8] to-[#4a5a8a] text-white shadow-md shadow-[#4a5a8a]/30">
                     <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                          stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -144,8 +144,8 @@
                         <path d="M3 10h18M7 18l-1 3M17 18l1 3M7 14h.01M17 14h.01" />
                     </svg>
                 </div>
-                <h3 class="mt-4 text-lg font-bold text-[#1e2a4a]">No hay autobuses que coincidan</h3>
-                <p class="mt-1 text-xs text-[#5b6788]">
+                <h3 class="mt-4 text-lg font-bold text-[#1e2a4a] dark:text-gray-100">No hay autobuses que coincidan</h3>
+                <p class="mt-1 text-xs text-[#5b6788] dark:text-gray-400">
                     Ajusta la búsqueda o los filtros para ver más unidades.
                 </p>
                 @if (request()->hasAny(['q', 'route_id', 'status']))
@@ -167,7 +167,7 @@
                     @endphp
 
                     <article
-                        class="bus-card flex min-h-[176px] flex-col justify-between gap-4 rounded-3xl border border-white/70 bg-white/80 p-4 shadow-xl shadow-[#4a5a8a]/10 backdrop-blur-xl transition duration-200 hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-[#4a5a8a]/15"
+                        class="bus-card flex min-h-[176px] flex-col justify-between gap-4 rounded-3xl border border-white/70 bg-white/80 p-4 shadow-xl shadow-[#4a5a8a]/10 backdrop-blur-xl transition duration-200 hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-[#4a5a8a]/15 dark:border-white/10 dark:bg-gray-800/80"
                         data-plate="{{ mb_strtolower($bus->license_plate ?? '') }}"
                         data-model="{{ mb_strtolower($bus->model ?? '') }}"
                         data-driver="{{ mb_strtolower($driver->name ?? '') }}"
@@ -185,10 +185,10 @@
                             </div>
 
                             <div class="min-w-0 flex-1">
-                                <h2 class="truncate text-[15px] font-bold leading-tight text-[#1e2a4a]">
+                                <h2 class="truncate text-[15px] font-bold leading-tight text-[#1e2a4a] dark:text-gray-100">
                                     Unidad {{ $bus->license_plate }}
                                 </h2>
-                                <p class="mt-0.5 truncate text-[11px] text-[#8a94b3]">
+                                <p class="mt-0.5 truncate text-[11px] text-[#8a94b3] dark:text-gray-400">
                                     {{ $bus->model ?: 'Modelo no especificado' }}
                                 </p>
                             </div>
@@ -200,7 +200,7 @@
                         </div>
 
                         {{-- Ruta asignada --}}
-                        <div class="flex min-w-0 items-center gap-2 text-xs text-[#5b6788]">
+                        <div class="flex min-w-0 items-center gap-2 text-xs text-[#5b6788] dark:text-gray-400">
                             <span class="h-2 w-2 shrink-0 rounded-full" style="background-color: {{ $routeColor }}"></span>
                             <span class="truncate">
                                 {{ $busRoute ? $busRoute->name : 'Sin ruta asignada' }}
@@ -209,13 +209,13 @@
 
                         {{-- Ocupación y asientos libres --}}
                         <div class="space-y-1.5">
-                            <div class="flex items-center justify-between text-[10px] font-semibold text-[#5b6788]">
+                            <div class="flex items-center justify-between text-[10px] font-semibold text-[#5b6788] dark:text-gray-400">
                                 <span>{{ $bus->current_passengers ?? 0 }}/{{ $bus->capacity }} ocupados</span>
                                 <span class="{{ $bus->available_seats > 0 ? 'text-emerald-600' : 'text-rose-600' }}">
                                     {{ $bus->available_seats > 0 ? $bus->available_seats . ' asientos libres' : 'Sin asientos libres' }}
                                 </span>
                             </div>
-                            <div class="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                            <div class="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-gray-700">
                                 <div class="h-full rounded-full {{ $bus->occupancy_percentage >= 90 ? 'bg-rose-500' : ($bus->occupancy_percentage >= 60 ? 'bg-amber-500' : 'bg-emerald-500') }}"
                                      style="width: {{ $bus->occupancy_percentage }}%"
                                      role="progressbar"
@@ -227,7 +227,7 @@
                         </div>
 
                         {{-- Conductor --}}
-                        <div class="flex items-center gap-2.5 rounded-2xl bg-white/75 px-2.5 py-2">
+                        <div class="flex items-center gap-2.5 rounded-2xl bg-white/75 px-2.5 py-2 dark:bg-gray-700/60">
                             <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#7b88b8] to-[#4a5a8a] text-[11px] font-bold text-white shadow-sm">
                                 @if ($driver)
                                     {{ collect(explode(' ', trim($driver->name)))->filter()->take(2)->map(fn ($part) => mb_substr($part, 0, 1))->implode('') }}
@@ -237,15 +237,15 @@
                             </div>
 
                             <div class="min-w-0 flex-1">
-                                <p class="truncate text-xs font-semibold text-[#1e2a4a]">
+                                <p class="truncate text-xs font-semibold text-[#1e2a4a] dark:text-gray-100">
                                     {{ $driver->name ?? 'Conductor sin asignar' }}
                                 </p>
-                                <p class="text-[10px] text-[#8a94b3]">Conductor</p>
+                                <p class="text-[10px] text-[#8a94b3] dark:text-gray-400">Conductor</p>
                             </div>
 
                             <div class="shrink-0 text-right">
                                 <div class="text-sm leading-none tracking-wide text-[#efb45e]" aria-label="Calificación no disponible">★★★★★</div>
-                                <p class="mt-1 text-[9px] text-[#5b6788]">Califica tu viaje</p>
+                                <p class="mt-1 text-[9px] text-[#5b6788] dark:text-gray-400">Califica tu viaje</p>
                             </div>
                         </div>
 
@@ -264,7 +264,7 @@
                             </button>
 
                             <a href="{{ route('passenger.dashboard', ['bus_id' => $bus->id]) }}"
-                               class="inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 text-[11px] font-semibold text-[#3d4a6b] transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#6b7bad]/25">
+                               class="inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 text-[11px] font-semibold text-[#3d4a6b] transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#6b7bad]/25 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
                                 <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                      stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20V6.5Z" />
@@ -278,7 +278,7 @@
                             <button
                                 type="button"
                                 onclick="showRatingModal({{ $driver->id }}, @js($driver->name))"
-                                class="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 text-[11px] font-semibold text-[#3d4a6b] transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#6b7bad]/25"
+                                class="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 text-[11px] font-semibold text-[#3d4a6b] transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#6b7bad]/25 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                             >
                                 <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                      stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -287,7 +287,7 @@
                                 Calificar conductor
                             </button>
                         @else
-                            <span class="inline-flex h-9 w-full items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-2 text-[11px] text-slate-400">
+                            <span class="inline-flex h-9 w-full items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-2 text-[11px] text-slate-400 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-400">
                                 Sin conductor
                             </span>
                         @endif
@@ -295,7 +295,7 @@
                 @endforeach
             </div>
 
-            <div id="no-buses-message" class="hidden rounded-2xl border border-white/70 bg-white/70 px-4 py-8 text-center text-sm text-[#5b6788]">
+            <div id="no-buses-message" class="hidden rounded-2xl border border-white/70 bg-white/70 px-4 py-8 text-center text-sm text-[#5b6788] dark:border-white/10 dark:bg-gray-800/70 dark:text-gray-400">
                 No se encontraron autobuses con los filtros seleccionados.
             </div>
         @endif
@@ -303,14 +303,14 @@
 
     {{-- Modal de calificación --}}
     <div id="rating-modal" class="fixed inset-0 z-50 hidden items-center justify-center overflow-y-auto bg-[#1e2a4a]/35 p-4 backdrop-blur-sm">
-        <div class="my-auto w-full max-w-md rounded-[28px] border border-white/70 bg-white p-6 shadow-2xl shadow-[#4a5a8a]/20">
+        <div class="my-auto w-full max-w-md rounded-[28px] border border-white/70 bg-white p-6 shadow-2xl shadow-[#4a5a8a]/20 dark:border-white/10 dark:bg-gray-800">
             <div class="mb-5 flex items-start justify-between gap-4">
                 <div>
-                    <h3 class="text-lg font-bold text-[#1e2a4a]">Calificar conductor</h3>
-                    <p class="mt-1 text-xs text-[#5b6788]">Cuéntanos cómo fue tu experiencia.</p>
+                    <h3 class="text-lg font-bold text-[#1e2a4a] dark:text-gray-100">Calificar conductor</h3>
+                    <p class="mt-1 text-xs text-[#5b6788] dark:text-gray-400">Cuéntanos cómo fue tu experiencia.</p>
                 </div>
                 <button type="button" onclick="closeRatingModal()" aria-label="Cerrar modal"
-                    class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200">
+                    class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
@@ -319,13 +319,13 @@
                 @csrf
                 <input type="hidden" id="driver-id" name="driver_id" value="">
 
-                <div class="mb-5 rounded-2xl bg-[#f3f5fb] p-3">
-                    <p class="text-xs text-[#5b6788]">Conductor</p>
+                <div class="mb-5 rounded-2xl bg-[#f3f5fb] dark:bg-gray-700/60 p-3">
+                    <p class="text-xs text-[#5b6788] dark:text-gray-400">Conductor</p>
                     <p id="driver-name" class="mt-1 font-semibold text-[#1e2a4a]"></p>
                 </div>
 
                 <div class="mb-5">
-                    <label class="mb-2 block text-sm font-semibold text-[#3d4a6b]">Calificación</label>
+                    <label class="mb-2 block text-sm font-semibold text-[#3d4a6b] dark:text-gray-300">Calificación</label>
                     <div class="flex gap-2">
                         @for ($i = 1; $i <= 5; $i++)
                             <button type="button" onclick="setRating({{ $i }})"
@@ -337,11 +337,11 @@
                 </div>
 
                 <div class="mb-6">
-                    <label for="rating-comment" class="mb-2 block text-sm font-semibold text-[#3d4a6b]">
+                    <label for="rating-comment" class="mb-2 block text-sm font-semibold text-[#3d4a6b] dark:text-gray-300">
                         Comentario <span class="font-normal text-[#8a94b3]">(opcional)</span>
                     </label>
                     <textarea id="rating-comment" name="comment" rows="3" maxlength="500"
-                        class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-[#1e2a4a] placeholder:text-[#a0a8bd] focus:border-[#6b7bad] focus:ring-4 focus:ring-[#6b7bad]/20"
+                        class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-[#1e2a4a] placeholder:text-[#a0a8bd] focus:border-[#6b7bad] focus:ring-4 focus:ring-[#6b7bad]/20 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder:text-gray-400"
                         placeholder="Comparte tu experiencia..."></textarea>
                 </div>
 
@@ -351,7 +351,7 @@
                         Enviar calificación
                     </button>
                     <button type="button" onclick="closeRatingModal()"
-                        class="rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-[#5b6788] transition hover:bg-slate-50">
+                        class="rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-[#5b6788] transition hover:bg-slate-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
                         Cancelar
                     </button>
                 </div>
@@ -361,7 +361,7 @@
 
     {{-- Modal de detalles del autobús (Requisito 4) --}}
     <div id="bus-details-modal" class="fixed inset-0 z-[60] hidden items-center justify-center overflow-y-auto bg-[#1e2a4a]/35 p-4 backdrop-blur-sm">
-        <div class="my-auto w-full max-w-md rounded-[28px] border border-white/70 bg-white p-6 shadow-2xl shadow-[#4a5a8a]/20">
+        <div class="my-auto w-full max-w-md rounded-[28px] border border-white/70 bg-white p-6 shadow-2xl shadow-[#4a5a8a]/20 dark:border-white/10 dark:bg-gray-800">
             <div class="mb-5 flex items-start justify-between gap-4">
                 <div class="flex min-w-0 items-center gap-3">
                     <div id="bd-icon" class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white shadow-md shadow-[#4a5a8a]/20" style="background-color: #6b7bad;">
@@ -372,58 +372,58 @@
                         </svg>
                     </div>
                     <div class="min-w-0">
-                        <h3 id="bd-plate" class="truncate text-lg font-bold leading-tight text-[#1e2a4a]">—</h3>
-                        <p id="bd-model" class="mt-0.5 truncate text-[11px] text-[#8a94b3]">—</p>
+                        <h3 id="bd-plate" class="truncate text-lg font-bold leading-tight text-[#1e2a4a] dark:text-gray-100">—</h3>
+                        <p id="bd-model" class="mt-0.5 truncate text-[11px] text-[#8a94b3] dark:text-gray-400">—</p>
                     </div>
                 </div>
                 <button type="button" onclick="closeBusDetails()" aria-label="Cerrar modal"
-                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200">
+                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
 
             <div class="mb-4">
-                <span id="bd-status" class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 ring-1 ring-emerald-100">
+                <span id="bd-status" class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 ring-1 ring-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-200 dark:ring-emerald-800">
                     <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span> En servicio
                 </span>
             </div>
 
             <div class="grid grid-cols-2 gap-3">
-                <div class="col-span-2 rounded-2xl bg-[#f3f5fb] p-3">
-                    <p class="text-[11px] text-[#5b6788]">Ruta</p>
+                <div class="col-span-2 rounded-2xl bg-[#f3f5fb] dark:bg-gray-700/60 p-3">
+                    <p class="text-[11px] text-[#5b6788] dark:text-gray-400">Ruta</p>
                     <div class="mt-1 flex items-center gap-2">
                         <span id="bd-route-color" class="h-2.5 w-2.5 shrink-0 rounded-full" style="background-color: #6b7bad;"></span>
-                        <p id="bd-route" class="truncate font-semibold text-[#1e2a4a]">—</p>
+                        <p id="bd-route" class="truncate font-semibold text-[#1e2a4a] dark:text-gray-100">—</p>
                     </div>
                     <p id="bd-route-code" class="mt-0.5 text-[10px] text-[#8a94b3]"></p>
                 </div>
 
-                <div class="rounded-2xl bg-[#f3f5fb] p-3">
-                    <p class="text-[11px] text-[#5b6788]">Capacidad</p>
-                    <p id="bd-capacity" class="mt-1 font-semibold text-[#1e2a4a]">—</p>
+                <div class="rounded-2xl bg-[#f3f5fb] dark:bg-gray-700/60 p-3">
+                    <p class="text-[11px] text-[#5b6788] dark:text-gray-400">Capacidad</p>
+                    <p id="bd-capacity" class="mt-1 font-semibold text-[#1e2a4a] dark:text-gray-100">—</p>
                 </div>
 
-                <div class="rounded-2xl bg-[#f3f5fb] p-3">
-                    <p class="text-[11px] text-[#5b6788]">Pasajeros actuales</p>
-                    <p id="bd-passengers" class="mt-1 font-semibold text-[#1e2a4a]">—</p>
+                <div class="rounded-2xl bg-[#f3f5fb] dark:bg-gray-700/60 p-3">
+                    <p class="text-[11px] text-[#5b6788] dark:text-gray-400">Pasajeros actuales</p>
+                    <p id="bd-passengers" class="mt-1 font-semibold text-[#1e2a4a] dark:text-gray-100">—</p>
                 </div>
 
-                <div class="col-span-2 rounded-2xl bg-[#f3f5fb] p-3">
-                    <p class="text-[11px] text-[#5b6788]">Asientos libres</p>
-                    <p id="bd-seats" class="mt-1 font-semibold text-[#1e2a4a]">—</p>
-                    <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white">
+                <div class="col-span-2 rounded-2xl bg-[#f3f5fb] dark:bg-gray-700/60 p-3">
+                    <p class="text-[11px] text-[#5b6788] dark:text-gray-400">Asientos libres</p>
+                    <p id="bd-seats" class="mt-1 font-semibold text-[#1e2a4a] dark:text-gray-100">—</p>
+                    <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white dark:bg-gray-600">
                         <div id="bd-occupancy-bar" class="h-full w-0 rounded-full bg-emerald-500 transition-all"></div>
                     </div>
                 </div>
 
-                <div class="col-span-2 rounded-2xl bg-[#f3f5fb] p-3">
-                    <p class="text-[11px] text-[#5b6788]">Conductor</p>
-                    <p id="bd-driver" class="mt-1 truncate font-semibold text-[#1e2a4a]">—</p>
+                <div class="col-span-2 rounded-2xl bg-[#f3f5fb] dark:bg-gray-700/60 p-3">
+                    <p class="text-[11px] text-[#5b6788] dark:text-gray-400">Conductor</p>
+                    <p id="bd-driver" class="mt-1 truncate font-semibold text-[#1e2a4a] dark:text-gray-100">—</p>
                 </div>
 
-                <div class="col-span-2 rounded-2xl bg-[#f3f5fb] p-3">
-                    <p class="text-[11px] text-[#5b6788]">Última actualización de ubicación</p>
-                    <p id="bd-update" class="mt-1 font-semibold text-[#1e2a4a]">—</p>
+                <div class="col-span-2 rounded-2xl bg-[#f3f5fb] dark:bg-gray-700/60 p-3">
+                    <p class="text-[11px] text-[#5b6788] dark:text-gray-400">Última actualización de ubicación</p>
+                    <p id="bd-update" class="mt-1 font-semibold text-[#1e2a4a] dark:text-gray-100">—</p>
                 </div>
             </div>
 
@@ -438,7 +438,7 @@
                     Ver en mapa
                 </a>
                 <button type="button" onclick="closeBusDetails()"
-                    class="inline-flex h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-[#5b6788] transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#6b7bad]/25">
+                    class="inline-flex h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-[#5b6788] transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#6b7bad]/25 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
                     Cerrar
                 </button>
             </div>
@@ -512,10 +512,10 @@
         const busDetails = @json($busDetailsData);
 
         const BUS_STATUS_STYLES = {
-            active: 'bg-emerald-50 text-emerald-600 ring-emerald-100',
-            inactive: 'bg-slate-100 text-slate-500 ring-slate-200',
-            maintenance: 'bg-amber-50 text-amber-600 ring-amber-100',
-            emergency: 'bg-rose-50 text-rose-600 ring-rose-100',
+            active: 'bg-emerald-50 text-emerald-600 ring-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-200 dark:ring-emerald-800',
+            inactive: 'bg-slate-100 text-slate-500 ring-slate-200 dark:bg-gray-700 dark:text-gray-300 dark:ring-gray-600',
+            maintenance: 'bg-amber-50 text-amber-600 ring-amber-100 dark:bg-amber-900/30 dark:text-amber-200 dark:ring-amber-800',
+            emergency: 'bg-rose-50 text-rose-600 ring-rose-100 dark:bg-rose-900/30 dark:text-rose-200 dark:ring-rose-800',
         };
         const BUS_STATUS_DOTS = {
             active: 'bg-emerald-500',
