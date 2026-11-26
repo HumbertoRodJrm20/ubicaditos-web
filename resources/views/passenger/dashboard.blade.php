@@ -143,6 +143,14 @@
                             <p class="text-xs text-slate-500 dark:text-gray-400 italic">Haz clic en una parada para ver los tiempos de llegada</p>
                         </div>
 
+                        {{-- HU-009/HU-30: aviso de incertidumbre compartido con la respuesta del servidor. --}}
+                        <p id="eta-uncertainty-notice"
+                           data-eta-endpoint="{{ route('api.stops.eta', ['stop' => 1]) }}"
+                           data-notify-endpoint="{{ route('passenger.notifications.subscribe') }}"
+                           class="hidden mt-2 rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2 text-[11px] text-amber-700 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-300">
+                            Los tiempos son aproximados: la ubicación del autobús puede estar desactualizada o no hay servicio activo hacia esta parada.
+                        </p>
+
                         <button type="button" class="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-full border border-slate-300 dark:border-gray-600 bg-white/60 dark:bg-gray-700/60 text-[13px] font-medium text-[#4b5a85] dark:text-gray-200">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
@@ -648,93 +656,6 @@
             return R * c;
         }
 
-        function calculateDistanceAlongRoute(routePath, fromIndex, toPosition) {
-            let distance = 0;
-            let minDistToStop = Infinity;
-            let closestIndex = fromIndex;
-
-            for (let i = 0; i < routePath.length; i++) {
-                const dist = calculateDistance(
-                    routePath[i][0],
-                    routePath[i][1],
-                    toPosition.lat,
-                    toPosition.lng
-                );
-                if (dist < minDistToStop) {
-                    minDistToStop = dist;
-                    closestIndex = i;
-                }
-            }
-
-            const currentIdx = Math.floor(fromIndex);
-            if (closestIndex < currentIdx) {
-                for (let i = currentIdx; i < routePath.length - 1; i++) {
-                    distance += calculateDistance(
-                        routePath[i][0],
-                        routePath[i][1],
-                        routePath[i + 1][0],
-                        routePath[i + 1][1]
-                    );
-                }
-                for (let i = 0; i < closestIndex; i++) {
-                    distance += calculateDistance(
-                        routePath[i][0],
-                        routePath[i][1],
-                        routePath[i + 1][0],
-                        routePath[i + 1][1]
-                    );
-                }
-            } else {
-                for (let i = currentIdx; i < closestIndex; i++) {
-                    distance += calculateDistance(
-                        routePath[i][0],
-                        routePath[i][1],
-                        routePath[i + 1][0],
-                        routePath[i + 1][1]
-                    );
-                }
-            }
-
-            return distance;
-        }
-
-        function calculateArrivalTime(stop) {
-            const arrivalTimes = [];
-
-            activeBuses.forEach(bus => {
-                const busRoute = bus.route;
-                const stopInRoute = busRoute.stops && busRoute.stops.find(s => s.id === stop.id);
-
-                if (!stopInRoute) {
-                    return;
-                }
-
-                const distance = calculateDistance(
-                    bus.currentPosition.lat,
-                    bus.currentPosition.lng,
-                    stop.latitude,
-                    stop.longitude
-                );
-
-                const avgSpeed = bus.avgSpeedKmh || 20;
-
-                const timeInMinutes = (distance / avgSpeed) * 60;
-
-                const totalTime = timeInMinutes;
-
-                arrivalTimes.push({
-                    bus: bus,
-                    distance: distance,
-                    time: Math.ceil(totalTime),
-                    route: busRoute
-                });
-            });
-
-            arrivalTimes.sort((a, b) => a.time - b.time);
-
-            return arrivalTimes;
-        }
-
         function buildBusRow(color, title, subtitle, timeText) {
             return `
                 <div class="flex items-center gap-3 p-2.5 rounded-2xl bg-white/60 dark:bg-gray-700/60">
@@ -750,40 +671,125 @@
             `;
         }
 
-        function showArrivalTimes(stop) {
-            const arrivalTimes = calculateArrivalTime(stop);
+        function csrfToken() {
+            return document.querySelector('meta[name="csrf-token"]')?.content || '';
+        }
+
+        function showEtaNotice(message) {
+            const notice = document.getElementById('eta-uncertainty-notice');
+            if (!notice) return;
+
+            notice.textContent = message || '';
+            notice.classList.toggle('hidden', !message);
+        }
+
+        async function notifyMe(busId, stopId, button) {
+            const endpoint = document.getElementById('eta-uncertainty-notice')?.dataset.notifyEndpoint;
+            if (!endpoint) return;
+
+            button.disabled = true;
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken(),
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ bus_id: Number(busId), stop_id: Number(stopId) }),
+                });
+
+                if (!response.ok) throw new Error('No se pudo guardar el aviso');
+
+                button.textContent = 'Aviso activo';
+            } catch (error) {
+                button.textContent = 'Reintentar aviso';
+                console.warn('Aviso bus/parada:', error);
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        window.UbicaditosNotifyMe = notifyMe;
+
+        async function showArrivalTimes(stop) {
             const arrivalTimesDiv = document.getElementById('arrival-times');
+            const notice = document.getElementById('eta-uncertainty-notice');
 
             document.getElementById('arrival-title').textContent = stop.name;
             document.getElementById('arrival-subtitle').textContent = stop.address || 'Parada';
+            showEtaNotice(null);
 
-            if (arrivalTimes.length === 0) {
+            try {
+                const endpoint = notice?.dataset.etaEndpoint || `/api/stops/${stop.id}/eta`;
+                const url = endpoint.includes('/1/eta')
+                    ? endpoint.replace('/1/eta', `/${stop.id}/eta`)
+                    : endpoint;
+
+                const response = await fetch(url, {
+                    headers: { Accept: 'application/json' },
+                    credentials: 'same-origin',
+                });
+
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const data = await response.json();
+                showEtaNotice(data.notice);
+
+                if (!Array.isArray(data.buses) || data.buses.length === 0) {
+                    arrivalTimesDiv.innerHTML = `
+                        <p class="text-xs text-slate-500 dark:text-gray-400 italic">
+                            No hay autobuses activos en ruta hacia esta parada. Los tiempos son aproximados.
+                        </p>
+                    `;
+                    return;
+                }
+
+                arrivalTimesDiv.innerHTML = data.buses.map(bus => {
+                    const distance = Number(bus.distance_km || 0).toFixed(1);
+                    const timeText = bus.eta_minutes == null
+                        ? '—'
+                        : `≈ ${bus.eta_minutes} min`;
+                    const subtitle = `${bus.route_name || 'Ruta'} · ${distance} km${bus.fresh ? '' : ' · ubicación antigua'}`;
+
+                    return `
+                        <div>
+                            ${buildBusRow(bus.route_color || '#4b5a85', bus.license_plate, subtitle, timeText)}
+                            <button type="button"
+                                    onclick="UbicaditosNotifyMe(${Number(bus.id)}, ${Number(stop.id)}, this)"
+                                    class="mt-1 ml-12 rounded-full border border-slate-200 px-2.5 py-1 text-[10px] font-semibold text-[#4b5a85] hover:bg-slate-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+                                Avísame
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+
+                data.buses.forEach(bus => {
+                    const localBus = activeBuses.find(candidate => candidate.id === bus.id);
+                    if (!localBus) return;
+
+                    localBus.eta_minutes = bus.eta_minutes;
+                    localBus.eta_uncertain = bus.uncertain;
+                    localBus.eta_license_plate = bus.license_plate;
+                });
+
+                drawBuses();
+            } catch (error) {
+                showEtaNotice('No pudimos consultar los tiempos aproximados de llegada. Intenta de nuevo.');
                 arrivalTimesDiv.innerHTML = `
                     <p class="text-xs text-slate-500 dark:text-gray-400 italic">
-                        No hay autobuses en ruta hacia esta parada
+                        Tiempos de llegada no disponibles en este momento.
                     </p>
                 `;
-                return;
+                console.warn('ETA:', error);
             }
-
-            let html = '';
-
-            arrivalTimes.forEach(arrival => {
-                const timeText = arrival.time < 1 ? '< 1 min' : `${arrival.time} min`;
-
-                html += buildBusRow(
-                    arrival.route.color || '#4b5a85',
-                    arrival.bus.license_plate,
-                    `A ${arrival.distance.toFixed(1)} km · ${arrival.route.name}`,
-                    timeText
-                );
-            });
-
-            arrivalTimesDiv.innerHTML = html;
         }
 
         function showRouteInfo(route) {
             const arrivalTimesDiv = document.getElementById('arrival-times');
+            showEtaNotice(null);
 
             document.getElementById('arrival-title').textContent = route.name;
             document.getElementById('arrival-subtitle').textContent = route.code || 'Ruta';
@@ -791,6 +797,7 @@
             const routeBuses = activeBuses.filter(bus => bus.route.id === route.id);
 
             if (routeBuses.length === 0) {
+                showEtaNotice('No hay autobuses activos en esta ruta; los tiempos de llegada no están disponibles.');
                 arrivalTimesDiv.innerHTML = `
                     <p class="text-xs text-slate-500 dark:text-gray-400 italic">
                         No hay autobuses activos en esta ruta
@@ -832,12 +839,18 @@
                     const stopTimeMinutes = (stopsUntilDestination * 0.5);
                     const totalTime = Math.ceil(timeInMinutes + stopTimeMinutes);
 
-                    const timeText = totalTime < 1 ? '< 1 min' : `${totalTime} min`;
+                    if (!bus.fresh) {
+                        showEtaNotice('Tiempos aproximados: la ubicación de uno o más autobuses tiene más de cinco minutos; no mostramos una hora precisa.');
+                    }
+
+                    const timeText = bus.fresh
+                        ? (totalTime < 1 ? '≈ < 1 min' : `≈ ${totalTime} min`)
+                        : '—';
 
                     html += buildBusRow(
                         route.color || '#4b5a85',
                         `${bus.license_plate} · ${bus.model}`,
-                        `Próxima parada: ${nextStop.name}`,
+                        `Próxima parada: ${nextStop.name}${bus.fresh ? '' : ' · ubicación antigua'}`,
                         timeText
                     );
                 } else {
@@ -893,27 +906,6 @@
             return polyline;
         }
 
-        function calculateRouteDistance(routePath) {
-            let totalDistance = 0;
-            for (let i = 0; i < routePath.length - 1; i++) {
-                const lat1 = routePath[i][0];
-                const lng1 = routePath[i][1];
-                const lat2 = routePath[i + 1][0];
-                const lng2 = routePath[i + 1][1];
-                totalDistance += calculateDistance(lat1, lng1, lat2, lng2);
-            }
-            return totalDistance;
-        }
-
-        const STALENESS_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutos
-
-        function isLocationStale(lastUpdate) {
-            if (!lastUpdate) {
-                return true;
-            }
-            return Date.now() - new Date(lastUpdate).getTime() > STALENESS_THRESHOLD_MS;
-        }
-
         function initializeBuses() {
             // Solo se muestran autobuses que tengan coordenadas reales almacenadas.
             // No se inventan posiciones ni se desplaza ningún autobús artificialmente.
@@ -939,6 +931,12 @@
                         lng: Number(bus.current_longitude)
                     },
                     last_update: bus.last_location_update ?? null,
+                    fresh: bus.fresh ?? false,
+                    fresh_until: bus.fresh_until ?? null,
+                    accuracy: bus.accuracy ?? null,
+                    sharing_passengers_count: Number(bus.sharing_passengers_count ?? 0),
+                    eta_minutes: null,
+                    eta_uncertain: true,
                     avgSpeedKmh: 20
                 };
             }).filter(bus => bus !== null);
@@ -1167,6 +1165,9 @@
                             <div><strong>Ruta:</strong> ${bus.route.name}</div>
                             <div><strong>Capacidad:</strong> ${bus.capacity} pasajeros</div>
                             <div><strong>Ocupación:</strong> ${bus.current_passengers ?? 0}/${bus.capacity}</div>
+                            <div><strong>ETA:</strong> ${bus.eta_minutes == null ? '— (aproximado)' : `≈ ${bus.eta_minutes} min`}</div>
+                            <div class="text-[11px] text-gray-500">${bus.fresh ? 'Ubicación reciente' : 'Ubicación antigua'}${bus.accuracy != null ? ` · ±${bus.accuracy} m` : ''}</div>
+                            <div class="text-[11px] text-gray-500">${bus.sharing_passengers_count} pasajero(s) compartiendo ubicación</div>
                         </div>
                     `);
                 } else {
@@ -1208,6 +1209,13 @@
 
                 bus.currentPosition = { lat: payload.latitude, lng: payload.longitude };
                 bus.last_update = payload.last_update ?? bus.last_update;
+                bus.fresh = payload.fresh ?? bus.fresh;
+                bus.fresh_until = payload.fresh_until ?? bus.fresh_until;
+                bus.accuracy = payload.accuracy ?? bus.accuracy;
+                bus.sharing_passengers_count = payload.sharing_passengers_count ?? bus.sharing_passengers_count;
+                bus.eta_minutes = null;
+                bus.eta_uncertain = true;
+                showEtaNotice('Los tiempos son aproximados: la ubicación del autobús cambió y aún no se recalculó la llegada.');
 
                 if (payload.current_passengers != null) {
                     bus.current_passengers = payload.current_passengers;

@@ -55,6 +55,7 @@ class Route extends Model
     public function favoritedByUsers()
     {
         return $this->belongsToMany(User::class, 'favorite_routes')
+            ->withPivot(['position', 'label'])
             ->withTimestamps();
     }
 

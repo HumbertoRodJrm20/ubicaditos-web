@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin;
 use App\Models\Bus;
 use App\Models\EmergencyReport;
 use App\Models\Incident;
+use App\Models\Rating;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -114,5 +115,42 @@ class AdminDashboardTest extends TestCase
             ->assertOk()
             ->assertSee('No hay autobuses activos en este momento.')
             ->assertSee('No hay viajes registrados todavía.');
+    }
+
+    public function test_dashboard_shows_platform_average_rating_with_empty_state(): void
+    {
+        $passenger = User::factory()->create(['role' => 'passenger']);
+        $driver = User::factory()->create(['role' => 'driver']);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertViewHas('stats', function (array $stats) {
+                return $stats['average_rating'] === null && $stats['ratings_count'] === 0;
+            })
+            ->assertSee('Calificación promedio')
+            ->assertSee('—');
+
+        Rating::create([
+            'passenger_id' => $passenger->id,
+            'driver_id' => $driver->id,
+            'rating' => 5,
+            'comment' => 'Excelente servicio',
+        ]);
+        Rating::create([
+            'passenger_id' => $passenger->id,
+            'driver_id' => $driver->id,
+            'rating' => 4,
+            'comment' => 'Buena atención',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertViewHas('stats', function (array $stats) {
+                return $stats['average_rating'] === 4.5 && $stats['ratings_count'] === 2;
+            })
+            ->assertSee('4.5')
+            ->assertSee('2 calificaciones');
     }
 }

@@ -103,6 +103,20 @@
         </a>
     </div>
 
+    <div class="mt-4 flex flex-wrap items-center gap-3">
+        <a href="{{ route('passenger.emergency.create') }}"
+            class="inline-flex h-10 items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-4 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 focus:outline-none focus:ring-4 focus:ring-rose-200/60 dark:border-rose-800 dark:bg-rose-900/30 dark:text-rose-200 dark:hover:bg-rose-900/50">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+            </svg>
+            Reportar emergencia
+        </a>
+        <a href="{{ route('incidents.public') }}"
+            class="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-xs font-semibold text-[#3d4a6b] transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-[#6b7bad]/20 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
+            Ver incidencias públicas
+        </a>
+    </div>
+
     <div class="mt-4 grid gap-4 lg:grid-cols-3 lg:items-start">
 
         {{-- Paradas favoritas --}}
@@ -216,34 +230,59 @@
                 @foreach ($favoriteRoutes as $route)
                     @php $color = $route->color ?: '#6b7bad'; @endphp
 
-                    <li class="flex items-center gap-3 rounded-2xl bg-white px-3 py-2.5 shadow-sm ring-1 ring-slate-100 dark:bg-gray-700/60 dark:ring-white/10">
-                        <a href="{{ route('passenger.dashboard', ['route_id' => $route->id]) }}"
-                            class="flex min-w-0 flex-1 items-center gap-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#6b7bad]/25">
-                            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-md shadow-[#4a5a8a]/20"
-                                style="background-color: {{ $color }}; background-image: linear-gradient(135deg, rgba(255,255,255,.28), rgba(0,0,0,.14));">
-                                <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="6" cy="18" r="2.2" /><circle cx="18" cy="6" r="2.2" />
-                                    <path d="M8.2 18H14a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h5.8" />
-                                </svg>
-                            </div>
-                            <div class="min-w-0">
-                                <p class="truncate text-[13px] font-bold text-[#1e2a4a]">{{ $route->name }}</p>
-                                <p class="truncate text-[11px] text-[#6b7699]">
-                                    {{ $route->code ? 'Código ' . $route->code : 'Ruta de Ubicaditos' }}
-                                    @if ((int) $route->likes_count > 0)
-                                        · {{ (int) $route->likes_count }} {{ $route->likes_count == 1 ? 'me gusta' : 'me gusta' }}
-                                    @endif
-                                </p>
-                            </div>
-                        </a>
+                    <li class="rounded-2xl bg-white px-3 py-2.5 shadow-sm ring-1 ring-slate-100 dark:bg-gray-700/60 dark:ring-white/10">
+                        <div class="flex items-center gap-3">
+                            <a href="{{ route('passenger.dashboard', ['route_id' => $route->id]) }}"
+                                class="flex min-w-0 flex-1 items-center gap-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#6b7bad]/25">
+                                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-md shadow-[#4a5a8a]/20"
+                                    style="background-color: {{ $color }}; background-image: linear-gradient(135deg, rgba(255,255,255,.28), rgba(0,0,0,.14));">
+                                    <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="6" cy="18" r="2.2" /><circle cx="18" cy="6" r="2.2" />
+                                        <path d="M8.2 18H14a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h5.8" />
+                                    </svg>
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="truncate text-[13px] font-bold text-[#1e2a4a] dark:text-gray-100">
+                                        {{ $route->pivot->label ?: $route->name }}
+                                    </p>
+                                    <p class="truncate text-[11px] text-[#6b7699] dark:text-gray-400">
+                                        {{ $route->code ? 'Código ' . $route->code : 'Ruta de Ubicaditos' }}
+                                        @if ((int) $route->likes_count > 0)
+                                            · {{ (int) $route->likes_count }} {{ $route->likes_count == 1 ? 'me gusta' : 'me gusta' }}
+                                        @endif
+                                    </p>
+                                </div>
+                            </a>
 
-                        <form method="POST" action="{{ route('passenger.favorite-routes.remove', $route) }}" class="shrink-0">
+                            <form method="POST" action="{{ route('passenger.favorite-routes.remove', $route) }}" class="shrink-0">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" title="Quitar de rutas favoritas" aria-label="Quitar de rutas favoritas"
+                                    onclick="return confirm('¿Quitar esta ruta de favoritos?')"
+                                    class="flex h-8 w-8 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-500 transition hover:bg-rose-50 focus:outline-none focus:ring-4 focus:ring-rose-100 dark:border-rose-800 dark:bg-gray-700 dark:text-rose-300 dark:hover:bg-rose-900/30">
+                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" /></svg>
+                                </button>
+                            </form>
+                        </div>
+
+                        <form method="POST" action="{{ route('passenger.favorite-routes.update', $route) }}"
+                            class="mt-2 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2 dark:border-white/10">
                             @csrf
-                            @method('DELETE')
-                            <button type="submit" title="Quitar de rutas favoritas" aria-label="Quitar de rutas favoritas"
-                                onclick="return confirm('¿Quitar esta ruta de favoritos?')"
-                                class="flex h-8 w-8 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-500 transition hover:bg-rose-50 focus:outline-none focus:ring-4 focus:ring-rose-100 dark:border-rose-800 dark:bg-gray-700 dark:text-rose-300 dark:hover:bg-rose-900/30">
-                                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" /></svg>
+                            @method('PATCH')
+                            <label class="flex items-center gap-1 text-[10px] font-semibold text-[#6b7699] dark:text-gray-400">
+                                Orden
+                                <input type="number" name="position" min="1" max="{{ $routeCount }}"
+                                    value="{{ $route->pivot->position }}"
+                                    aria-label="Nueva posición de {{ $route->name }}"
+                                    class="h-8 w-14 rounded-full border border-slate-200 bg-white px-2 text-center text-xs text-[#1e2a4a] outline-none focus:border-[#6b7bad] focus:ring-2 focus:ring-[#6b7bad]/20 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                            </label>
+                            <input type="text" name="label" maxlength="{{ \App\Models\FavoriteRoute::MAX_LABEL_LENGTH }}"
+                                value="{{ $route->pivot->label }}" placeholder="Etiqueta (opcional)"
+                                aria-label="Etiqueta de {{ $route->name }}"
+                                class="h-8 min-w-0 flex-1 rounded-full border border-slate-200 bg-white px-3 text-xs text-[#1e2a4a] outline-none placeholder:text-[#a0a8bd] focus:border-[#6b7bad] focus:ring-2 focus:ring-[#6b7bad]/20 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                            <button type="submit" title="Guardar preferencias" aria-label="Guardar preferencias de {{ $route->name }}"
+                                class="h-8 rounded-full bg-[#eef2fa] px-3 text-[11px] font-semibold text-[#3d4a6b] transition hover:bg-[#e2e8f5] focus:outline-none focus:ring-2 focus:ring-[#6b7bad]/30 dark:bg-gray-600 dark:text-gray-100 dark:hover:bg-gray-500">
+                                Guardar
                             </button>
                         </form>
                     </li>

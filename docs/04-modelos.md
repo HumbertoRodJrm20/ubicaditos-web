@@ -80,7 +80,7 @@ Atributos ocultos: `password`, `remember_token`.
 | `ratingsGiven()` | `hasMany` | `Rating` | `passenger_id` | Calificaciones emitidas como pasajero. |
 | `ratingsReceived()` | `hasMany` | `Rating` | `driver_id` | Calificaciones recibidas como conductor. |
 | `favoriteStops()` | `belongsToMany` | `Stop` | `favorite_stops` | Paradas favoritas, con pivote `nickname` y timestamps. |
-| `favoriteRoutes()` | `belongsToMany` | `Route` | `favorite_routes` | Rutas guardadas por el pasajero. |
+| `favoriteRoutes()` | `belongsToMany` | `Route` | `favorite_routes` | Rutas guardadas por el pasajero, con pivote `position`/`label` y ordenadas por posición y luego por id del pivote. |
 | `likes()` | `hasMany` | `Like` | `user_id` | Me gusta emitidos por el usuario. |
 | `locationShares()` | `hasMany` | `LocationShare` | `user_id` | Enlaces de ubicación creados por el usuario. |
 | `incidents()` | `hasMany` | `Incident` | `user_id` | Reportes de incidencia enviados por el usuario. |
@@ -110,6 +110,7 @@ Atributos ocultos: `password`, `remember_token`.
 | `status` | enum | `active`, `inactive`, `maintenance` o `emergency`. |
 | `current_latitude`, `current_longitude` | `decimal:7` | Posición GPS actual. |
 | `last_location_update` | datetime | Momento de la última posición recibida. |
+| `accuracy` | integer, nullable | Precisión GPS en metros de la última posición (RNF-08). |
 | `driver_id` | FK → `users` | Conductor asignado (nullable). |
 | `is_active` | boolean | Habilitado en el sistema. |
 
@@ -123,6 +124,7 @@ Atributos ocultos: `password`, `remember_token`.
 | `routes()` | `belongsToMany` | `Route` (`bus_route`) | Rutas asignadas, con pivote `assigned_at`. En la práctica se usa la primera ruta. |
 | `trips()` | `hasMany` | `Trip` | Viajes del autobús. |
 | `messages()` | `hasMany` | `Message` | Mensajes asociados. |
+| `locationShares()` | `hasMany` | `LocationShare` | Comparticiones activas o históricas asociadas al autobús. |
 
 ### Métodos
 
@@ -130,7 +132,10 @@ Atributos ocultos: `password`, `remember_token`.
 |--------|-------------|
 | `isActive()` | `true` si `status === 'active'`. |
 | `isInRoute()` | `true` si está activo y tiene coordenadas. |
-| `updateLocation($lat, $lng)` | Actualiza la posición y `last_location_update = now()`. Usado por el GPS del conductor y por el simulador. |
+| `isLocationFresh()` | `true` si `last_location_update` es posterior a `now() - LOCATION_FRESH_MINUTES` (`5`). |
+| `locationFreshUntil()` | ISO 8601 con el instante en que la posición deja de ser fresca. |
+| `fresh` / `fresh_until` / `sharing_passengers_count` | Atributos derivados (`$appends`) consumidos por polling, WebSocket y Blade. El conteo excluye shares revocados o caducados y no incluye identidades. |
+| `updateLocation($lat, $lng, ?int $accuracy = null)` | Actualiza posición, precisión y `last_location_update = now()`, y despacha `BusLocationUpdated`. |
 
 ## Route
 
@@ -156,7 +161,7 @@ Atributos ocultos: `password`, `remember_token`.
 | `stops()` | `belongsToMany` | `Stop` (`route_stop`) | Paradas con pivotes `order` y `estimated_time_from_previous`, ordenadas por `order`. |
 | `trips()` | `hasMany` | `Trip` | Viajes realizados en la ruta. |
 | `likes()` | `morphMany` | `Like` | Me gusta sobre la ruta. |
-| `favoritedByUsers()` | `belongsToMany` | `User` (`favorite_routes`) | Usuarios que guardaron la ruta como favorita. |
+| `favoritedByUsers()` | `belongsToMany` | `User` (`favorite_routes`) | Usuarios que guardaron la ruta como favorita; el pivote expone `position` y `label`. |
 
 ### Métodos
 
@@ -226,7 +231,7 @@ Atributos ocultos: `password`, `remember_token`.
 
 ## FavoriteRoute
 
-`App\Models\FavoriteRoute` — modelo explícito de la tabla `favorite_routes` con relaciones `user()` y `route()`. La gestión se hace principalmente con `User::favoriteRoutes()` (`attach()` / `detach()`). Restricción única (`user_id`, `route_id`).
+`App\Models\FavoriteRoute` — modelo explícito de la tabla `favorite_routes` con relaciones `user()` y `route()`. La gestión se hace principalmente con `User::favoriteRoutes()` (`attach()` / `detach()`). Restricción única (`user_id`, `route_id`). Define `MAX_FAVORITES = 5` y `MAX_LABEL_LENGTH = 40`, castea `position` a entero y expone los datos del pivote en `User::favoriteRoutes()` y `Route::favoritedByUsers()`. Los favoritos históricos recibieron su posición según el orden de inserción.
 
 ## Like
 
@@ -246,6 +251,7 @@ La tabla impone un índice único (`user_id`, `likeable_type`, `likeable_id`), d
 | Atributo | Tipo / cast | Descripción |
 |----------|-------------|-------------|
 | `user_id` | FK | Pasajero que comparte (`user()`). |
+| `bus_id` | FK → `buses`, nullable | Autobús en el que viaja; permite el conteo agregado sin exponer identidades. |
 | `token` | string(48), único | Token aleatorio del enlace público. |
 | `latitude`, `longitude` | `decimal:7`, nullable | Última posición compartida. |
 | `accuracy` | integer, nullable | Precisión en metros. |
@@ -254,13 +260,29 @@ La tabla impone un índice único (`user_id`, `likeable_type`, `likeable_id`), d
 
 | Método | Descripción |
 |--------|-------------|
+| `bus()` | `belongsTo` al autobús asociado. |
 | `scopeActive()` | Enlaces sin revocar y con `expires_at` futuro. |
+| `scopeForBus(int $busId)` | Filtra las comparticiones de una unidad para el conteo agregado. |
 | `isActive()` / `isRevoked()` | Comprobaciones de estado. |
 | `startFor(User, array)` | Revoca el enlace activo previo y crea uno nuevo con token aleatorio. |
 | `updatePosition(array)` | Actualiza coordenadas y precisión. |
 | `revoke()` | Detiene la compartición. |
 | `publicUrl()` | URL pública `share.show`. |
 | `toPublicArray()` | Payload público (`id`, `token`, `url`, coordenadas, precisión, estado y fechas); nunca expone datos personales. |
+
+`startFor()` y `updatePosition()` aceptan `bus_id` opcional. El enlace público `/api/share/{token}` sigue sin incluir ese campo ni identidad alguna.
+
+## BusStopSubscription
+
+`App\Models\BusStopSubscription` — aviso in-app «avisame cuando el autobús X llegue a la parada Y».
+
+| Atributo | Tipo / cast | Descripción |
+|----------|-------------|-------------|
+| `user_id` | FK → `users` | Dueño de la suscripción. |
+| `bus_id` | FK → `buses` | Autobús observado. |
+| `stop_id` | FK → `stops` | Parada de interés. |
+
+La tabla impone unicidad en `(user_id, bus_id, stop_id)`, por lo que suscribirse dos veces es idempotente. Las relaciones `user()`, `bus()` y `stop()` permiten listar los avisos propios con placa y nombre de parada sin exponer los de otros pasajeros.
 
 ## Incident
 
@@ -271,6 +293,9 @@ La tabla impone un índice único (`user_id`, `likeable_type`, `likeable_id`), d
 | `user_id` | Autor del reporte (`user()`). |
 | `category` | `route`, `bus`, `service`, `driver`, `stop` u `other`. |
 | `description` | Texto de hasta 1000 caracteres. |
+| `route_id`, `bus_id` | Referencias opcionales a `Route` (`route()`) y `Bus` (`bus()`), con `nullOnDelete`. |
+| `latitude`, `longitude` | Coordenadas opcionales (cast `decimal:7`). |
+| `is_public` | Indica si el reporte se publica sin identidad del autor; por defecto `false`. |
 | `status` | `pending`, `in_review` o `resolved` (por defecto `pending`). |
 | `resolved_at` | Fecha de resolución; se limpia si el reporte se reabre. |
 
@@ -279,6 +304,8 @@ Incluye los accessors `category_label` y `status_label`, y los ayudantes `isPend
 ## EmergencyReport
 
 `App\Models\EmergencyReport`
+
+Desde RF-19 también lo utilizan los pasajeros: unidad y coordenadas son opcionales. `EmergencyReportService` aplica el límite de cinco reportes por hora por usuario antes de crear el registro; si un conductor omite ambos datos, se conserva su unidad asignada y la posición de esa unidad.
 
 | Atributo | Descripción |
 |----------|-------------|

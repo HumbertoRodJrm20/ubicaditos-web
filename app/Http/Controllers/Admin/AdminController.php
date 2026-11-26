@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Bus;
 use App\Models\EmergencyReport;
 use App\Models\Incident;
+use App\Models\Rating;
 use App\Models\Route;
 use App\Models\Stop;
 use App\Models\Trip;
@@ -16,6 +17,10 @@ class AdminController extends Controller
 {
     public function index()
     {
+        $ratings = Rating::toBase()
+            ->selectRaw('COUNT(*) as total, AVG(rating) as average')
+            ->first();
+
         $stats = [
             'total_buses' => Bus::count(),
             'active_buses' => Bus::where('status', 'active')->count(),
@@ -29,6 +34,10 @@ class AdminController extends Controller
             'trips_today' => Trip::whereDate('started_at', today())->count(),
             'pending_incidents' => Incident::where('status', Incident::STATUS_PENDING)->count(),
             'pending_emergencies' => EmergencyReport::where('status', 'pending')->count(),
+            'average_rating' => (int) $ratings->total > 0
+                ? round((float) $ratings->average, 1)
+                : null,
+            'ratings_count' => (int) $ratings->total,
         ];
 
         $recentTrips = Trip::with(['bus', 'driver', 'route'])
@@ -83,6 +92,10 @@ class AdminController extends Controller
 
     public function assignBusToDriver(Request $request, User $driver)
     {
+        // RNF-02: el middleware garantiza que quien llama es admin, pero el
+        // destino de la asignación también debe ser una cuenta de conductor.
+        abort_unless($driver->isDriver(), 403, 'Solo se puede asignar un autobús a un conductor.');
+
         $request->validate([
             'bus_id' => 'required|exists:buses,id',
         ]);
@@ -162,6 +175,7 @@ class AdminController extends Controller
         $emergencies = EmergencyReport::with(['reporter', 'bus'])
             ->when($status, fn ($query, $status) => $query->where('status', $status))
             ->when($type, fn ($query, $type) => $query->where('type', $type))
+            ->orderByRaw("CASE WHEN status = 'pending' THEN 0 WHEN status = 'in_progress' THEN 1 ELSE 2 END")
             ->latest()
             ->get();
 

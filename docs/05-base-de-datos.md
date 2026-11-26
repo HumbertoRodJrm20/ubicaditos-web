@@ -56,6 +56,7 @@ erDiagram
         decimal current_latitude
         decimal current_longitude
         timestamp last_location_update
+        int accuracy
         bigint driver_id FK
     }
     routes {
@@ -112,6 +113,8 @@ erDiagram
         bigint id PK
         bigint user_id FK
         bigint route_id FK
+        int position
+        string label
     }
     likes {
         bigint id PK
@@ -122,6 +125,7 @@ erDiagram
     location_shares {
         bigint id PK
         bigint user_id FK
+        bigint bus_id FK
         string token UK
         decimal latitude
         decimal longitude
@@ -129,11 +133,22 @@ erDiagram
         timestamp expires_at
         timestamp revoked_at
     }
+    bus_stop_subscriptions {
+        bigint id PK
+        bigint user_id FK
+        bigint bus_id FK
+        bigint stop_id FK
+    }
     incidents {
         bigint id PK
         bigint user_id FK
+        bigint route_id FK
+        bigint bus_id FK
         string category
         text description
+        decimal latitude
+        decimal longitude
+        boolean is_public
         string status
         timestamp resolved_at
     }
@@ -168,10 +183,10 @@ erDiagram
 | `trips` | Viajes. | `bus_id`, `route_id`, `driver_id → users` (**cascade**) |
 | `ratings` | Calificaciones. | `passenger_id`, `driver_id` (**cascade**); `trip_id` (**set null**) |
 | `favorite_stops` | Paradas favoritas. Índice único (`user_id`, `stop_id`). | `user_id`, `stop_id` (**cascade**) |
-| `favorite_routes` | Rutas favoritas. Índice único (`user_id`, `route_id`). | `user_id`, `route_id` (**cascade**) |
+| `favorite_routes` | Rutas favoritas. Índice único (`user_id`, `route_id`), índice (`user_id`, `position`), `position` persistido y `label` opcional (máx. 40). | `user_id`, `route_id` (**cascade**) |
 | `likes` | Me gusta polimórfico (`route` o `stop`). Índice único (`user_id`, `likeable_type`, `likeable_id`). | `user_id` (**cascade**); la entidad destino se elimina por la relación polimórfica. |
 | `location_shares` | Enlaces temporales de ubicación. Token único, caducidad y revocación. | `user_id` (**cascade**) |
-| `incidents` | Reportes ciudadanos de incidencias. | `user_id` (**cascade**) |
+| `incidents` | Reportes ciudadanos con ruta/unidad, coordenadas y visibilidad pública opcionales; índice (`is_public`, `created_at`). | `user_id` (**cascade**); `route_id`, `bus_id` (**set null**) |
 | `emergency_reports` | Reportes de emergencia. | `reporter_id` (**cascade**); `bus_id` (**set null**) |
 | `messages` | Mensajes entre usuarios. | `sender_id`, `receiver_id`, `bus_id` (**cascade**) |
 
@@ -228,8 +243,13 @@ Se ejecutan en orden cronológico según el prefijo del nombre del archivo:
 | `2026_11_08_000003_create_location_shares_table` | Crea `location_shares`. |
 | `2026_11_08_000004_add_resolved_at_to_incidents_table` | Agrega `resolved_at` a `incidents`. |
 | `2026_11_25_000001_add_unique_route_stop_pair_index` | Agrega índice único a `(route_id, stop_id)` tras comprobar que no haya pares duplicados. |
+| `2026_11_25_000002_add_accuracy_to_buses_table` | Agrega `buses.accuracy` nullable para la precisión GPS (RNF-08). |
+| `2026_11_25_000003_add_bus_to_location_shares_table` | Agrega `location_shares.bus_id` nullable con FK a `buses` e índice para el conteo agregado (HU-012). |
+| `2026_11_25_000004_create_bus_stop_subscriptions_table` | Crea `bus_stop_subscriptions` con unicidad por `(user_id, bus_id, stop_id)` (HU-012). |
+| `2026_11_25_000005_add_context_to_incidents_table` | Agrega `incidents.route_id`/`bus_id` (FK nullable `nullOnDelete`), `latitude`, `longitude` e `is_public`, con índice `(is_public, created_at)` (HU-025). |
+| `2026_11_25_000006_add_preferences_to_favorite_routes_table` | Agrega `favorite_routes.position` y `label` con índice `(user_id, position)` y asigna posiciones a los favoritos históricos (HU-027). |
 
-La migración de unicidad cuenta los duplicados y falla con la pareja conflictiva; no elimina ni reescribe datos. Se probó mediante las migraciones SQLite en memoria de PHPUnit. El DDL usa el índice único estándar de Laravel, compatible con SQLite y PostgreSQL; no se ejecutó contra una instancia PostgreSQL en esta sesión. El SQLite de desarrollo no se migró.
+La migración de unicidad cuenta los duplicados y falla con la pareja conflictiva; no elimina ni reescribe datos. Las tres migraciones del paso 4 (`2026_11_25_000002` a `000004`) y las dos del paso 5 (`000005` y `000006`) fueron aprobadas por el propietario y se probaron mediante las migraciones SQLite en memoria de PHPUnit. El DDL usa índices, claves foráneas y columnas nullable estándar de Laravel, compatibles con SQLite y PostgreSQL; no se ejecutó contra una instancia PostgreSQL en esta sesión. El SQLite de desarrollo no se migró. La migración de favoritos conservó el orden histórico usando el id de inserción como desempate.
 
 Comandos útiles:
 

@@ -252,6 +252,52 @@
                     {{ $isDriver ? 'Desactivar cuenta' : 'Eliminar cuenta' }}
                 </button>
             </section>
+
+            <section class="{{ $cardClass }} p-6">
+                <h2 class="text-[15px] font-semibold text-[#2f3a5f] dark:text-gray-100">Preferencias</h2>
+                <p class="text-[11px] text-slate-500 dark:text-gray-400 mb-4">Idioma de la interfaz y avisos dentro de la aplicación.</p>
+
+                <form method="POST" action="{{ route('profile.update') }}">
+                    @csrf
+                    @method('PATCH')
+
+                    <div>
+                        <label for="locale" class="{{ $labelClass }}">Idioma de la interfaz</label>
+                        <select id="locale" name="locale" class="{{ $inputClass }}">
+                            <option value="es" @selected(old('locale', $user->locale ?? 'es') === 'es')>Español</option>
+                            <option value="en" @selected(old('locale', $user->locale ?? 'es') === 'en')>English</option>
+                        </select>
+                        @error('locale')<p class="mt-1 text-xs text-rose-500">{{ $message }}</p>@enderror
+                    </div>
+
+                    <fieldset class="mt-4">
+                        <legend class="{{ $labelClass }}">Avisos dentro de la aplicación</legend>
+                        @foreach (['emergency' => 'Emergencias', 'incident' => 'Incidencias', 'location_share' => 'Ubicación compartida'] as $key => $label)
+                            <label class="mt-2 flex items-center gap-2 text-[12px] text-slate-600 dark:text-gray-300">
+                                <input type="checkbox" name="notification_preferences[{{ $key }}]" value="1" @checked(old("notification_preferences.$key", $user->notificationPreference($key)))>
+                                {{ $label }}
+                            </label>
+                        @endforeach
+                    </fieldset>
+
+                    <div class="mt-5">
+                        <button type="submit" class="{{ $primaryBtn }}">Guardar preferencias</button>
+                    </div>
+                </form>
+            </section>
+
+            <section id="confirm-logout" class="rounded-3xl border border-slate-200/80 bg-white/70 p-5 dark:border-white/10 dark:bg-gray-800/60" x-data="{ confirmLogout: false }">
+                <h2 class="text-[14px] font-semibold text-[#2f3a5f] dark:text-gray-100">¿Cerrar sesión?</h2>
+                <p class="text-[11px] text-slate-500 dark:text-gray-400">Si tienes un viaje activo, se finalizará y se liberará el autobús.</p>
+                <button type="button" @click="confirmLogout = true" class="mt-3 px-4 py-2 rounded-full border border-slate-300 text-[13px] font-medium text-[#4b5a85] dark:border-gray-600 dark:text-gray-200">Cerrar sesión</button>
+                <div x-show="confirmLogout" class="mt-3 space-y-3" style="display: none;">
+                    <p class="text-[12px] text-slate-600 dark:text-gray-300">¿Confirmas que deseas salir?</p>
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button type="submit" class="px-5 py-2.5 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-[13px] font-semibold">Sí, cerrar sesión</button>
+                    </form>
+                </div>
+            </section>
         </div>
     </div>
 

@@ -87,6 +87,69 @@
                         @enderror
                     </div>
 
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label for="route_id" class="block text-xs font-semibold text-[#1e2a4a] dark:text-gray-100">Ruta (opcional)</label>
+                            <select id="route_id" name="route_id"
+                                class="mt-2 h-12 appearance-none px-4 {{ $fieldBase }} @error('route_id') {{ $fieldError }} @else {{ $fieldOk }} @enderror">
+                                <option value="">No estoy seguro</option>
+                                @foreach ($routes as $route)
+                                    <option value="{{ $route->id }}" @selected((string) old('route_id') === (string) $route->id)>
+                                        {{ $route->name }} @if ($route->code) · {{ $route->code }} @endif
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('route_id')
+                                <p class="mt-1 text-xs font-medium text-rose-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div>
+                            <label for="bus_id" class="block text-xs font-semibold text-[#1e2a4a] dark:text-gray-100">Unidad (opcional)</label>
+                            <select id="bus_id" name="bus_id"
+                                class="mt-2 h-12 appearance-none px-4 {{ $fieldBase }} @error('bus_id') {{ $fieldError }} @else {{ $fieldOk }} @enderror">
+                                <option value="">No estoy seguro</option>
+                                @foreach ($buses as $bus)
+                                    <option value="{{ $bus->id }}" @selected((string) old('bus_id') === (string) $bus->id)>
+                                        {{ $bus->license_plate }} @if ($bus->model) · {{ $bus->model }} @endif
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('bus_id')
+                                <p class="mt-1 text-xs font-medium text-rose-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div>
+                            <label for="latitude" class="block text-xs font-semibold text-[#1e2a4a] dark:text-gray-100">Latitud (opcional)</label>
+                            <input id="latitude" name="latitude" type="number" step="any" min="-90" max="90"
+                                value="{{ old('latitude') }}" placeholder="17.0612345"
+                                class="mt-2 h-12 {{ $fieldBase }} @error('latitude') {{ $fieldError }} @else {{ $fieldOk }} @enderror">
+                            @error('latitude')
+                                <p class="mt-1 text-xs font-medium text-rose-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div>
+                            <label for="longitude" class="block text-xs font-semibold text-[#1e2a4a] dark:text-gray-100">Longitud (opcional)</label>
+                            <input id="longitude" name="longitude" type="number" step="any" min="-180" max="180"
+                                value="{{ old('longitude') }}" placeholder="-96.7256789"
+                                class="mt-2 h-12 {{ $fieldBase }} @error('longitude') {{ $fieldError }} @else {{ $fieldOk }} @enderror">
+                            @error('longitude')
+                                <p class="mt-1 text-xs font-medium text-rose-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+
+                    <label class="flex items-start gap-3 rounded-2xl bg-[#eef2fa]/70 px-4 py-3 dark:bg-gray-700/50">
+                        <input type="checkbox" name="is_public" value="1" @checked(old('is_public'))
+                            class="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#53658f] focus:ring-[#6b7bad]">
+                        <span class="text-xs leading-5 text-[#3d4a6b] dark:text-gray-200">
+                            <span class="font-semibold">Mostrar públicamente</span>
+                            <span class="block text-[11px] text-[#6b7699] dark:text-gray-400">Se publicará la descripción, ruta, unidad y ubicación sin tu nombre ni correo.</span>
+                        </span>
+                    </label>
+
                     <div x-data="{ count: {{ $descriptionLength }} }">
                         <div class="flex items-end justify-between gap-3">
                             <div>
@@ -156,7 +219,7 @@
                         </li>
                         <li class="flex gap-2">
                             <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[#6b7bad]"></span>
-                            Solo tú puedes consultar los reportes asociados a tu cuenta.
+                            Tus reportes privados solo se muestran en tu cuenta; los públicos se exhiben sin identidad.
                         </li>
                     </ul>
                 </section>

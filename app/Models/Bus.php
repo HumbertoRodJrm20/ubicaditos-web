@@ -2,10 +2,15 @@
 
 namespace App\Models;
 
+use App\Events\BusLocationUpdated;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
 class Bus extends Model
 {
+    /** HU-014/HU-30: una posición deja de ser confiable después de 5 minutos. */
+    public const LOCATION_FRESH_MINUTES = 5;
+
     protected $fillable = [
         'license_plate',
         'model',
@@ -14,10 +19,19 @@ class Bus extends Model
         'current_latitude',
         'current_longitude',
         'last_location_update',
+        'accuracy',
         'driver_id',
         'is_active',
         'current_passengers',
     ];
+
+    /**
+     * El mapa del pasajero consume estas tres banderas derivadas en todas sus
+     * fuentes (Blade, polling y WebSocket) para no duplicar la regla de frescura.
+     *
+     * @var array<int, string>
+     */
+    protected $appends = ['fresh', 'fresh_until', 'sharing_passengers_count'];
 
     protected function casts(): array
     {
@@ -27,6 +41,7 @@ class Bus extends Model
             'current_latitude' => 'decimal:7',
             'current_longitude' => 'decimal:7',
             'last_location_update' => 'datetime',
+            'accuracy' => 'integer',
             'is_active' => 'boolean',
         ];
     }
@@ -44,11 +59,33 @@ class Bus extends Model
      */
     public function getOccupancyPercentageAttribute(): int
     {
-        if (!$this->capacity) {
+        if (! $this->capacity) {
             return 0;
         }
 
         return (int) round((($this->current_passengers ?? 0) / $this->capacity) * 100);
+    }
+
+    public function getFreshAttribute(): bool
+    {
+        return $this->isLocationFresh();
+    }
+
+    public function getFreshUntilAttribute(): ?string
+    {
+        return $this->locationFreshUntil()?->toIso8601String();
+    }
+
+    public function getSharingPassengersCountAttribute(): int
+    {
+        if (array_key_exists('sharing_passengers_count', $this->attributes)) {
+            return (int) $this->attributes['sharing_passengers_count'];
+        }
+
+        return (int) $this->locationShares()
+            ->active()
+            ->distinct()
+            ->count('user_id');
     }
 
     // Relationships
@@ -79,6 +116,11 @@ class Bus extends Model
         return $this->hasMany(EmergencyReport::class);
     }
 
+    public function locationShares()
+    {
+        return $this->hasMany(LocationShare::class);
+    }
+
     // Helper methods
     public function isActive()
     {
@@ -90,15 +132,33 @@ class Bus extends Model
         return $this->status === 'active' && $this->current_latitude && $this->current_longitude;
     }
 
+    /**
+     * HU-014: la posición es fresca durante exactamente cinco minutos.
+     */
+    public function isLocationFresh(): bool
+    {
+        if ($this->last_location_update === null) {
+            return false;
+        }
 
-    public function updateLocation($latitude, $longitude)
+        return $this->last_location_update
+            ->greaterThanOrEqualTo(now()->subMinutes(self::LOCATION_FRESH_MINUTES));
+    }
+
+    public function locationFreshUntil(): ?Carbon
+    {
+        return $this->last_location_update?->copy()->addMinutes(self::LOCATION_FRESH_MINUTES);
+    }
+
+    public function updateLocation($latitude, $longitude, ?int $accuracy = null)
     {
         $this->update([
             'current_latitude' => $latitude,
             'current_longitude' => $longitude,
             'last_location_update' => now(),
+            'accuracy' => $accuracy,
         ]);
 
-        event(new \App\Events\BusLocationUpdated($this));
+        event(new BusLocationUpdated($this));
     }
 }

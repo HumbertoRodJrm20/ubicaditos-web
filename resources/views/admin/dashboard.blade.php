@@ -124,6 +124,23 @@
                 </div>
                 <span class="text-[#8fcfcf] mr-2 [&>svg]:w-9 [&>svg]:h-9">{!! $clockSvg !!}</span>
             </div>
+
+            <div class="{{ $statRow }}">
+                <div>
+                    <div class="text-[12px] text-slate-500 dark:text-gray-400">Calificación promedio</div>
+                    <div class="text-[17px] font-bold text-[#1e2a4a] dark:text-gray-100 leading-tight">
+                        {{ $stats['average_rating'] !== null ? number_format($stats['average_rating'], 1, '.', ',') : '—' }}
+                    </div>
+                    <div class="text-[12px] text-slate-500 dark:text-gray-400">
+                        {{ $stats['ratings_count'] }} {{ $stats['ratings_count'] === 1 ? 'calificación' : 'calificaciones' }}
+                    </div>
+                </div>
+                <span class="text-[#f0b45e] mr-2 [&>svg]:w-9 [&>svg]:h-9">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9L12 3.5Z"></path>
+                    </svg>
+                </span>
+            </div>
         </div>
 
         <div class="{{ $card }} p-6 mt-5">

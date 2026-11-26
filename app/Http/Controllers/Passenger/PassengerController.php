@@ -3,9 +3,15 @@
 namespace App\Http\Controllers\Passenger;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Bus, Incident, Route, Stop, Rating};
+use App\Http\Requests\Passenger\RateDriverRequest;
+use App\Models\Bus;
+use App\Models\Incident;
+use App\Models\Rating;
+use App\Models\Route;
+use App\Models\Stop;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\{Cache, Http};
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 
 class PassengerController extends Controller
 {
@@ -29,12 +35,15 @@ class PassengerController extends Controller
 
     public function map()
     {
-        $routes = Route::with(['stops', 'buses' => function($query) {
+        $routes = Route::with(['stops', 'buses' => function ($query) {
             $query->where('status', 'active');
         }])->where('is_active', true)->get();
 
         $stops = Stop::withCount('likes')->where('is_active', true)->get();
-        $buses = Bus::with(['driver', 'routes'])->where('status', 'active')->get();
+        $buses = Bus::with(['driver', 'routes'])
+            ->withCount(['locationShares as sharing_passengers_count' => fn ($query) => $query->active()])
+            ->where('status', 'active')
+            ->get();
 
         $likedStopIds = auth()->user()->likes()
             ->where('likeable_type', Stop::class)
@@ -175,6 +184,7 @@ class PassengerController extends Controller
         $sort = $request->query('sort', 'plate');
 
         $buses = Bus::with(['driver', 'routes'])
+            ->withCount(['locationShares as sharing_passengers_count' => fn ($query) => $query->active()])
             ->when($status !== 'all', fn ($query) => $query->where('status', $status))
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
@@ -216,6 +226,9 @@ class PassengerController extends Controller
             'route_color' => $bus->routes->first()?->color ?? '#6b7bad',
             'driver' => $bus->driver?->name ?? 'Sin conductor asignado',
             'last_update' => $bus->last_location_update?->diffForHumans() ?? 'Sin datos de ubicación',
+            'fresh' => $bus->isLocationFresh(),
+            'accuracy' => $bus->accuracy,
+            'sharing_passengers_count' => (int) $bus->sharing_passengers_count,
             'map_url' => route('passenger.dashboard', ['bus_id' => $bus->id]),
         ])->values();
 
@@ -229,6 +242,7 @@ class PassengerController extends Controller
             if (request()->expectsJson()) {
                 return response()->json(['error' => 'Esta parada ya está en tus favoritos'], 400);
             }
+
             return back()->with('error', 'Esta parada ya está en tus favoritos');
         }
 
@@ -258,18 +272,16 @@ class PassengerController extends Controller
         return back()->with('success', 'Parada eliminada de favoritos');
     }
 
-    public function rateDriver(Request $request, $driverId)
+    public function rateDriver(RateDriverRequest $request, $driverId)
     {
-        $request->validate([
-            'rating' => 'required|integer|min:1|max:5',
-            'comment' => 'nullable|string|max:500',
-        ]);
+        $validated = $request->validated();
 
         Rating::create([
             'passenger_id' => auth()->id(),
-            'driver_id' => $driverId,
-            'rating' => $request->rating,
-            'comment' => $request->comment,
+            'driver_id' => (int) $driverId,
+            'trip_id' => $validated['trip_id'],
+            'rating' => $validated['rating'],
+            'comment' => $validated['comment'] ?? null,
         ]);
 
         return back()->with('success', 'Calificación enviada correctamente');
@@ -318,7 +330,7 @@ class PassengerController extends Controller
 
             if (! $skipStopMatching) {
                 foreach ($route->stops as $stop) {
-                    $stopText = $this->normalizeText(trim(($stop->name ?? '') . ' ' . ($stop->address ?? '')));
+                    $stopText = $this->normalizeText(trim(($stop->name ?? '').' '.($stop->address ?? '')));
                     $matchedTokens = $this->matchingTokenCount($stopText, $tokens);
 
                     // Se acepta una coincidencia completa o, en búsquedas
@@ -364,7 +376,7 @@ class PassengerController extends Controller
 
             $reason = $nameMatch
                 ? 'Coincide con el nombre de la ruta'
-                : 'Pasa por ' . ($bestTextStop->name ?? 'una parada del recorrido');
+                : 'Pasa por '.($bestTextStop->name ?? 'una parada del recorrido');
 
             $results[$routeId] = $this->buildSearchResult(
                 $route,
@@ -436,8 +448,8 @@ class PassengerController extends Controller
                 $nearestStop,
                 $stopIsNear ? 'location_stop' : 'location_path',
                 $stopIsNear
-                    ? 'Tiene una parada cerca de ' . $label
-                    : 'Su recorrido pasa cerca de ' . $label,
+                    ? 'Tiene una parada cerca de '.$label
+                    : 'Su recorrido pasa cerca de '.$label,
                 $userLat,
                 $userLng,
                 min($distanceToStop, $distanceToPath ?? INF),
@@ -703,7 +715,7 @@ class PassengerController extends Controller
         // coincidir con "Ruta 14".
         if (ctype_digit($token)) {
             return preg_match(
-                '/(?<![a-z0-9])' . preg_quote($token, '/') . '(?![0-9])/',
+                '/(?<![a-z0-9])'.preg_quote($token, '/').'(?![0-9])/',
                 $haystack
             ) === 1;
         }
@@ -734,7 +746,7 @@ class PassengerController extends Controller
         ];
 
         foreach ($abbreviations as $abbreviation => $fullWord) {
-            $value = preg_replace('/\b' . $abbreviation . '\b/', $fullWord, $value) ?? $value;
+            $value = preg_replace('/\b'.$abbreviation.'\b/', $fullWord, $value) ?? $value;
         }
 
         return trim($value);
@@ -747,7 +759,7 @@ class PassengerController extends Controller
      */
     private function geocodePlace(string $query): ?array
     {
-        $cacheKey = 'passenger-geocode:' . sha1(mb_strtolower(trim($query)));
+        $cacheKey = 'passenger-geocode:'.sha1(mb_strtolower(trim($query)));
         $cached = Cache::get($cacheKey);
 
         if (is_array($cached)) {
@@ -766,7 +778,7 @@ class PassengerController extends Controller
 
         try {
             $response = Http::withHeaders([
-                'User-Agent' => config('app.name', 'Ubicaditos') . '/1.0 (+' . config('app.url', 'http://localhost') . ')',
+                'User-Agent' => config('app.name', 'Ubicaditos').'/1.0 (+'.config('app.url', 'http://localhost').')',
                 'Accept-Language' => 'es',
             ])->timeout(5)->get('https://nominatim.openstreetmap.org/search', [
                 'q' => $query,
@@ -794,7 +806,7 @@ class PassengerController extends Controller
             $label = implode(', ', array_slice($labelParts, 0, 3));
 
             if (mb_strlen($label) > 90) {
-                $label = mb_substr($label, 0, 87) . '…';
+                $label = mb_substr($label, 0, 87).'…';
             }
 
             $place = [

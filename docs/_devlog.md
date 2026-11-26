@@ -516,3 +516,155 @@ Con aprobación del propietario, se agregó un índice único a `route_stop(rout
 Las rutas con viajes, asignaciones, likes o favoritos se desactivan; los autobuses con viaje activo o conductor asignado no se eliminan y los autobuses con historial se desactivan; los conductores con viaje activo no se desactivan. La baja administrativa y propia de un conductor desactiva usuario/autobús, libera la asignación y preserva viajes/calificaciones/reportes; el login rechaza usuarios inactivos. El borrado de pasajeros conserva el flujo Breeze existente.
 
 Trazabilidad: `RouteCrudCharacterizationTest`, `StopManagementTest`, `BusManagementTest`, `DriverLifecycleTest`, `ProfileTest` y `AuthenticationTest`. Verificación final: `php artisan test` (250 pruebas, 1,038 aserciones), `php artisan view:cache`, Pint y `git diff --check`; PostgreSQL y navegador no se ejecutaron.
+
+## 2026-11-25 — Ciclo de viaje y autorización por roles (RF-10, RF-12, RNF-02)
+
+Se cerró el paso 3 del backlog con TDD: primero se escribieron cinco suites nuevas y se confirmó la fase roja (17 fallas / 11 pasadas / 69 aserciones) porque el selector se ignoraba, no se guardaban distancia/trayecto, `/api` no declaraba roles, la asignación aceptaba no conductores y las calificaciones no exigían viaje completado. Después se implementó la fase verde y se refactorizó con la suite en verde. Durante el refactor se detectó que el mapa todavía redirigía a un conductor sin asignación permanente aunque hubiera unidades disponibles; se añadió una prueba que falló con 302 y se ajustó `map()` para proponer la primera unidad disponible.
+
+### Cambios por capa
+
+| Capa | Cambio |
+|------|--------|
+| Requests | `StartTripRequest` valida `bus_id`/`route_id` opcionales; `RateDriverRequest` autoriza solo pasajeros, exige conductor de destino y viaje `completed`, y vincula `trip_id` automáticamente para el formulario heredado. |
+| Middleware | `EnsureUserHasRole` con alias `roles` en `bootstrap/app.php`; los tres endpoints JSON en tiempo real declaran `roles:admin,driver,passenger`. `/api/share/{token}` permanece público. |
+| Controladores | `DriverController::map()` entrega autobuses propios/disponibles y sus rutas; `startTrip()` persiste la selección y rechaza combinaciones inválidas o unidades ocupadas; `updateLocation()` captura puntos del viaje activo; `endTrip()` calcula `distance_km`; `AdminController::assignBusToDriver()` rechaza destinatarios sin rol `driver`; `PassengerController::rateDriver()` usa el Form Request y guarda `trip_id`. |
+| Servicios | `GeoDistanceService` centraliza Haversine y la suma de tramos; `RouteStopSyncService` y el cálculo de proximidad de `startTrip()` reutilizan la misma fórmula. |
+| Vista | `driver/map.blade.php` agrega `#start-bus-id` y `#start-route-id` con filtro de rutas por `data-bus-ids`; el servidor sigue siendo la fuente de verdad. |
+| Pruebas | `StartTripSelectionTest`, `EndTripComputesDistanceTest`, `RoleEndpointMatrixTest`, `BusAssignmentTest` y `RateDriverTripTest`. |
+
+No hubo migraciones: `trips.distance_km`, `trips.path_taken` y `ratings.trip_id` ya existían. El trayecto se acota a 2000 lecturas para evitar JSON ilimitado.
+
+### Decisión de diseño
+
+Se extrajo `GeoDistanceService` durante el refactor porque la distancia aparecía en tres reglas distintas (estimación de minutos entre paradas, validación de proximidad al iniciar y medición al finalizar). Centralizar la fórmula evita que una corrección en un lugar cambie el resultado de otro. La compatibilidad se preservó con defaults y con la vinculación automática del último viaje completado en las calificaciones.
+
+### Verificación
+
+| Comando | Resultado |
+|---------|-----------|
+| Suite enfocada | 29 pruebas, 103 aserciones, 0 fallos. |
+| `php artisan test` | 279 pruebas, 1,141 aserciones, 0 fallos. |
+| `./vendor/bin/pint` | Aplicado a los archivos PHP tocados. |
+| `git diff --check` | Sin errores de whitespace. |
+
+No se ejecutaron PostgreSQL, Selenium, k6 ni revisión manual de navegador; no se afirma evidencia que no se produjo.
+
+## 2026-11-25 — Frescura, ETA y descubrimiento del pasajero (RNF-08, HU-014, HU-30, HU-009, RF-30, HU-012)
+
+Se cerró el paso 4 del backlog con TDD: primero se escribieron cinco suites nuevas y se confirmó la fase roja (**21 fallas / 1 prueba pasada / 24 aserciones**) por métodos, columnas y rutas inexistentes. Después se implementó la fase verde y se refactorizó con la suite en verde: se eliminaron los cálculos locales muertos (`calculateArrivalTime`, `calculateDistanceAlongRoute`, `calculateRouteDistance`, `isLocationStale`) y `showRouteInfo()` ahora usa las banderas del servidor. Durante el refactor se añadió `DriverMapClientWarningTest` y una prueba de autobús ajeno; ambas se ejecutaron primero y fallaron antes de ajustar el cliente y el endpoint.
+
+### Cambios por capa
+
+| Capa | Cambio |
+|------|--------|
+| Migraciones | Con aprobación del propietario: `buses.accuracy` nullable, `location_shares.bus_id` nullable con FK e índice, y `bus_stop_subscriptions` con unicidad por pasajero/autobús/parada. Probadas en SQLite en memoria; DDL portable para PostgreSQL, sin ejecución directa en ese motor ni en el SQLite de desarrollo. |
+| Modelo | `Bus::LOCATION_FRESH_MINUTES = 5`, atributos derivados `fresh`/`fresh_until`/`sharing_passengers_count`, `updateLocation(..., ?int $accuracy)` y relación `locationShares()`. `LocationShare` suma `scopeForBus()` y `bus_id` opcional. Nuevo `BusStopSubscription`. |
+| Servicio y controladores | `ArrivalEstimateService` calcula ETA con Haversine, 20 km/h y redondeo al alza, sin OSRM en consulta. `ArrivalEstimateController` expone `GET /api/stops/{stop}/eta`. `NotificationSubscriptionController` gestiona avisos in-app idempotentes. Los payloads `/api/*` y el broadcast comparten frescura, precisión y conteo agregado. |
+| Vistas y JS | El mapa del pasajero consume el endpoint por parada, muestra `#eta-uncertainty-notice`, ETA por autobús, botón «Avísame» y datos de frescura/precisión/conteo en popups. `realtime.js` normaliza `fresh`, `fresh_until`, `accuracy`, `sharing_passengers_count` y `stale`. El mapa del conductor envía `accuracy`, usa Wake Lock cuando existe y advierte que no hay GPS en segundo plano. |
+| Pruebas | `BusLocationFreshnessTest`, `ArrivalEstimateTest`, `LocationAccuracyTest`, `LocationShareAggregateTest`, `NotificationSubscriptionTest`, `DriverMapClientWarningTest`; se amplió `RoleEndpointMatrixTest` con el nuevo endpoint. |
+
+### Decisiones y límites
+
+La frescura se define una sola vez en servidor y se consume desde Blade, polling y WebSocket. La ETA es aproximada por diseño: sin tráfico, sin OSRM en caliente y sin hora precisa cuando la posición tiene más de cinco minutos o no hay servicio. `xd.md` afirmaba que ya existía una consulta ETA por parada, pero el código sólo tenía un cálculo en JavaScript; la discrepancia quedó registrada en `requirements-deviations.md`. «Avísame» guarda una preferencia in-app: no hay push externo ni worker de entrega. Ningún payload público o agregado expone nombre, correo, ID ni la identidad de quienes comparten ubicación.
+
+### Verificación
+
+| Comando | Resultado |
+|---------|-----------|
+| Suite enfocada | 54 pruebas, 266 aserciones, 0 fallos. |
+| `php artisan test` | 303 pruebas, 1,280 aserciones, 0 fallos (antes del paso: 279/1,141). |
+| Pint | Aplicado y reverificado en los archivos PHP tocados; el `pint --test` global sigue marcando archivos preexistentes no relacionados. |
+| `php artisan view:cache` | Vistas compiladas correctamente. |
+| `git diff --check` | Sin errores de whitespace. |
+
+No se ejecutaron PostgreSQL, Selenium, k6 ni revisión manual de navegador; Wake Lock y la precisión real del GPS no se verificaron en un dispositivo, sólo se comprobó su presencia y contrato en la vista.
+
+## 2026-11-25 — Emergencias, incidencias, favoritos y métricas (RF-19, HU-025, HU-027, HU-034)
+
+Se cerró el paso 5 del backlog con TDD: primero se escribieron cuatro suites y se confirmó la fase roja (**19 fallas / 1 prueba pasada / 33 aserciones**) porque faltaban rutas, columnas, límite, validaciones y métrica. Después se implementó la fase verde y se refactorizó con la suite en verde.
+
+### Cambios por capa
+
+| Capa | Cambio |
+|------|--------|
+| Migraciones | Con aprobación del propietario: `incidents.route_id`/`bus_id` (FK nullable `nullOnDelete`), `latitude`, `longitude` e `is_public` con índice `(is_public, created_at)`; `favorite_routes.position` y `label` con índice `(user_id, position)` y backfill por orden histórico. Probadas en SQLite en memoria; DDL portable, sin ejecución directa en PostgreSQL ni en el SQLite de desarrollo. |
+| Validación y servicios | `StoreEmergencyReportRequest` y `StoreIncidentRequest` centralizan reglas y mensajes en español. `EmergencyReportService` aplica 5 reportes/hora por usuario con `RateLimiter` y conserva el default heredado del conductor. |
+| Controladores | Nuevo `Passenger\EmergencyController`; `DriverController` reutiliza el servicio; `IncidentController` agrega campos opcionales y listado público sin `user`; `FavoriteRouteController` limita a cinco, reordena/etiqueta y compacta al eliminar; `AdminController` ordena emergencias pendientes primero y calcula el promedio global; `IncidentManagementController` carga ruta/autobús para las insignias. |
+| Modelos y vistas | `Incident` expone relaciones `route()`/`bus()` y cast de coordenadas; `FavoriteRoute` define `MAX_FAVORITES`/`MAX_LABEL_LENGTH`; `User`/`Route` exponen el pivote con orden. Nuevas vistas `passenger/emergency` e `incidents/public`; menú con etiqueta/reordenación; dashboard con promedio y estado vacío; emergencias con «Requiere atención». |
+| Pruebas | `PassengerEmergencyTest`, `IncidentOptionalFieldsTest`, `FavoriteRoutePreferencesTest` y `AdminDashboardTest::test_dashboard_shows_platform_average_rating_with_empty_state`. |
+
+### Decisiones y límites
+
+El límite de emergencias y el tope de favoritos fueron aprobados por el propietario. La visibilidad pública de incidencias nunca incluye nombre, correo, `user_id` ni la relación `user`; la descripción obligatoria de HU-024 se conserva. HU-034 quedó parcial: se entregó la métrica definida, pero el widget de actividad comunitaria depende de HU-017/HU-018 sin criterios de aceptación y no se inventaron.
+
+### Verificación
+
+| Comando | Resultado |
+|---------|-----------|
+| Suite enfocada | 20 pruebas, 135 aserciones, 0 fallos. |
+| `php artisan test` | 323 pruebas, 1,415 aserciones, 0 fallos (antes del paso: 303/1,280). |
+| Pint | Aplicado a los archivos PHP tocados. |
+| `php artisan view:cache` | Vistas compiladas correctamente. |
+| `git diff --check` | Sin errores de whitespace. |
+
+No se ejecutaron PostgreSQL, Selenium, k6 ni revisión manual de navegador; no se afirma evidencia que no se produjo.
+
+## 2026-11-25 — Cuenta, verificación y administración (HU-001, HU-002, HU-005, HU-006, HU-007, HU-030, HU-031, HU-040, HU-041, HU-042)
+
+Se cerró el paso 6 del backlog con TDD: primero se escribieron las cuatro suites nuevas y se confirmó la fase roja por controladores, migración, middleware y métodos de `User` inexistentes; después se implementó la fase verde y se refactorizó con la suite en verde.
+
+### Cambios por capa
+
+| Capa | Cambio |
+|------|--------|
+| Migración | Con aprobación del propietario, `2026_11_25_000007_add_onboarding_settings_to_users_table.php` agrega `approval_status` (default `approved`, índice con `role`), `license_number` único nullable, `license_photo_path`, `must_change_password` (default `false`), `locale` (default `es`) y `notification_preferences` JSON; los conductores existentes quedan `approved`. Ejercitada en SQLite en memoria, sin ejecución en PostgreSQL ni en el SQLite de desarrollo. |
+| Modelo y factory | `User` implementa `MustVerifyEmail`, expone constantes de aprobación y `es`/`en`, y centraliza `isApproved()`, `requiresPasswordChange()` y `notificationPreference()`. `UserFactory` crea cuentas aprobadas por defecto y añade estados `driver`, `admin` y `unverified`. |
+| Middleware | `DriverMiddleware` bloquea conductores pendientes/rechazados hacia `driver.pending`; `SetLocale` aplica el idioma persistido; `ForcePasswordChange` redirige a `profile.edit` hasta completar el cambio de contraseña. `verified` se añadió al grupo `passenger`. |
+| Controladores | `RegisteredDriverController` crea solicitudes `pending` con foto en disco privado `local`; `DriverApprovalController` aprueba/rechaza y dispara reseteos; `UserController` genera contraseña temporal para conductores y notifica por correo; `PasswordController` limpia el flag; `AuthenticatedSessionController` finaliza el viaje activo del conductor y libera el autobús antes de cerrar sesión, además de revocar enlaces de ubicación. |
+| Vistas y rutas | Login con tres entradas por perfil sin elevación, enlace público de registro de conductor, aviso `driver.pending`, preferencias y confirmación de logout en `profile/edit`, y rutas administrativas `admin.drivers.approve`, `admin.drivers.reject` y `admin.drivers.send-password-reset`. |
+| Pruebas | `DriverOnboardingTest`, `EmailVerificationAndEntryPointsTest`, `UserPasswordLifecycleTest` y `SettingsAndLogoutTest`; se ajustó `RegistrationTest` a la nueva redirección de verificación. |
+
+### Decisiones y límites
+
+Los accesos por perfil son sólo una pista visual: el rol se valida en servidor. La verificación obligatoria se aplica únicamente a pasajeros; conductores y administradores creados por administración nacen verificados para no romper su flujo. Las traducciones se limitan al chrome de la interfaz. No se añadió 2FA. La contraseña temporal viaja por notificación y nunca se muestra en la respuesta ni se guarda en sesión. HU-034 continúa parcial por la dependencia HU-017/HU-018.
+
+### Verificación
+
+| Comando | Resultado |
+|---------|-----------|
+| `php artisan test --filter="DriverOnboardingTest|EmailVerificationAndEntryPointsTest|UserPasswordLifecycleTest|SettingsAndLogoutTest"` | 23 pruebas, 90 aserciones, 0 fallos. |
+| `php artisan test` | 346 pruebas, 1,505 aserciones, 0 fallos (antes del paso: 323/1,415). |
+| Pint | Aplicado y reverificado en los archivos PHP tocados; el `pint --test` global sigue marcando archivos preexistentes no relacionados. |
+| `php artisan view:cache` | Vistas compiladas correctamente. |
+| `git diff --check` | Sin errores de whitespace. |
+
+No se ejecutaron PostgreSQL, Selenium, k6 ni revisión manual de navegador; no se afirma evidencia que no se produjo.
+
+## 2026-11-25 — Mantenibilidad, respaldos y evidencia parcial (Step 7)
+
+El paso 7 avanzó por capas con TDD y quedó **parcial**, no cerrado. La fase roja se confirmó al fallar la reflexión que esperaba Form Requests y al lanzar `CommandNotFoundException` para los comandos de respaldo; después se implementó y se refactorizó con la suite en verde. No se crearon migraciones.
+
+### Cambios por capa
+
+| Capa | Cambio |
+|------|--------|
+| Validación | `StoreUserRequest`/`UpdateUserRequest` y `StoreBusRequest`/`UpdateBusRequest` reemplazan el `$request->validate()` duplicado en los controladores administrativos; las reglas comunes viven en traits bajo `App\Http\Requests\Admin\Concerns`. Se conservan mensajes y claves de error. |
+| Consola | `backup:database` crea snapshots con retención por conexión y falla ante SQLite en memoria; `backup:restore` sobrescribe con confirmación o `--force`. SQLite usa `VACUUM INTO` y copia del archivo; PostgreSQL usa `pg_dump`/`pg_restore` con `PGPASSWORD` desde configuración. |
+| Evidencia | `KeyPagesAccessibilityTest` comprueba estructura accesible de acceso, mapa y perfil; `HotEndpointQueryTest` compara el conteo de consultas de `/api/buses/active` con 2 y 12 autobuses; `AdminValidationRefactorTest` y `DatabaseBackupTest` cubren los cambios anteriores. |
+| Documentación | Se crearon `docs/runbooks/backup-restore.md`, `docs/accessibility.md`, `docs/performance.md` y `docs/maintainability.md`; se actualizaron `docs/09-comandos.md`, `docs/10-pruebas-y-estado.md`, trazabilidad y desviaciones. |
+
+### Verificación
+
+| Comando | Resultado |
+|---------|-----------|
+| `php artisan test --filter=AdminValidationRefactorTest` | 4 pruebas, 22 aserciones, 0 fallos. |
+| `php artisan test --filter=DatabaseBackupTest` | 4 pruebas, 13 aserciones, 0 fallos (rojo previo: comandos inexistentes). |
+| `php artisan test --filter=KeyPagesAccessibilityTest` | 3 pruebas, 18 aserciones, 0 fallos. |
+| `php artisan test --filter=HotEndpointQueryTest` | 1 prueba, 5 aserciones, 0 fallos; el conteo no cambió al pasar de 2 a 12 autobuses. |
+| `php artisan test` | 358 pruebas, 1,563 aserciones, 0 fallos (antes del paso: 346/1,505). |
+| Pint | Aplicado en todos los archivos PHP tocados; el global sigue marcando archivos preexistentes. |
+| `git diff --check` | Sin errores de whitespace. |
+
+### Límites explícitos
+
+RNF-11(b) y RNF-13 están completados en alcance local; RNF-11(a)/(c), RNF-15/HU-033 y RNF-14 son parciales; RNF-06 sigue pendiente de medición. No se extrajeron los 22 bloques JavaScript inline ni se eliminaron los 6 seeders inventariados. No se ejecutaron k6, Selenium, navegador, capturas a 375×667/1366 px, contraste, PostgreSQL, `pg_dump`/`pg_restore` ni restauración contra la base de desarrollo. Tampoco hay umbral p95 confirmado ni lista de navegadores acordada: no se inventaron valores. HU-034 continúa bloqueada por HU-017/HU-018.

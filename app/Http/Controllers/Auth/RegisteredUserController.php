@@ -5,13 +5,13 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
-use Illuminate\Http\JsonResponse;
 
 class RegisteredUserController extends Controller
 {
@@ -26,7 +26,7 @@ class RegisteredUserController extends Controller
     /**
      * Handle an incoming registration request.
      *
-     * @throws \Illuminate\Validation\ValidationException
+     * @throws ValidationException
      */
     public function store(Request $request): RedirectResponse
     {
@@ -69,7 +69,7 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        return redirect()->route('passenger.menu');
+        return redirect()->route('verification.notice');
     }
 
     /**
@@ -79,12 +79,12 @@ class RegisteredUserController extends Controller
     {
         $email = $request->input('email');
 
-        if (!$email) {
+        if (! $email) {
             return response()->json(['available' => true]);
         }
 
         $exists = User::where('email', $email)->exists();
 
-        return response()->json(['available' => !$exists]);
+        return response()->json(['available' => ! $exists]);
     }
 }

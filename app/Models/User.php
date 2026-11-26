@@ -2,14 +2,23 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Database\Factories\UserFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmailContract
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    public const APPROVAL_PENDING = 'pending';
+
+    public const APPROVAL_APPROVED = 'approved';
+
+    public const APPROVAL_REJECTED = 'rejected';
+
+    public const LOCALES = ['es', 'en'];
+
+    /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
     /**
@@ -22,6 +31,7 @@ class User extends Authenticatable
         'last_name',
         'maternal_last_name',
         'email',
+        'email_verified_at',
         'password',
         'role',
         'work_shift',
@@ -31,6 +41,12 @@ class User extends Authenticatable
         'current_latitude',
         'current_longitude',
         'last_location_update',
+        'approval_status',
+        'license_number',
+        'license_photo_path',
+        'must_change_password',
+        'locale',
+        'notification_preferences',
     ];
 
     /**
@@ -57,6 +73,8 @@ class User extends Authenticatable
             'current_latitude' => 'decimal:7',
             'current_longitude' => 'decimal:7',
             'last_location_update' => 'datetime',
+            'must_change_password' => 'boolean',
+            'notification_preferences' => 'array',
         ];
     }
 
@@ -101,6 +119,9 @@ class User extends Authenticatable
     public function favoriteRoutes()
     {
         return $this->belongsToMany(Route::class, 'favorite_routes')
+            ->withPivot(['position', 'label'])
+            ->orderBy('favorite_routes.position')
+            ->orderBy('favorite_routes.id')
             ->withTimestamps();
     }
 
@@ -112,6 +133,11 @@ class User extends Authenticatable
     public function locationShares()
     {
         return $this->hasMany(LocationShare::class);
+    }
+
+    public function busStopSubscriptions()
+    {
+        return $this->hasMany(BusStopSubscription::class);
     }
 
     public function incidents()
@@ -126,6 +152,31 @@ class User extends Authenticatable
     }
 
     // Helper methods
+    public function isApproved(): bool
+    {
+        return $this->approval_status === self::APPROVAL_APPROVED;
+    }
+
+    public function isPendingApproval(): bool
+    {
+        return $this->approval_status === self::APPROVAL_PENDING;
+    }
+
+    public function isRejectedApproval(): bool
+    {
+        return $this->approval_status === self::APPROVAL_REJECTED;
+    }
+
+    public function requiresPasswordChange(): bool
+    {
+        return (bool) $this->must_change_password;
+    }
+
+    public function notificationPreference(string $key, bool $default = true): bool
+    {
+        return (bool) ($this->notification_preferences[$key] ?? $default);
+    }
+
     public function isAdmin()
     {
         return $this->role === 'admin';

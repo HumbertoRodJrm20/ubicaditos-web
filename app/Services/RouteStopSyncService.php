@@ -21,11 +21,13 @@ class RouteStopSyncService
     /** Mismo criterio que RouteCorridorSeeder: 15 km/h promedio urbano. */
     private const MINUTES_PER_KM = 4;
 
+    public function __construct(private readonly GeoDistanceService $geoDistance = new GeoDistanceService) {}
+
     /**
      * Reemplaza la secuencia de paradas principales de una ruta.
      *
      * @param  array<int, int>  $mainStopIds  ids en el orden deseado
-     * @param  array<int, int>  $minutes      stop_id => minutos desde la principal anterior (opcional)
+     * @param  array<int, int>  $minutes  stop_id => minutos desde la principal anterior (opcional)
      * @return array{added: int[], removed: int[], main_sequence_changed: bool, frequent_review_needed: bool}
      *
      * @throws InvalidArgumentException si hay ids repetidos o paradas inexistentes
@@ -93,7 +95,12 @@ class RouteStopSyncService
                 ) {
                     $mainMinutes[$stopId] = (int) $oldMinutes[$stopId];
                 } else {
-                    $km = $this->distanceKm($stops[$previousId], $stops[$stopId]);
+                    $km = $this->geoDistance->distanceKm(
+                        (float) $stops[$previousId]->latitude,
+                        (float) $stops[$previousId]->longitude,
+                        (float) $stops[$stopId]->latitude,
+                        (float) $stops[$stopId]->longitude,
+                    );
                     $mainMinutes[$stopId] = max(1, (int) round($km * self::MINUTES_PER_KM));
                 }
             }
@@ -201,25 +208,12 @@ class RouteStopSyncService
     }
 
     /**
-     * @param array<int, int> $ids
+     * @param  array<int, int>  $ids
      */
     private function assertUnique(array $ids): void
     {
         if (count($ids) !== count(array_unique($ids))) {
             throw new InvalidArgumentException('Una parada no puede repetirse en la secuencia.');
         }
-    }
-
-    private function distanceKm(Stop $from, Stop $to): float
-    {
-        $lat1 = deg2rad((float) $from->latitude);
-        $lat2 = deg2rad((float) $to->latitude);
-        $latDelta = $lat2 - $lat1;
-        $lngDelta = deg2rad((float) $to->longitude - (float) $from->longitude);
-
-        $a = sin($latDelta / 2) ** 2
-            + cos($lat1) * cos($lat2) * sin($lngDelta / 2) ** 2;
-
-        return 6371.0 * 2 * atan2(sqrt($a), sqrt(1 - $a));
     }
 }

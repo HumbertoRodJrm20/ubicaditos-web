@@ -152,6 +152,21 @@
                                 </div>
 
                                 <p class="mt-3 whitespace-pre-line text-sm leading-6 text-[#3d4a6b] dark:text-gray-300">{{ $incident->description }}</p>
+
+                                <div class="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-[#6b7699] dark:text-gray-400">
+                                    @if ($incident->is_public)
+                                        <span class="rounded-full bg-sky-50 px-2 py-0.5 font-semibold text-sky-700 ring-1 ring-sky-200 dark:bg-sky-900/30 dark:text-sky-200 dark:ring-sky-800">Público</span>
+                                    @endif
+                                    @if ($incident->route)
+                                        <span class="rounded-full bg-[#eef2fa] px-2 py-0.5 dark:bg-gray-700 dark:text-gray-200">{{ $incident->route->name }}</span>
+                                    @endif
+                                    @if ($incident->bus)
+                                        <span class="rounded-full bg-[#eef2fa] px-2 py-0.5 dark:bg-gray-700 dark:text-gray-200">{{ $incident->bus->license_plate }}</span>
+                                    @endif
+                                    @if ($incident->latitude && $incident->longitude)
+                                        <span class="font-mono">{{ $incident->latitude }}, {{ $incident->longitude }}</span>
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     </article>

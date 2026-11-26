@@ -191,6 +191,21 @@
                                     <a href="{{ route('register') }}" class="font-semibold text-[#1e2a4a] hover:underline dark:text-gray-100">Regístrate</a>
                                 </p>
                             @endif
+
+                            <div class="mt-6 border-t border-slate-200/80 pt-5 dark:border-white/10">
+                                <p class="mb-3 text-center text-xs uppercase tracking-wide text-[#6b7699] dark:text-gray-400">{{ __('Accede según tu perfil') }}</p>
+                                <div class="flex flex-wrap justify-center gap-2">
+                                    <a href="{{ route('login', ['role' => 'passenger']) }}" class="rounded-full border border-slate-200/90 px-3.5 py-2 text-sm text-[#273252] hover:bg-white/80 dark:border-white/10 dark:text-gray-100 dark:hover:bg-white/10">Pasajero</a>
+                                    <a href="{{ route('login', ['role' => 'driver']) }}" class="rounded-full border border-slate-200/90 px-3.5 py-2 text-sm text-[#273252] hover:bg-white/80 dark:border-white/10 dark:text-gray-100 dark:hover:bg-white/10">Conductor</a>
+                                    <a href="{{ route('login', ['role' => 'admin']) }}" class="rounded-full border border-slate-200/90 px-3.5 py-2 text-sm text-[#273252] hover:bg-white/80 dark:border-white/10 dark:text-gray-100 dark:hover:bg-white/10">Administrador</a>
+                                </div>
+                                @if (in_array(request()->query('role'), ['passenger', 'driver', 'admin'], true))
+                                    <p class="mt-3 text-center text-xs text-[#6b7699] dark:text-gray-400">El perfil seleccionado sólo cambia la vista de acceso; tu rol real se valida en el servidor.</p>
+                                @endif
+                                <p class="mt-3 text-center text-xs">
+                                    <a class="text-[#53658f] underline dark:text-slate-300" href="{{ route('driver.register.create') }}">{{ __('¿Eres conductor? Solicita tu registro') }}</a>
+                                </p>
+                            </div>
                         </form>
                     </div>
                 </section>

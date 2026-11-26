@@ -29,10 +29,10 @@ Elementos de apoyo al patrón:
 | Elemento | Ubicación | Responsabilidad |
 |----------|-----------|-----------------|
 | Rutas | `routes/web.php`, `routes/auth.php` | Mapean URL y verbo HTTP a un método de controlador. |
-| Middleware | `app/Http/Middleware` | Control de acceso por rol. |
-| Form Requests | `app/Http/Requests` | Validación encapsulada (login y perfil). |
+| Middleware | `app/Http/Middleware` | Control de acceso por rol, verificación de correo, idioma y cambio de contraseña obligatorio. |
+| Form Requests | `app/Http/Requests` | Validación encapsulada de autenticación, perfil, rutas, paradas, autobuses, usuarios, viajes, emergencias, incidencias y preferencias. |
 | Exportadores | `app/Exports` | Construyen el conjunto de datos de los reportes CSV. |
-| Comandos | `app/Console/Commands` | Tareas de consola: simulación y generación de trazos. |
+| Comandos | `app/Console/Commands` | Simulación, generación/diagnóstico de trazos, poda de paradas y respaldo/restauración local. |
 | Componentes de vista | `app/View/Components` | Clases de los layouts `AppLayout` y `GuestLayout`. |
 
 ## Ciclo de vida de una petición

@@ -11,12 +11,16 @@ class DriverMiddleware
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!auth()->check() || !auth()->user()->isDriver()) {
+        if (! auth()->check() || ! auth()->user()->isDriver()) {
             abort(403, 'No tienes permiso para acceder a esta sección.');
+        }
+
+        if (! auth()->user()->isApproved()) {
+            return redirect()->route('driver.pending');
         }
 
         return $next($request);

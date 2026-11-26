@@ -133,6 +133,9 @@
                                         <span class="rounded-full bg-[#eef2fa] px-2.5 py-1 text-[11px] font-medium text-[#3d4a6b] dark:bg-gray-700 dark:text-gray-300">
                                             {{ $incident->category_label }}
                                         </span>
+                                        @if ($incident->is_public)
+                                            <span class="rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-semibold text-sky-700 ring-1 ring-sky-200 dark:bg-sky-900/30 dark:text-sky-200 dark:ring-sky-800">Público</span>
+                                        @endif
                                         <span class="text-[11px] {{ $muted }}">
                                             #{{ $incident->id }} · {{ $incident->created_at->format('d/m/Y H:i') }}
                                         </span>
@@ -140,7 +143,19 @@
 
                                     <p class="mt-3 whitespace-pre-line text-sm text-slate-700 dark:text-gray-200">{{ $incident->description }}</p>
 
-                                    <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] {{ $muted }}">
+                                    <div class="mt-3 flex flex-wrap items-center gap-2 text-[11px] {{ $muted }}">
+                                        @if ($incident->route)
+                                            <span class="rounded-full bg-[#eef2fa] px-2.5 py-1 font-medium text-[#3d4a6b] dark:bg-gray-700 dark:text-gray-200">{{ $incident->route->name }}</span>
+                                        @endif
+                                        @if ($incident->bus)
+                                            <span class="rounded-full bg-[#eef2fa] px-2.5 py-1 font-medium text-[#3d4a6b] dark:bg-gray-700 dark:text-gray-200">{{ $incident->bus->license_plate }}</span>
+                                        @endif
+                                        @if ($incident->latitude && $incident->longitude)
+                                            <span class="font-mono">{{ $incident->latitude }}, {{ $incident->longitude }}</span>
+                                        @endif
+                                    </div>
+
+                                    <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] {{ $muted }}">
                                         <span class="inline-flex items-center gap-1.5">
                                             <span class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-[#7b88b8] to-[#4a5a8a] text-[9px] font-bold text-white">
                                                 {{ mb_strtoupper(mb_substr($author?->first_name ?? 'U', 0, 1)) }}{{ mb_strtoupper(mb_substr($author?->last_name ?? '', 0, 1)) }}

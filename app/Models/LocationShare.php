@@ -14,6 +14,7 @@ class LocationShare extends Model
 
     protected $fillable = [
         'user_id',
+        'bus_id',
         'token',
         'latitude',
         'longitude',
@@ -39,11 +40,21 @@ class LocationShare extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function bus()
+    {
+        return $this->belongsTo(Bus::class);
+    }
+
     // Scopes
     public function scopeActive($query)
     {
         return $query->whereNull('revoked_at')
             ->where('expires_at', '>', now());
+    }
+
+    public function scopeForBus($query, int $busId)
+    {
+        return $query->where('bus_id', $busId);
     }
 
     // Helper methods
@@ -62,7 +73,7 @@ class LocationShare extends Model
     /**
      * Crea una compartición nueva y revoca cualquier enlace activo previo.
      *
-     * @param  array{latitude: float|string, longitude: float|string, accuracy?: int|null}  $coordinates
+     * @param  array{latitude: float|string, longitude: float|string, accuracy?: int|null, bus_id?: int|null}  $coordinates
      */
     public static function startFor(User $user, array $coordinates): self
     {
@@ -73,6 +84,7 @@ class LocationShare extends Model
 
         return $user->locationShares()->create([
             'token' => Str::random(48),
+            'bus_id' => $coordinates['bus_id'] ?? null,
             'latitude' => $coordinates['latitude'],
             'longitude' => $coordinates['longitude'],
             'accuracy' => $coordinates['accuracy'] ?? null,
@@ -81,11 +93,14 @@ class LocationShare extends Model
     }
 
     /**
-     * @param  array{latitude: float|string, longitude: float|string, accuracy?: int|null}  $coordinates
+     * @param  array{latitude: float|string, longitude: float|string, accuracy?: int|null, bus_id?: int|null}  $coordinates
      */
     public function updatePosition(array $coordinates): bool
     {
         return $this->update([
+            'bus_id' => array_key_exists('bus_id', $coordinates)
+                ? $coordinates['bus_id']
+                : $this->bus_id,
             'latitude' => $coordinates['latitude'],
             'longitude' => $coordinates['longitude'],
             'accuracy' => $coordinates['accuracy'] ?? $this->accuracy,

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreBusRequest;
+use App\Http\Requests\Admin\UpdateBusRequest;
 use App\Models\Bus;
 use App\Models\Route;
 use App\Models\User;
@@ -81,23 +83,9 @@ class BusController extends Controller
         return view('admin.buses.create', compact('routes', 'drivers'));
     }
 
-    public function store(Request $request)
+    public function store(StoreBusRequest $request)
     {
-        $validated = $request->validate([
-            'license_plate' => 'required|string|size:6|unique:buses,license_plate|regex:/^[A-Z]{3}[0-9]{3}$/',
-            'model' => 'required|string|in:Foton AUV,Yutong,Mercedes-Benz,Dina,Toyota,Honda',
-            'capacity' => 'required|integer|min:30|max:50',
-            'driver_id' => 'nullable|exists:users,id',
-            'status' => 'required|in:active,inactive,maintenance',
-        ], [
-            'license_plate.size' => 'La placa debe tener exactamente 6 caracteres',
-            'license_plate.regex' => 'La placa debe tener el formato: 3 letras seguidas de 3 números (Ej: ABC123)',
-            'model.in' => 'Debe seleccionar un modelo válido',
-            'capacity.required' => 'Se necesita que se asigne capacidad',
-            'capacity.integer' => 'La capacidad debe ser un número entero',
-            'capacity.min' => 'La capacidad mínima es de 30 pasajeros',
-            'capacity.max' => 'La capacidad máxima es de 50 pasajeros',
-        ]);
+        $validated = $request->validated();
 
         $bus = Bus::create($validated);
 
@@ -123,23 +111,9 @@ class BusController extends Controller
         return view('admin.buses.edit', compact('bus', 'routes', 'drivers'));
     }
 
-    public function update(Request $request, Bus $bus)
+    public function update(UpdateBusRequest $request, Bus $bus)
     {
-        $validated = $request->validate([
-            'license_plate' => 'required|string|size:6|unique:buses,license_plate,'.$bus->id.'|regex:/^[A-Z]{3}[0-9]{3}$/',
-            'model' => 'required|string|in:Foton AUV,Yutong,Mercedes-Benz,Dina,Toyota,Honda',
-            'capacity' => 'required|integer|min:30|max:50',
-            'driver_id' => 'nullable|exists:users,id',
-            'status' => 'required|in:active,inactive,maintenance',
-        ], [
-            'license_plate.size' => 'La placa debe tener exactamente 6 caracteres',
-            'license_plate.regex' => 'La placa debe tener el formato: 3 letras seguidas de 3 números (Ej: ABC123)',
-            'model.in' => 'Debe seleccionar un modelo válido',
-            'capacity.required' => 'Se necesita que se asigne capacidad',
-            'capacity.integer' => 'La capacidad debe ser un número entero',
-            'capacity.min' => 'La capacidad mínima es de 30 pasajeros',
-            'capacity.max' => 'La capacidad máxima es de 50 pasajeros',
-        ]);
+        $validated = $request->validated();
 
         $bus->update($validated);
 

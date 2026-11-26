@@ -1,6 +1,6 @@
 # Comandos de consola
 
-Además de los comandos estándar de Laravel, el proyecto incluye tres comandos Artisan propios en `app/Console/Commands`. Laravel 12 los descubre automáticamente, sin necesidad de registrarlos.
+Además de los comandos estándar de Laravel, el proyecto incluye comandos Artisan propios en `app/Console/Commands`. Laravel 12 los descubre automáticamente, sin necesidad de registrarlos. Los comandos propios son `routes:generate-paths`, `routes:diagnose`, `routes:prune-secondary-stops`, `buses:simulate`, `backup:database` y `backup:restore`.
 
 ## routes:generate-paths
 
@@ -96,6 +96,28 @@ Funcionamiento:
 Se detiene con `Ctrl + C`.
 
 > El movimiento es en línea recta entre paradas, no sobre el trazo de calles. Las vistas de pasajero y administrador tienen su propia simulación visual, en el navegador, sobre el trazo OSRM.
+
+## backup:database
+
+```bash
+php artisan backup:database
+php artisan backup:database --name=antes-de-migrar --keep=10
+php artisan backup:database --connection=pgsql --disk=local --path=backups
+```
+
+**Clase:** `App\Console\Commands\BackupDatabase`.
+
+Crea un snapshot en el disco indicado y conserva como máximo `--keep` respaldos de la misma conexión. El procedimiento completo, opciones y límites están en `docs/runbooks/backup-restore.md`. Las pruebas cubren SQLite en archivo temporal; `pg_dump` está implementado pero no ejecutado en este entorno.
+
+## backup:restore
+
+```bash
+php artisan backup:restore backups/sqlite-20261125-120000-000000.sqlite --force
+```
+
+**Clase:** `App\Console\Commands\RestoreDatabase`.
+
+Restaura un respaldo local. Es destructivo: sin `--force` pide confirmación; con SQLite en memoria o archivo inexistente falla con mensaje explícito. Para PostgreSQL usa `pg_restore --clean --if-exists`; esa ruta no fue ejecutada ni verificada contra una base real.
 
 ## Comandos de Laravel más usados
 

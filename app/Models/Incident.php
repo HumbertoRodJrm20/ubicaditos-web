@@ -7,10 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 class Incident extends Model
 {
     public const CATEGORY_ROUTE = 'route';
+
     public const CATEGORY_BUS = 'bus';
+
     public const CATEGORY_SERVICE = 'service';
+
     public const CATEGORY_DRIVER = 'driver';
+
     public const CATEGORY_STOP = 'stop';
+
     public const CATEGORY_OTHER = 'other';
 
     /**
@@ -29,7 +34,9 @@ class Incident extends Model
     ];
 
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_IN_REVIEW = 'in_review';
+
     public const STATUS_RESOLVED = 'resolved';
 
     /**
@@ -51,6 +58,11 @@ class Incident extends Model
         'description',
         'status',
         'resolved_at',
+        'route_id',
+        'bus_id',
+        'latitude',
+        'longitude',
+        'is_public',
     ];
 
     protected $attributes = [
@@ -63,6 +75,9 @@ class Incident extends Model
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
             'resolved_at' => 'datetime',
+            'latitude' => 'decimal:7',
+            'longitude' => 'decimal:7',
+            'is_public' => 'boolean',
         ];
     }
 
@@ -70,6 +85,16 @@ class Incident extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function route()
+    {
+        return $this->belongsTo(Route::class);
+    }
+
+    public function bus()
+    {
+        return $this->belongsTo(Bus::class);
     }
 
     // Accessors

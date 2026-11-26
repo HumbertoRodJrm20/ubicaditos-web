@@ -122,7 +122,7 @@
                                 $statusStyle = $statusStyles[$emergency->status] ?? null;
                             @endphp
 
-                            <article class="emergency-card rounded-2xl border border-slate-200/80 bg-white/70 p-4 shadow-sm transition hover:shadow-md dark:border-gray-700 dark:bg-gray-800/50">
+                            <article class="emergency-card rounded-2xl border border-slate-200/80 bg-white/70 p-4 shadow-sm transition hover:shadow-md dark:border-gray-700 dark:bg-gray-800/50 {{ $emergency->status === 'pending' ? 'ring-2 ring-amber-200/80 dark:ring-amber-700/50' : '' }}">
                                 <div class="mb-3 flex flex-wrap items-start justify-between gap-2">
                                     <div class="flex flex-wrap items-center gap-2">
                                         <span class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 {{ $typeStyle['classes'] }}">
@@ -133,6 +133,12 @@
                                             <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 {{ $statusStyle['classes'] }}">
                                                 <span class="h-1.5 w-1.5 rounded-full {{ $statusStyle['dot'] }}"></span>
                                                 {{ $statusStyle['label'] }}
+                                            </span>
+                                        @endif
+
+                                        @if ($emergency->status === 'pending')
+                                            <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                                                Requiere atención
                                             </span>
                                         @endif
                                     </div>

@@ -27,3 +27,5 @@ Thumbs.db
 /docs/.obsidian/*
 lab.py
 docs/xd.md
+/handoff
+/handoff/*

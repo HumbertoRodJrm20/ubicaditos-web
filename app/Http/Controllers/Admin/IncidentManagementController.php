@@ -18,7 +18,7 @@ class IncidentManagementController extends Controller
         $category = $request->query('category');
         $search = trim((string) $request->query('q'));
 
-        $incidents = Incident::with('user')
+        $incidents = Incident::with(['user', 'route', 'bus'])
             ->when($status, fn ($query, $value) => $query->where('status', $value))
             ->when($category, fn ($query, $value) => $query->where('category', $value))
             ->when($search !== '', function ($query) use ($search) {
