@@ -36,7 +36,7 @@ class RegisteredUserController extends Controller
             'maternal_last_name' => ['required', 'string', 'max:35', 'regex:/^[a-záéíóúñA-ZÁÉÍÓÚÑ\s]+$/'],
             'phone' => ['required', 'string', 'size:10', 'regex:/^\d{10}$/'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
-            'password' => ['required', 'confirmed', 'min:8', 'regex:/^(?=.*[a-zA-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/'],
+            'password' => ['required', 'confirmed', 'min:8', 'regex:/^(?=.*[a-zA-Z])(?=.*\d)(?=.*[^a-zA-Z\d\s])\S+$/'],
         ], [
             'first_name.required' => 'El nombre es obligatorio',
             'first_name.regex' => 'El nombre solo puede contener letras',
@@ -51,7 +51,7 @@ class RegisteredUserController extends Controller
             'phone.size' => 'El teléfono debe tener exactamente 10 dígitos',
             'phone.regex' => 'El teléfono solo puede contener números',
             'password.min' => 'La contraseña debe tener al menos 8 caracteres',
-            'password.regex' => 'La contraseña debe contener letras, números y caracteres especiales',
+            'password.regex' => 'La contraseña debe incluir al menos una letra, un número y un símbolo, sin espacios',
             'password.confirmed' => 'Las contraseñas no coinciden',
         ]);
 

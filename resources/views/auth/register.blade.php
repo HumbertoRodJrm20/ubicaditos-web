@@ -304,7 +304,7 @@
                     if (this.password.length >= 8) score++;
                     if (/[A-Z]/.test(this.password)) score++;
                     if (/\d/.test(this.password)) score++;
-                    if (/[^A-Za-z0-9]/.test(this.password)) score++;
+                    if (/[^A-Za-z0-9\s]/.test(this.password)) score++;
                     return score;
                 },
                 get strengthColor() {
@@ -438,8 +438,8 @@
                         this.errors.password = 'La contraseña es obligatoria';
                     } else if (this.password.length < 8) {
                         this.errors.password = 'La contraseña debe tener al menos 8 caracteres';
-                    } else if (!/(?=.*[a-zA-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/.test(this.password)) {
-                        this.errors.password = 'La contraseña debe contener letras, números y caracteres especiales';
+                    } else if (!/^(?=.*[a-zA-Z])(?=.*\d)(?=.*[^a-zA-Z\d\s])\S+$/.test(this.password)) {
+                        this.errors.password = 'La contraseña debe incluir al menos una letra, un número y un símbolo, sin espacios';
                     } else {
                         delete this.errors.password;
                     }
