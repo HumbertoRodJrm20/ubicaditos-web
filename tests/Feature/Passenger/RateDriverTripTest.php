@@ -50,11 +50,11 @@ class RateDriverTripTest extends TestCase
             ->assertSessionHas('success');
 
         $this->assertDatabaseHas('ratings', [
-            'driver_id' => $this->driver->id,
             'passenger_id' => $this->passenger->id,
             'trip_id' => $trip->id,
             'rating' => 5,
         ]);
+        $this->assertSame($this->driver->id, (int) Rating::first()->driver->id);
     }
 
     public function test_rating_with_an_explicit_completed_trip_is_allowed(): void

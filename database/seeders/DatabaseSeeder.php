@@ -2,10 +2,15 @@
 
 namespace Database\Seeders;
 
-use App\Models\{User, Bus, Route, Stop, EmergencyReport, Trip, Rating};
+use App\Models\Bus;
+use App\Models\Rating;
+use App\Models\Route;
+use App\Models\Stop;
+use App\Models\Trip;
+use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Carbon\Carbon;
 
 class DatabaseSeeder extends Seeder
 {
@@ -36,10 +41,10 @@ class DatabaseSeeder extends Seeder
             $drivers[] = User::create([
                 'first_name' => $firstName,
                 'last_name' => $lastName,
-                'email' => 'chofer' . $i . '@ubicaditos.com',
+                'email' => 'chofer'.$i.'@ubicaditos.com',
                 'password' => Hash::make('password'),
                 'role' => 'driver',
-                'phone' => '951' . rand(1000000, 9999999),
+                'phone' => '951'.rand(1000000, 9999999),
                 'is_active' => true,
             ]);
         }
@@ -55,10 +60,10 @@ class DatabaseSeeder extends Seeder
             $passengers[] = User::create([
                 'first_name' => $firstName,
                 'last_name' => $lastName,
-                'email' => 'pasajero' . $i . '@ubicaditos.com',
+                'email' => 'pasajero'.$i.'@ubicaditos.com',
                 'password' => Hash::make('password'),
                 'role' => 'passenger',
-                'phone' => '951' . rand(1000000, 9999999),
+                'phone' => '951'.rand(1000000, 9999999),
                 'is_active' => true,
                 'current_latitude' => 17.0732 + (rand(-100, 100) / 10000),
                 'current_longitude' => -96.7266 + (rand(-100, 100) / 10000),
@@ -301,7 +306,9 @@ class DatabaseSeeder extends Seeder
         $tripModels = [];
 
         foreach ($buses as $bus) {
-            if (!$bus->routes->first() || !$bus->driver) continue;
+            if (! $bus->routes->first() || ! $bus->driver) {
+                continue;
+            }
 
             $route = $bus->routes->first();
 
@@ -374,7 +381,6 @@ class DatabaseSeeder extends Seeder
 
                 Rating::create([
                     'passenger_id' => $passenger->id,
-                    'driver_id' => $trip->driver_id,
                     'trip_id' => $trip->id,
                     'rating' => $rating,
                     'comment' => $rating >= 3 ? $ratingComments[array_rand($ratingComments)] : 'Puede mejorar',
@@ -384,13 +390,13 @@ class DatabaseSeeder extends Seeder
 
         $this->command->info('✅ Base de datos poblada con datos ampliados de Oaxaca');
         $this->command->info('📊 Estadísticas:');
-        $this->command->info('   - Rutas creadas: ' . Route::count());
-        $this->command->info('   - Paradas creadas: ' . Stop::count());
-        $this->command->info('   - Autobuses creados: ' . Bus::count());
-        $this->command->info('   - Conductores: ' . count($drivers));
-        $this->command->info('   - Pasajeros: ' . count($passengers));
-        $this->command->info('   - Viajes registrados: ' . Trip::count());
-        $this->command->info('   - Calificaciones: ' . Rating::count());
+        $this->command->info('   - Rutas creadas: '.Route::count());
+        $this->command->info('   - Paradas creadas: '.Stop::count());
+        $this->command->info('   - Autobuses creados: '.Bus::count());
+        $this->command->info('   - Conductores: '.count($drivers));
+        $this->command->info('   - Pasajeros: '.count($passengers));
+        $this->command->info('   - Viajes registrados: '.Trip::count());
+        $this->command->info('   - Calificaciones: '.Rating::count());
         $this->command->info('');
         $this->command->info('📧 Credenciales:');
         $this->command->info('   Admin: admin@ubicaditos.com / password');

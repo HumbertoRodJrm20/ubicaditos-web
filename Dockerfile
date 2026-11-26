@@ -125,3 +125,19 @@ RUN chmod +x /usr/local/bin/ubicaditos-entrypoint
 EXPOSE 80
 
 CMD ["/usr/local/bin/ubicaditos-entrypoint"]
+
+# --------------------------------------------------
+# Railway: último stage, por lo que es el que se construye
+# cuando Railway detecta este Dockerfile en la raíz. Nginx escucha
+# en el puerto inyectado por la plataforma y se aplican las
+# migraciones pendientes antes de aceptar tráfico.
+# --------------------------------------------------
+FROM web AS railway
+
+COPY docker/nginx/ubicaditos-railway.conf /etc/nginx/sites-available/ubicaditos-railway.conf.template
+COPY docker/entrypoint-railway.sh /usr/local/bin/ubicaditos-railway-entrypoint
+RUN chmod +x /usr/local/bin/ubicaditos-railway-entrypoint
+
+EXPOSE 80
+
+CMD ["/usr/local/bin/ubicaditos-railway-entrypoint"]

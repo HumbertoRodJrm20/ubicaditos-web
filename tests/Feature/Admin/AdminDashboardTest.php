@@ -6,6 +6,8 @@ use App\Models\Bus;
 use App\Models\EmergencyReport;
 use App\Models\Incident;
 use App\Models\Rating;
+use App\Models\Route;
+use App\Models\Trip;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -131,15 +133,31 @@ class AdminDashboardTest extends TestCase
             ->assertSee('Calificación promedio')
             ->assertSee('—');
 
+        $bus = $this->bus('RAT123', 'active');
+        $route = Route::create([
+            'name' => 'Ruta calificada',
+            'code' => 'RAT-1',
+            'color' => '#3B82F6',
+            'is_active' => true,
+        ]);
+        $trip = Trip::create([
+            'bus_id' => $bus->id,
+            'route_id' => $route->id,
+            'driver_id' => $driver->id,
+            'started_at' => now()->subHour(),
+            'completed_at' => now(),
+            'status' => 'completed',
+        ]);
+
         Rating::create([
             'passenger_id' => $passenger->id,
-            'driver_id' => $driver->id,
+            'trip_id' => $trip->id,
             'rating' => 5,
             'comment' => 'Excelente servicio',
         ]);
         Rating::create([
             'passenger_id' => $passenger->id,
-            'driver_id' => $driver->id,
+            'trip_id' => $trip->id,
             'rating' => 4,
             'comment' => 'Buena atención',
         ]);

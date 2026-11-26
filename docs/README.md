@@ -65,6 +65,7 @@ Abre `http://localhost:8000` e inicia sesión con alguna de las cuentas de prueb
 | 18 | [Iteración 7 — Modo oscuro y administración](18-iteracion-7.md) | Tema oscuro persistente, conmutador compartido, dashboard con contadores de flota y reportes, y listado de autobuses con resumen y filtros. |
 | 19 | [Registro técnico de desarrollo (_devlog)](_devlog.md) | Bitácora técnica de lo realizado en cada iteración. |
 | 20 | [Despliegue de producción en IONOS](20-despliegue-ionos.md) | Docker Compose, PostgreSQL, Reverb, TLS, backups y límites de OSRM. |
+| 21 | [Despliegue de staging en Railway](21-despliegue-railway.md) | PostgreSQL por `DATABASE_URL`, Dockerfile multi-etapa, puerto inyectado y migraciones al arrancar. |
 
 ## Resumen funcional
 

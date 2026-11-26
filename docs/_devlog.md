@@ -692,3 +692,33 @@ Las pruebas heredadas de verificación y registro fuerzan `true` explícitamente
 | `php artisan test --filter="EmailVerificationToggleTest\|EmailVerificationTest\|EmailVerificationAndEntryPointsTest\|RegistrationTest"` | 16 pruebas, 52 aserciones, 0 fallos. |
 | `php artisan test` | 362 pruebas, 1,572 aserciones, 0 fallos (antes: 358/1,563). |
 | Pint | Aplicado en los archivos PHP tocados. |
+
+## 2026-11-25 — Normalización y Railway en `staging`
+
+El propietario aprobó la normalización enfocada y la configuración de Railway. `branch-temp` ya estaba fusionada en `develop` en `0139b2a` y desde ahí se creó la rama local `staging`; no se hizo push.
+
+### Cambio
+
+| Archivo | Cambio |
+|---------|--------|
+| `database/migrations/2026_11_25_000008_normalize_message_read_state.php` | Elimina `messages.is_read`; `read_at` es la única fuente del estado de lectura. |
+| `database/migrations/2026_11_25_000009_normalize_rating_driver.php` | Elimina `ratings.driver_id`; `trip_id` pasa a ser obligatorio y con `cascadeOnDelete`. Los preflight fallan si hay calificaciones sin viaje o con conductor inconsistente. |
+| `database/migrations/2026_11_25_000010_add_unique_bus_route_assignment.php` | Añade único `(bus_id, route_id)` en `bus_route` y falla si hay parejas duplicadas. |
+| `app/Models/Message.php`, `app/Models/Rating.php`, `app/Models/User.php` | Accessors derivados para `is_read` y `driver`; `ratingsReceived()` usa `hasManyThrough` vía viajes. |
+| `config/database.php` y `.env.staging.example` | `pgsql` lee `DATABASE_URL` (con `DB_URL` prevaleciendo), `DB_SSLMODE` y `DB_SCHEMA`; plantilla de staging sin secretos. |
+| `Dockerfile`, `docker/entrypoint-railway.sh`, `docker/nginx/ubicaditos-railway.conf` | Stage final `railway`: sustituye `PORT`/`REVERB_UPSTREAM`, ejecuta `migrate --force`, inicia PHP-FPM y Nginx en primer plano. No se añadió `railway.json` porque Config as Code está en deprecación; Railway construye el último stage del Dockerfile de la raíz. |
+| `docs/21-despliegue-railway.md` | Guía de creación del servicio, variables, healthcheck y verificación pendiente. |
+
+1NF se documenta como cumplida con JSON atómico (`path_coordinates`, `path_taken`, `notification_preferences` se leen y escriben completos); 2NF ya se cumplía por claves primarias simples; 3NF queda sin dependencias transitivas. Se corrigió además la nota obsoleta sobre `strftime()`: `ReportController@index` usa `DATE(started_at)`, portable entre SQLite y PostgreSQL.
+
+### Verificación
+
+| Comando | Resultado |
+|---------|-----------|
+| `php artisan test --filter="NormalizedSchemaTest|RailwayConfigurationTest"` (rojo) | 8 pruebas, 8 fallos antes de crear migraciones y cambios. |
+| `php artisan test --filter="NormalizedSchemaTest|RailwayConfigurationTest"` (verde) | 8 pruebas, 23 aserciones, 0 fallos. |
+| `migrate` / `migrate:rollback --step=3` / `migrate` en archivo SQLite temporal | Las tres migraciones aplicaron, revertieron y volvieron a aplicar sin tocar la base de desarrollo. |
+| `php artisan test` | 370 pruebas, 1,596 aserciones, 0 fallos (antes: 362/1,572). Se repitió tras Pint con el mismo resultado. |
+| Pint y `git diff --check` | Aplicado en los archivos PHP tocados; sin errores de whitespace. |
+
+No se creó el proyecto Railway, no se conectó a PostgreSQL real, no se desplegó y no se ejecutaron `railway run`, seeders en staging, k6, Selenium ni revisión de navegador. Tampoco se importó la base SQLite de desarrollo ni se hicieron capturas de pantalla; esas verificaciones siguen pendientes y no se afirma su resultado.

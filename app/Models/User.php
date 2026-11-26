@@ -106,7 +106,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
 
     public function ratingsReceived()
     {
-        return $this->hasMany(Rating::class, 'driver_id');
+        return $this->hasManyThrough(Rating::class, Trip::class, 'driver_id', 'trip_id', 'id', 'id');
     }
 
     public function favoriteStops()

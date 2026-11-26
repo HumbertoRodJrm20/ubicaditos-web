@@ -2,8 +2,11 @@
 
 namespace Tests\Feature\Passenger;
 
+use App\Models\Bus;
+use App\Models\Rating;
 use App\Models\Route;
 use App\Models\Stop;
+use App\Models\Trip;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -24,7 +27,7 @@ class FavoriteRouteTest extends TestCase
     {
         return Route::create(array_merge([
             'name' => 'Ruta Universidad',
-            'code' => 'R-' . fake()->unique()->numerify('###'),
+            'code' => 'R-'.fake()->unique()->numerify('###'),
             'description' => 'Recorrido de prueba',
             'color' => '#6b7bad',
             'is_active' => true,
@@ -138,15 +141,30 @@ class FavoriteRouteTest extends TestCase
 
         // Dos calificaciones emitidas reales (no un número fijo en la vista).
         $driver = User::factory()->create(['role' => 'driver']);
-        \App\Models\Rating::create([
-            'passenger_id' => $user->id,
+        $bus = Bus::create([
+            'license_plate' => 'FAV123',
+            'capacity' => 40,
+            'status' => 'active',
+            'is_active' => true,
             'driver_id' => $driver->id,
+        ]);
+        $trip = Trip::create([
+            'bus_id' => $bus->id,
+            'route_id' => $route->id,
+            'driver_id' => $driver->id,
+            'started_at' => now()->subHour(),
+            'completed_at' => now(),
+            'status' => 'completed',
+        ]);
+        Rating::create([
+            'passenger_id' => $user->id,
+            'trip_id' => $trip->id,
             'rating' => 5,
             'comment' => 'Muy amable',
         ]);
-        \App\Models\Rating::create([
+        Rating::create([
             'passenger_id' => $user->id,
-            'driver_id' => $driver->id,
+            'trip_id' => $trip->id,
             'rating' => 4,
             'comment' => 'Puntual',
         ]);

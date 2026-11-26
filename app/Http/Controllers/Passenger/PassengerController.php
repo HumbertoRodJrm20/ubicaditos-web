@@ -278,7 +278,6 @@ class PassengerController extends Controller
 
         Rating::create([
             'passenger_id' => auth()->id(),
-            'driver_id' => (int) $driverId,
             'trip_id' => $validated['trip_id'],
             'rating' => $validated['rating'],
             'comment' => $validated['comment'] ?? null,

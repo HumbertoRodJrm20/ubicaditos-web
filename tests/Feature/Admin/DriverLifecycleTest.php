@@ -46,7 +46,6 @@ class DriverLifecycleTest extends TestCase
         ]);
         $rating = Rating::create([
             'passenger_id' => $passenger->id,
-            'driver_id' => $driver->id,
             'trip_id' => $trip->id,
             'rating' => 5,
             'comment' => 'Buen servicio',
