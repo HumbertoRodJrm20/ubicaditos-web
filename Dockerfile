@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 
 # --------------------------------------------------
 # PHP base: extensions shared by build and runtime
@@ -65,6 +66,20 @@ FROM oven/bun:1.3.5 AS assets
 
 USER root
 WORKDIR /app
+
+ARG VITE_APP_NAME
+ARG VITE_REVERB_APP_KEY
+ARG VITE_REVERB_HOST
+ARG VITE_REVERB_PORT
+ARG VITE_REVERB_WSS_PORT
+ARG VITE_REVERB_SCHEME
+
+ENV VITE_APP_NAME=${VITE_APP_NAME} \
+    VITE_REVERB_APP_KEY=${VITE_REVERB_APP_KEY} \
+    VITE_REVERB_HOST=${VITE_REVERB_HOST} \
+    VITE_REVERB_PORT=${VITE_REVERB_PORT} \
+    VITE_REVERB_WSS_PORT=${VITE_REVERB_WSS_PORT} \
+    VITE_REVERB_SCHEME=${VITE_REVERB_SCHEME}
 
 COPY package.json bun.lock ./
 
@@ -134,10 +149,23 @@ CMD ["/usr/local/bin/ubicaditos-entrypoint"]
 # --------------------------------------------------
 FROM web AS railway
 
+COPY docker/nginx/nginx-railway.conf /etc/nginx/nginx-railway.conf
 COPY docker/nginx/ubicaditos-railway.conf /etc/nginx/sites-available/ubicaditos-railway.conf.template
+COPY docker/php-fpm-railway.conf /etc/php-fpm-railway.conf
 COPY docker/entrypoint-railway.sh /usr/local/bin/ubicaditos-railway-entrypoint
-RUN chmod +x /usr/local/bin/ubicaditos-railway-entrypoint
+RUN chmod +x /usr/local/bin/ubicaditos-railway-entrypoint \
+    && mkdir -p \
+        /tmp/nginx-client \
+        /tmp/nginx-proxy \
+        /tmp/nginx-fastcgi \
+        /tmp/nginx-uwsgi \
+        /tmp/nginx-scgi \
+    && chown -R www-data:www-data /tmp/nginx-client /tmp/nginx-proxy /tmp/nginx-fastcgi /tmp/nginx-uwsgi /tmp/nginx-scgi
 
-EXPOSE 80
+LABEL org.opencontainers.image.title="Ubicaditos"
+
+USER www-data
+
+EXPOSE 8080
 
 CMD ["/usr/local/bin/ubicaditos-railway-entrypoint"]

@@ -1,10 +1,9 @@
 
-.git
-.github
-.env
-.env.*
-!.env.example
-!.env.production.example
+.git/
+.github/
+.junie/
+**/.env*
+**/.npmrc
 
 vendor/
 node_modules/

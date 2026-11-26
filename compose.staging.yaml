@@ -1,0 +1,58 @@
+# Stack local para validar la misma imagen Railway contra PostgreSQL.
+# No se carga desde compose.yaml para conservar SQLite en desarrollo.
+name: ubicaditos-staging
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ubicaditos_staging
+      POSTGRES_USER: ubicaditos_staging
+      POSTGRES_PASSWORD: "${STAGING_DB_PASSWORD:?Define STAGING_DB_PASSWORD}"
+    volumes:
+      - staging_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  app:
+    build:
+      context: .
+      target: railway
+    restart: unless-stopped
+    environment:
+      APP_ENV: staging
+      APP_DEBUG: "false"
+      APP_KEY: "${APP_KEY:?Define APP_KEY}"
+      APP_URL: http://localhost:8080
+      LOG_CHANNEL: stderr
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_DATABASE: ubicaditos_staging
+      DB_USERNAME: ubicaditos_staging
+      DB_PASSWORD: "${STAGING_DB_PASSWORD:?Define STAGING_DB_PASSWORD}"
+      DB_SSLMODE: disable
+      DB_SCHEMA: public
+      SESSION_DRIVER: database
+      SESSION_SECURE_COOKIE: "false"
+      CACHE_STORE: database
+      BROADCAST_CONNECTION: log
+      QUEUE_CONNECTION: sync
+      FILESYSTEM_DISK: local
+      PORT: "8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - staging_storage:/var/www/storage
+
+volumes:
+  staging_pgdata:
+  staging_storage:

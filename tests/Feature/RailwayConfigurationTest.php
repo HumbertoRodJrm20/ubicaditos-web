@@ -27,6 +27,38 @@ class RailwayConfigurationTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/^DB_PASSWORD=secret$/m', $content);
     }
 
+    public function test_staging_defaults_fit_railway_free_service_limit(): void
+    {
+        $content = file_get_contents(base_path('.env.staging.example'));
+
+        $this->assertMatchesRegularExpression('/^APP_DEBUG=false$/m', $content);
+        $this->assertMatchesRegularExpression('/^QUEUE_CONNECTION=sync$/m', $content);
+        $this->assertMatchesRegularExpression('/^BROADCAST_CONNECTION=log$/m', $content);
+        $this->assertMatchesRegularExpression('/^SESSION_SECURE_COOKIE=true$/m', $content);
+    }
+
+    public function test_staging_compose_builds_the_railway_image_against_postgres(): void
+    {
+        $file = base_path('compose.staging.yaml');
+        $this->assertFileExists($file);
+        $content = file_get_contents($file);
+
+        $this->assertStringContainsString('target: railway', $content);
+        $this->assertStringContainsString('condition: service_healthy', $content);
+        $this->assertStringContainsString('image: postgres:16-alpine', $content);
+        $this->assertStringContainsString('127.0.0.1:8080:', $content);
+    }
+
+    public function test_railway_image_runs_as_non_root_and_ignores_environment_files(): void
+    {
+        $dockerfile = file_get_contents(base_path('Dockerfile'));
+        $dockerignore = file_get_contents(base_path('.dockerignore'));
+
+        $this->assertStringContainsString('USER www-data', $dockerfile);
+        $this->assertStringContainsString('**/.env*', $dockerignore);
+        $this->assertStringContainsString('.junie/', $dockerignore);
+    }
+
     public function test_dockerfile_has_railway_final_stage(): void
     {
         $content = file_get_contents(base_path('Dockerfile'));
@@ -41,7 +73,7 @@ class RailwayConfigurationTest extends TestCase
 
         $this->assertStringContainsString('${PORT}', $content);
         $this->assertStringContainsString('php artisan migrate --force', $content);
-        $this->assertStringContainsString('php-fpm -D', $content);
+        $this->assertStringContainsString('php-fpm -y /etc/php-fpm-railway.conf -D', $content);
         $this->assertStringContainsString('exec nginx', $content);
     }
 
