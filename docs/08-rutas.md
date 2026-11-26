@@ -14,7 +14,7 @@ php artisan route:list --except-vendor
 |------------|--------|
 | `guest` | Solo usuarios no autenticados (login, registro, recuperación). |
 | `auth` | Requiere sesión iniciada; si no, redirige a `/login`. |
-| `verified` | Requiere correo verificado. `User` implementa `MustVerifyEmail`; se aplica al grupo `passenger` y a `/dashboard`. Las factories crean usuarios verificados para conservar la suite existente. |
+| `verified` | Requiere correo verificado cuando `EMAIL_VERIFICATION_ENABLED=true`. Con el valor actual (`false`) el middleware deja pasar la petición; `User` implementa `MustVerifyEmail`, pero no se envían avisos ni se bloquea a cuentas con correos ficticios. |
 | `admin` / `driver` / `passenger` | Requiere el rol correspondiente; si no, responde 403. El middleware `driver` además redirige a `driver.pending` cuando la aprobación está `pending` o `rejected`. |
 | `SetLocale`, `ForcePasswordChange` | Middleware global del grupo `web`: aplican `locale` persistido (`es`/`en`) y fuerzan `profile.edit` mientras `must_change_password` esté activo. |
 | `roles:admin,driver,passenger` | Middleware `EnsureUserHasRole`: declara explícitamente los roles permitidos por endpoint (RNF-02); cualquier otro rol recibe 403. |

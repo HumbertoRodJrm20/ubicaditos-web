@@ -63,13 +63,16 @@ class RegisteredUserController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'role' => 'passenger', // Usuarios registrados son pasajeros por defecto
+            'email_verified_at' => config('auth.email_verification_enabled') ? null : now(),
         ]);
 
         event(new Registered($user));
 
         Auth::login($user);
 
-        return redirect()->route('verification.notice');
+        return config('auth.email_verification_enabled')
+            ? redirect()->route('verification.notice')
+            : redirect()->route('dashboard');
     }
 
     /**

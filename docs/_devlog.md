@@ -668,3 +668,27 @@ El paso 7 avanzó por capas con TDD y quedó **parcial**, no cerrado. La fase ro
 ### Límites explícitos
 
 RNF-11(b) y RNF-13 están completados en alcance local; RNF-11(a)/(c), RNF-15/HU-033 y RNF-14 son parciales; RNF-06 sigue pendiente de medición. No se extrajeron los 22 bloques JavaScript inline ni se eliminaron los 6 seeders inventariados. No se ejecutaron k6, Selenium, navegador, capturas a 375×667/1366 px, contraste, PostgreSQL, `pg_dump`/`pg_restore` ni restauración contra la base de desarrollo. Tampoco hay umbral p95 confirmado ni lista de navegadores acordada: no se inventaron valores. HU-034 continúa bloqueada por HU-017/HU-018.
+
+## 2026-11-25 — Interruptor de verificación de correo
+
+El propietario pidió poder desactivar la verificación porque las pruebas usan correos ficticios creados directamente en base de datos. Se hizo con TDD: `EmailVerificationToggleTest` quedó en rojo (3 fallos, 1 pase) porque el middleware seguía redirigiendo y el registro seguía yendo a `verification.notice`.
+
+### Cambio
+
+| Archivo | Cambio |
+|---------|--------|
+| `config/auth.php` | `email_verification_enabled` lee `EMAIL_VERIFICATION_ENABLED` con default `false`. |
+| `app/Http/Middleware/EnsureEmailIsVerifiedIfEnabled.php` | Alias `verified`; delega en el middleware de Laravel sólo cuando el interruptor está activo. |
+| `app/Http/Controllers/Auth/RegisteredUserController.php` | Con el interruptor apagado marca `email_verified_at`, no dispara `VerifyEmail` y redirige a `dashboard`. |
+| `EmailVerificationPromptController` y `EmailVerificationNotificationController` | Con el interruptor apagado redirigen al dashboard y no envían avisos. |
+| `.env` y `.env.example` | `EMAIL_VERIFICATION_ENABLED=false` en el ambiente actual y en la plantilla. |
+
+Las pruebas heredadas de verificación y registro fuerzan `true` explícitamente para conservar la cobertura del flujo original.
+
+### Verificación
+
+| Comando | Resultado |
+|---------|-----------|
+| `php artisan test --filter="EmailVerificationToggleTest\|EmailVerificationTest\|EmailVerificationAndEntryPointsTest\|RegistrationTest"` | 16 pruebas, 52 aserciones, 0 fallos. |
+| `php artisan test` | 362 pruebas, 1,572 aserciones, 0 fallos (antes: 358/1,563). |
+| Pint | Aplicado en los archivos PHP tocados. |

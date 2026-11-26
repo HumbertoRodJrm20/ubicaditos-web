@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\DriverMiddleware;
+use App\Http\Middleware\EnsureEmailIsVerifiedIfEnabled;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\ForcePasswordChange;
 use App\Http\Middleware\PassengerMiddleware;
@@ -19,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
+            'verified' => EnsureEmailIsVerifiedIfEnabled::class,
             'admin' => AdminMiddleware::class,
             'driver' => DriverMiddleware::class,
             'passenger' => PassengerMiddleware::class,

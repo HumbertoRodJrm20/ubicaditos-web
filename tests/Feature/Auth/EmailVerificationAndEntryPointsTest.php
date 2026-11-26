@@ -15,6 +15,13 @@ class EmailVerificationAndEntryPointsTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['auth.email_verification_enabled' => true]);
+    }
+
     public function test_login_page_offers_three_role_entry_points(): void
     {
         $this->get(route('login'))
