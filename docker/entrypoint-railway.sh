@@ -2,7 +2,7 @@
 set -e
 
 PORT="${PORT:-8080}"
-REVERB_UPSTREAM="${REVERB_UPSTREAM:-reverb:8080}"
+REVERB_UPSTREAM="${REVERB_UPSTREAM:-127.0.0.1:8081}"
 
 sed \
     -e "s/\${PORT}/${PORT}/g" \

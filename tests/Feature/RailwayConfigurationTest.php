@@ -57,6 +57,7 @@ class RailwayConfigurationTest extends TestCase
         $this->assertStringContainsString('USER www-data', $dockerfile);
         $this->assertStringContainsString('**/.env*', $dockerignore);
         $this->assertStringContainsString('.junie/', $dockerignore);
+        $this->assertStringContainsString('bootstrap/cache/*.php', $dockerignore);
     }
 
     public function test_dockerfile_has_railway_final_stage(): void
@@ -72,6 +73,7 @@ class RailwayConfigurationTest extends TestCase
         $content = file_get_contents(base_path('docker/entrypoint-railway.sh'));
 
         $this->assertStringContainsString('${PORT}', $content);
+        $this->assertStringContainsString('REVERB_UPSTREAM:-127.0.0.1:8081', $content);
         $this->assertStringContainsString('php artisan migrate --force', $content);
         $this->assertStringContainsString('php-fpm -y /etc/php-fpm-railway.conf -D', $content);
         $this->assertStringContainsString('exec nginx', $content);
