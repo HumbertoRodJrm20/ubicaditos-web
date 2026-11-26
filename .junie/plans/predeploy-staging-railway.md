@@ -16,7 +16,7 @@ cd /home/mizu/dev/ubicaditos-web
 git status --short
 git diff --check
 php artisan test
-./vendor/bin/pint --test
+./vendor/bin/pint --test bootstrap/app.php tests/Feature/RailwayConfigurationTest.php
 docker info
 docker compose version
 
@@ -35,7 +35,7 @@ docker compose -f compose.staging.yaml exec -T app php artisan migrate:status
 curl -fsS -o /dev/null -w 'HTTP %{http_code}\n' http://localhost:8080/up
 ```
 
-Resultado esperado: tests y Pint pasan, Compose valida, el servicio PostgreSQL queda saludable, Laravel conecta y muestra migraciones aplicadas, y `/up` responde HTTP 200. No ejecutar `db:seed`: el seeder no es idempotente. No usar `docker compose down -v`, porque borraría el volumen `staging_pgdata`.
+Resultado esperado: tests y Pint dirigido a los archivos PHP modificados pasan, Compose valida, el servicio PostgreSQL queda saludable, Laravel conecta y muestra migraciones aplicadas, y `/up` responde HTTP 200. La comprobación global de Pint reportó 32 hallazgos de estilo en otros archivos; no aplicar formato masivo como parte de este deploy. No ejecutar `db:seed`: el seeder no es idempotente. No usar `docker compose down -v`, porque borraría el volumen `staging_pgdata`.
 
 ### Configuración de Railway
 - Crear/vincular un servicio PostgreSQL y el servicio web del repositorio; usar el `Dockerfile` raíz y no reemplazar el comando de inicio del contenedor.
@@ -43,8 +43,8 @@ Resultado esperado: tests y Pint pasan, Compose valida, el servicio PostgreSQL q
 - Dejar que Railway inyecte `PORT`; configurar el health check como `/up`.
 - Solo después de validar los checks y revisar `git status`, subir la rama de staging conectada a Railway, por ejemplo `git push origin <rama-staging>`.
 
-### Discrepancia confirmada
-`bootstrap/app.php` registra la ruta de salud `/up`, pero `docs/railway-staging.md` todavía dice `/healthz`. Usar `/up` en Railway; corregir la guía en un cambio separado si se desea mantenerla alineada.
+### Estado actual de los assets y del proxy
+El último deploy reportado terminó `SUCCESS` el 26 de noviembre de 2026 a las 16:45, pero `/login` aún publica URLs HTTP para CSS y JS; pedir `/up` o ver `SUCCESS` no demuestra que los assets usen HTTPS. La corrección local está en `bootstrap/app.php` (`trustProxies(at: '*')`) y `docker/nginx/ubicaditos-railway.conf` (`HTTP_X_FORWARDED_PROTO` hacia PHP-FPM); requiere construir y desplegar una imagen nueva, no agregar variables a Railway. Mantener `APP_URL=https://ubicaditos-staging.up.railway.app`, PostgreSQL y el health check `/up`.
 
 ### Referencias
 - [Docker Docs: `docker compose config`](https://docs.docker.com/reference/cli/docker/compose/config/)
@@ -52,12 +52,12 @@ Resultado esperado: tests y Pint pasan, Compose valida, el servicio PostgreSQL q
 - [Railway Docs: PostgreSQL](https://docs.railway.com/databases/postgresql)
 - [Railway Docs: Healthchecks](https://docs.railway.com/deployments/healthchecks)
 
-Nota: en una comprobación anterior, el build no pudo ejecutarse por falta de permisos al socket del daemon Docker. Si `docker info` falla por ese motivo, resolver el acceso a Docker antes de considerar validada la imagen.
+La ejecución reciente de Docker sin `sudo` permitió construir la imagen Railway. Si el acceso al daemon deja de estar disponible, detener el preflight y resolverlo antes de validar el build.
 
 # Criterios de listo
 
 ### Antes de iniciar el deploy
-- `php artisan test`, `./vendor/bin/pint --test`, `docker compose ... config --quiet` y el build de la etapa `railway` terminan correctamente.
+- `php artisan test`, Pint dirigido a `bootstrap/app.php` y `tests/Feature/RailwayConfigurationTest.php`, `docker compose ... config --quiet` y el build de la etapa `railway` terminan correctamente; la comprobación global de Pint mantiene 32 hallazgos previos en otros archivos.
 - El stack local conecta a PostgreSQL; el entrypoint completa `php artisan migrate --force`; `db:show` y `migrate:status` funcionan.
 - El endpoint HTTP `http://localhost:8080/up` responde 200.
 - En Railway, la referencia a la base apunta al servicio correcto, `DB_SSLMODE=require`, `APP_DEBUG=false`, `APP_KEY` y `APP_URL` están configurados, y el health check apunta a `/up`.
@@ -65,19 +65,24 @@ Nota: en una comprobación anterior, el build no pudo ejecutarse por falta de pe
 
 # Delivery Steps
 
-### ! Step 1: Ejecutar preflight local con PostgreSQL
-La aplicación y la imagen Railway quedan validadas localmente contra PostgreSQL antes de subir la rama.
+### * Step 1: Validar el cambio de confianza del proxy en la imagen Railway
+Los cambios locales de proxy pasan pruebas y se compilan en la etapa `railway` antes de publicar.
 
-- Revisar `git status --short` y `git diff --check`; ejecutar `php artisan test` y `./vendor/bin/pint --test`.
-- Confirmar acceso con `docker info` y validar las versiones con `docker compose version`.
-- Exportar `APP_KEY` y `STAGING_DB_PASSWORD` solo en la shell local; validar `compose.staging.yaml` con `docker compose -f compose.staging.yaml config --quiet`.
-- Construir y levantar el servicio `app` con `docker compose -f compose.staging.yaml build --pull app` y `docker compose -f compose.staging.yaml up -d`.
-- Confirmar PostgreSQL, migraciones y HTTP 200 de `/up` mediante `ps`, logs, `db:show`, `migrate:status` y `curl`; no correr `db:seed` ni borrar volúmenes.
+- Confirmar `git status --short`, revisar el diff de `bootstrap/app.php`, `docker/nginx/ubicaditos-railway.conf` y `tests/Feature/RailwayConfigurationTest.php`, y ejecutar `git diff --check`.
+- Ejecutar `php artisan test` y `./vendor/bin/pint --test bootstrap/app.php tests/Feature/RailwayConfigurationTest.php`; no aplicar formato automático a archivos ajenos al cambio.
+- Construir con `docker build --target railway -t ubicaditos:staging .` y detenerse ante cualquier error.
 
-### ! Step 2: Preparar Railway y habilitar el deploy
-Railway queda configurado para iniciar la imagen con PostgreSQL y validar la ruta de salud real antes de recibir tráfico.
+### * Step 2: Publicar una nueva imagen en el entorno staging
+El servicio `ubicaditos` recibe una imagen construida con la confianza del proxy y el reenvío del esquema HTTPS.
 
-- Crear/vincular PostgreSQL y el servicio web; conservar el entrypoint del `Dockerfile` para ejecutar migraciones al arranque.
-- Definir variables de staging y la referencia `DB_URL=${{Postgres.DATABASE_URL}}`, usando el nombre real del servicio; mantener las credenciales fuera del repositorio.
-- Configurar el health check como `/up` y dejar que Railway inyecte `PORT`; no usar `/healthz`, que no está registrado en `bootstrap/app.php`.
-- Solo si todas las comprobaciones pasan y la rama está revisada, hacer push de la rama staging conectada a Railway; revisar logs del build, migraciones y disponibilidad.
+- Preferir Git: confirmar la rama conectada a staging, ejecutar `git add bootstrap/app.php docker/nginx/ubicaditos-railway.conf tests/Feature/RailwayConfigurationTest.php`, revisar con `git diff --cached --check`, crear el commit `Fix HTTPS assets behind Railway proxy` y hacer `git push origin <rama-configurada-para-staging>`.
+- Como alternativa, subir el directorio con `railway up --project 684a2df5-c5ee-46f6-bc74-6f653ff23ada --environment staging --service 0538a10c-c995-4db7-b238-072ea518f88d --ci -m "Fix HTTPS assets behind Railway proxy"`; no combinarlo con el push para evitar despliegues duplicados.
+- Conservar el builder `DOCKERFILE`, `/Dockerfile`, el entrypoint, `APP_URL` HTTPS, la conexión PostgreSQL y el health check `/up`; no hacer solo redeploy de la imagen vieja.
+
+### * Step 3: Confirmar el resultado del deploy y los assets públicos
+El despliegue nuevo queda confirmado únicamente cuando Railway lo marca `SUCCESS` y `/login` genera URLs HTTPS cuyos assets responden 200.
+
+- Comprobar el estado del despliegue específico y revisar los logs de inicio, migraciones y PHP-FPM.
+- Verificar que `https://ubicaditos-staging.up.railway.app/up` responde HTTP 200.
+- Inspeccionar las URLs de CSS y JS en `/login`; confirmar que empiezan con `https://` y que ambos recursos responden HTTP 200 con su tipo de contenido.
+- Si el HTML aún genera `http://`, confirmar que el build nuevo contiene ambos cambios del proxy y que se está inspeccionando el servicio, entorno y dominio correctos.

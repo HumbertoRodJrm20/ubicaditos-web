@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 /**
@@ -85,5 +87,31 @@ class RailwayConfigurationTest extends TestCase
 
         $this->assertStringContainsString('listen ${PORT}', $content);
         $this->assertStringContainsString('proxy_pass http://${REVERB_UPSTREAM}', $content);
+    }
+
+    public function test_railway_proxy_headers_restore_the_https_scheme(): void
+    {
+        Route::get('/__railway-proxy-test', function (Request $request) {
+            return response()->json([
+                'scheme' => $request->getScheme(),
+            ]);
+        });
+
+        $this->get('http://localhost/__railway-proxy-test', [
+            'X-Forwarded-Host' => 'ubicaditos-staging.up.railway.app',
+            'X-Forwarded-Proto' => 'https',
+        ])->assertExactJson([
+            'scheme' => 'https',
+        ]);
+    }
+
+    public function test_railway_nginx_forwards_proxy_scheme_to_php(): void
+    {
+        $content = file_get_contents(base_path('docker/nginx/ubicaditos-railway.conf'));
+
+        $this->assertStringContainsString(
+            'fastcgi_param HTTP_X_FORWARDED_PROTO $http_x_forwarded_proto;',
+            $content,
+        );
     }
 }
